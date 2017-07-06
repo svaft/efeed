@@ -64,6 +64,7 @@ void process_button(void);
 int count;
 
 uint32_t current_pos = 0, thread_limit = 0, mode = 10, clk_mode = 10;
+
 uint32_t clk = 0, dclk = 0, lpress = 0, lup = 0; 
 
 uint32_t buttons_flag_set  __attribute__((at(0x20004000)));

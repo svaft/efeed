@@ -68,6 +68,18 @@ extern uint32_t current_pos, thread_limit, mode;
 extern uint32_t buttons_mstick;
 extern uint32_t menu_changed;
 
+uint16_t infeed_map[]={
+	0,
+	190,
+	273,
+	337,
+	390,
+	437,
+	480,
+	519,
+};
+
+
 uint32_t ramp[]={
 	0x01E000000,
 	0x015E353F7,
@@ -215,8 +227,10 @@ void TIM4_IRQHandler(void)
 					case 25: 	{ // direct  movement: first pass, thread recording: ramp up: accel by ramp map
 						Motor_X_SetPulse();
 						current_pos++;
-						if(ramp_up())
+						if(ramp_up()){
 							mode = 26;
+							GPIOC->BSRR = GPIO_PIN_13;
+						}
 						break;
 					}
 					case 26: 	{ // direct  movement: first pass, thread recording: main part
@@ -306,17 +320,14 @@ void TIM4_IRQHandler(void)
 						Motor_X_SetPulse();
 						current_pos++;
 						if(ramp_up()) {
+							GPIOC->BSRR = GPIO_PIN_13;
 							mode = 56;
-							// preload infeed steps count
-//							infeed_steps = infeed_map[infeed_step++];
-//							if(infeed_steps == 0)
-//								mode = 57;
 						}
 						break;
 					}
-					case 56:	{ // direct  movement: infeed+main part
+					case 56:	{ // direct  movement: main part
 						Motor_X_SetPulse();
-						if( ++current_pos < ( thread_limit - ramp_step + infeed_steps ) ){
+						if( ++current_pos < ( thread_limit - ramp_step ) ){
 							move();
 						}
 						else { 
@@ -324,16 +335,6 @@ void TIM4_IRQHandler(void)
 						}
 						break;
 					}
-//					case 57:	{ // direct  movement: main part
-//						Motor_X_SetPulse();
-//						if( ++current_pos < ( thread_limit - ramp_step ) ){
-//							move();
-//						}
-//						else { 
-//							mode = 30;
-//						}
-//						break;
-//					}
 				} 
 		}
 	}
@@ -350,6 +351,8 @@ void TIM4_IRQHandler(void)
 			case 24: {
 				mode = 25;
 //				TIM4->ARR = fixedpt_toint(Q824set) - 1;
+				infeed_step = 0;
+				GPIOC->BRR = GPIO_PIN_13;
 				TIM4->ARR = 1; // start stepper motor ramp up procedure immediately after tacho event
 				TIM4->CNT = 0;
 				enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
@@ -363,7 +366,14 @@ void TIM4_IRQHandler(void)
 				mode = 55;
 				//reinit counter
 //				TIM4->ARR = fixedpt_toint(Q824set) - 1;
-				TIM4->ARR = 1;  // start stepper motor ramp up procedure immediately after tacho event
+				GPIOC->BRR = GPIO_PIN_13;
+
+				if(infeed_step < infeed_steps) {
+					TIM4->ARR = infeed_map[infeed_step++] + 1; // start stepper motor with shifted position by infeed map
+				} else {
+					TIM4->ARR = 1;  // start stepper motor ramp up procedure immediately after tacho event
+				}
+
 				TIM4->CNT = 0;
 				enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
 //				Q824count = fixedpt_fracpart( Q824set ); // save fract part

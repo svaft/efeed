@@ -54,8 +54,6 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
-USART_HandleTypeDef husart2;
-
 /* USER CODE BEGIN PV */
 
 void process_button(void);
@@ -79,10 +77,19 @@ uint32_t buttons_flag_set  __attribute__((at(0x20004000)));
 bool Spindle_Direction = Spindle_Direction_CW;
 bool feed_direction = feed_direction_left;
 
-bool auto_mode = true;
+bool auto_mode = false;
 int32_t auto_mode_delay = -1; // default delay between change direction is 6 secons
 
-uint32_t infeed_steps = 0;
+uint32_t infeed_steps = 8;
+/*
+infeed steps count depends on lathe-tool-part rigid
+recommendation: mm(tpi) - passes
+	0,50-0,75(48-32) - 4-5 passes,
+	0,80-1,00(28-24) - 5-6,
+	1,25-1,50(20-16) - 6-8
+	1,75-2,00(14-12) - 8-10,
+	2,50-3,00(11,5-9) - 9-12
+*/
 
 // Button timing variables
 #define debounce 20          // ms debounce period to prevent flickering when pressing or releasing the button
@@ -123,18 +130,55 @@ uint32_t Q824count = 0;
 typedef struct
 {
   fixedptu Q824; //Q8.24 fix math format
-  uint16_t  submenu;
+  uint8_t  submenu;
   char Text[6];
   char Unit[6];
   uint8_t level;
+  char infeed_mm[6];
+  char infeed_inch[6];
+  uint8_t infeed_strategy;
 }
 THREAD_INFO;
 
 // основное меню. Считаем по формуле:
 // Enc_Line/(Step_Per_Revolution/Feed_Screw*Thread_mm)
 // перегенерация есть в excel файле
-THREAD_INFO Thread_Info[] =
-{
+THREAD_INFO Thread_Info[] ={
+{ 0x004800000, 0, "2.00", "mm", 0, "1.26", ".050", 0 },
+{ 0x004800000, 0, "2.00", "mm", 0, "1.26", ".050", 1 },
+{ 0x004800000, 0, "2.00", "mm", 0, "1.26", ".050", 2 },
+{ 0x006000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
+{ 0x009000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
+{ 0x000000000, 20, "F", "mm", 0, "", "", 0 },
+{ 0x02D000000, 0, "0.20", "mm", 20, "", "", 0 },
+{ 0x032000000, 0, "0.18", "mm", 20, "", "", 0 },
+{ 0x03C000000, 0, "0.15", "mm", 20, "", "", 0 },
+{ 0x04B000000, 0, "0.12", "mm", 20, "", "", 0 },
+{ 0x064000000, 0, "0.09", "mm", 20, "", "", 0 },
+{ 0x096000000, 0, "0.06", "mm", 20, "", "", 0 },
+{ 0x0E1000000, 0, "0.04", "mm", 20, "", "", 0 },
+{ 0x000000000, 0, "..", "up", 20, "", "", 0 },
+{ 0x000000000, 10, "T", "mm", 0, "", "", 0 },
+{ 0x007333333, 0, "1.25", "mm", 10, ".79", ".031", 0 },
+{ 0x005249249, 0, "1.75", "mm", 10, "1.11", ".044", 0 },
+{ 0x004800000, 0, "2.00", "mm", 10, "1.26", ".050", 0 },
+{ 0x012000000, 0, "0.50", "mm", 10, ".34", ".013", 0 },
+{ 0x00C000000, 0, "0.75", "mm", 10, ".50", ".020", 0 },
+{ 0x000000000, 0, "..", "up", 10, "", "", 0 },
+{ 0x000000000, 30, "T", "tpi", 0, "", "", 0 },
+{ 0x000555555, 0, "27.00", "tpi", 30, "", "", 0 },
+{ 0x000589D89, 0, "26.00", "tpi", 30, "", "", 0 },
+{ 0x000600000, 0, "24.00", "tpi", 30, "", "", 0 },
+{ 0x00068BA2E, 0, "22.00", "tpi", 30, "", "", 0 },
+{ 0x000733333, 0, "20.00", "tpi", 30, "", "", 0 },
+{ 0x00079435E, 0, "19.00", "tpi", 30, "", "", 0 },
+{ 0x000800000, 0, "18.00", "tpi", 30, "", "", 0 },
+{ 0x000900000, 0, "16.00", "tpi", 30, "", "", 0 },
+{ 0x000A49249, 0, "14.00", "tpi", 30, "", "", 0 },
+{ 0x000C00000, 0, "12.00", "tpi", 30, "", "", 0 },
+{ 0x000000000, 0, "..", "up", 30, "", "", 0 },
+/*	
+	
 	{ 0x007333333, 0, "1.25","mm", 0 }, //0x006000000
 	{ 0x009000000, 0, "1.00","mm", 0 },
 	{ 0x007333333, 0, "1.25","mm", 0 }, //0x006000000
@@ -169,6 +213,7 @@ THREAD_INFO Thread_Info[] =
 	{ 0x005AB56AD, 0, "16","tpi", 30 },
 	{ 0x004F5EBD7, 0, "14","tpi", 30 },
 	{ 0x004408102, 0, "12","tpi", 30 },
+	*/
 };
 
 uint8_t Menu_Step = 0;                      // выборка из массива по умолчанию (1.5mm)
@@ -184,7 +229,6 @@ static void MX_TIM4_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_USART2_Init(void);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                                 
@@ -305,10 +349,33 @@ click DKA:
 
 void redraw_screen(){
 	SSD1306_Fill(SSD1306_COLOR_BLACK);
-	SSD1306_GotoXY(0, 16); //Устанавливаем курсор в позицию 0;16. Сначала по горизонтали, потом вертикали.
-	SSD1306_Puts2(Thread_Info[Menu_Step].Text, &microsoftSansSerif_46ptFontInfo, SSD1306_COLOR_WHITE);
-	SSD1306_GotoXY(0, 0); //Устанавливаем курсор в позицию 0;0. Сначала по горизонтали, потом вертикали.
+	SSD1306_GotoXY(0, 16*1); //Устанавливаем курсор в позицию 0;16. Сначала по горизонтали, потом вертикали.
+	SSD1306_Puts2(Thread_Info[Menu_Step].Text, &microsoftSansSerif_20ptFontInfo, SSD1306_COLOR_WHITE);
+
+
+	SSD1306_GotoXY(0, 16*0); //Устанавливаем курсор в позицию 0;0. Сначала по горизонтали, потом вертикали.
 	SSD1306_Puts2(Thread_Info[Menu_Step].Unit, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
+
+
+	SSD1306_GotoXY(50, 16*1);
+	SSD1306_Puts2(Thread_Info[Menu_Step].infeed_mm, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
+	SSD1306_GotoXY(50, 16*2);
+	SSD1306_Puts2(Thread_Info[Menu_Step].infeed_inch, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
+
+	SSD1306_GotoXY(0, 16*3);
+	switch(Thread_Info[Menu_Step].infeed_strategy){
+		case 0:
+			SSD1306_Puts2("radial", &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
+			break;
+		case 1:
+			SSD1306_Puts2("flank", &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
+			break;
+		case 2:
+			SSD1306_Puts2("incremental", &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
+			break;
+	}
+
+
 
 	if(auto_mode == true){
 		SSD1306_GotoXY(SSD1306_WIDTH - 32, 0);
@@ -356,7 +423,6 @@ int main(void)
   MX_TIM3_Init();
   MX_I2C2_Init();
   MX_TIM2_Init();
-  MX_USART2_Init();
 
   /* USER CODE BEGIN 2 */
 // инициализация дисплея
@@ -411,7 +477,7 @@ count = 1000;
 	buttons_mask = buttons = GPIOA->IDR & GPIO_PIN_8;	
 #endif	
 
-	GPIOC->BRR = GPIO_PIN_13;
+	GPIOC->BSRR = GPIO_PIN_13;
 
 	while (1) {
   /* USER CODE END WHILE */
@@ -722,26 +788,6 @@ static void MX_TIM4_Init(void)
 
 }
 
-/* USART2 init function */
-static void MX_USART2_Init(void)
-{
-
-  husart2.Instance = USART2;
-  husart2.Init.BaudRate = 115200;
-  husart2.Init.WordLength = USART_WORDLENGTH_8B;
-  husart2.Init.StopBits = USART_STOPBITS_1;
-  husart2.Init.Parity = USART_PARITY_NONE;
-  husart2.Init.Mode = USART_MODE_TX_RX;
-  husart2.Init.CLKPolarity = USART_POLARITY_LOW;
-  husart2.Init.CLKPhase = USART_PHASE_1EDGE;
-  husart2.Init.CLKLastBit = USART_LASTBIT_DISABLE;
-  if (HAL_USART_Init(&husart2) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-}
-
 /** 
   * Enable DMA controller clock
   */
@@ -781,7 +827,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, MOTOR_X_DIR_Pin|GPIO_PIN_8, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(MOTOR_X_ENABLE_GPIO_Port, MOTOR_X_ENABLE_Pin, GPIO_PIN_RESET);
@@ -797,18 +843,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA0 PA1 PA5 PA9 
-                           PA10 PA11 PA12 PA15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_5|GPIO_PIN_9 
-                          |GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_15;
+  /*Configure GPIO pins : PA0 PA1 PA2 PA3 
+                           PA4 PA5 PA9 PA10 
+                           PA11 PA12 PA15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3 
+                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_9|GPIO_PIN_10 
+                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : MOTOR_X_DIR_Pin PA8 */
-  GPIO_InitStruct.Pin = MOTOR_X_DIR_Pin|GPIO_PIN_8;
+  /*Configure GPIO pin : MOTOR_X_DIR_Pin */
+  GPIO_InitStruct.Pin = MOTOR_X_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(MOTOR_X_DIR_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB0 PB2 PB12 PB13 
                            PB14 PB15 PB3 PB4 
@@ -824,6 +872,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(MOTOR_X_ENABLE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 

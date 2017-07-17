@@ -74,6 +74,13 @@ extern const FONT_CHAR_INFO consolas_18ptDescriptors[];
 
 
 
+/* Font data for Microsoft Sans Serif 20pt */
+extern const unsigned char microsoftSansSerif_20ptBitmaps[];
+extern const FONT_INFO microsoftSansSerif_20ptFontInfo;
+extern const FONT_CHAR_INFO microsoftSansSerif_20ptDescriptors[];
+
+
+
 
 /* C++ detection */
 #ifdef __cplusplus

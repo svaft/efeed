@@ -63,9 +63,6 @@ int count;
 
 uint32_t current_pos = 0, thread_limit = 0, mode = 10, clk_mode = 10;
 
-
-uint32_t clk = 0, dclk = 0, lpress = 0, lup = 0; 
-
 uint32_t buttons_flag_set  __attribute__((at(0x20004000)));
 #define buttons_flag_setbb ((uint32_t *)((0x22000000  + ((0x20004000)-0x20000000)*32)))
 // ***** Stepper Motor *****
@@ -81,6 +78,8 @@ bool auto_mode = false;
 int32_t auto_mode_delay = -1; // default delay between change direction is 6 secons
 
 uint32_t infeed_steps = 8;
+
+
 /*
 infeed steps count depends on lathe-tool-part rigid
 recommendation: mm(tpi) - passes
@@ -118,6 +117,12 @@ uint32_t menu_changed = 0;
 #define double_click_Msk			(0x1U << double_click_Pos)
 
 
+typedef struct
+{
+	uint32_t downTime;         // time the button was pressed down
+	uint32_t buttons, buttons_mstick, buttons_flag, buttons_mask, clk_mode;
+	
+} BUTTON;
 
 uint32_t downTime = 0;         // time the button was pressed down
 uint32_t buttons = 0, buttons_mstick = 0, buttons_flag = 0, buttons_mask = 0;
@@ -145,6 +150,7 @@ THREAD_INFO;
 // перегенерация есть в excel файле
 THREAD_INFO Thread_Info[] ={
 { 0x004800000, 0, "2.00", "mm", 0, "1.26", ".050", 0 },
+
 { 0x004800000, 0, "2.00", "mm", 0, "1.26", ".050", 1 },
 { 0x004800000, 0, "2.00", "mm", 0, "1.26", ".050", 2 },
 { 0x006000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
@@ -177,43 +183,6 @@ THREAD_INFO Thread_Info[] ={
 { 0x000A49249, 0, "14.00", "tpi", 30, "", "", 0 },
 { 0x000C00000, 0, "12.00", "tpi", 30, "", "", 0 },
 { 0x000000000, 0, "..", "up", 30, "", "", 0 },
-/*	
-	
-	{ 0x007333333, 0, "1.25","mm", 0 }, //0x006000000
-	{ 0x009000000, 0, "1.00","mm", 0 },
-	{ 0x007333333, 0, "1.25","mm", 0 }, //0x006000000
-	{ 0x000000000,20,    "F","mm", 0 }, // to submenu 20
-	{ 0x02D000000, 0, "0.20","mm", 20 },
-	{ 0x032000000, 0, "0.18","mm", 20 },
-	{ 0x03C000000, 0, "0.15","mm", 20 },
-	{ 0x04B000000, 0, "0.12","mm", 20 },
-	{ 0x064000000, 0, "0.09","mm", 20 },
-	{ 0x096000000, 0, "0.06","mm", 20 },
-	{ 0x0E1000000, 0, "0.04","mm", 20 },
-	{ 0x000000000, 0,   "..","up", 20 },
-	{ 0x000000000,10,    "T","mm",  0 }, // to submenu 10: threads
-	{ 0x009000000, 0, "1.00","mm", 10 },
-	{ 0x007333333, 0, "1.25","mm", 10 },
-	{ 0x005249249, 0, "1.75","mm", 10 },
-	{ 0x004800000, 0, "2.00","mm", 10 },
-	{ 0x000000000,15, "....","down",10 }, // to submenu 15
-	{ 0x000000000, 0,   "..",  "up",10 }, // back to 0 level 
-	{ 0x012000000, 0, "0.50","mm", 15 },
-	{ 0x00CDB6DB6, 0, "0.70","mm", 15 },
-	{ 0x00B400000, 0, "0.80","mm", 15 },
-	{ 0x000000000,10,   "..","up", 15 }, // back to 10 level
-	{ 0x000000000,30,  "T","tpi",  0 },
-	{ 0x009912244, 0, "27","tpi", 30 },
-	{ 0x009366CD9, 0, "26","tpi", 30 },
-	{ 0x008810204, 0, "24","tpi", 30 },
-	{ 0x007CB972E, 0, "22","tpi", 30 },
-	{ 0x007162C58, 0, "20","tpi", 30 },
-	{ 0x006BB76ED, 0, "19","tpi", 30 },
-	{ 0x00660C183, 0, "18","tpi", 30 },
-	{ 0x005AB56AD, 0, "16","tpi", 30 },
-	{ 0x004F5EBD7, 0, "14","tpi", 30 },
-	{ 0x004408102, 0, "12","tpi", 30 },
-	*/
 };
 
 uint8_t Menu_Step = 0;                      // выборка из массива по умолчанию (1.5mm)
@@ -239,6 +208,61 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+
+typedef struct
+{
+  fixedptu Q824; //Q8.24 fix math format
+	fixedptu pitch;
+	uint8_t total_pass;
+	uint8_t pass;
+
+	fixedptu thread_depth;
+//	fixedptu thread_angle; // tan(60 / 2 ) = 0,5774 >>>> fixedtp 
+
+	fixedptu infeed_mod; // =TAN(radians(B4/2-B5))
+	fixedptu init_delta;
+	fixedptu deltap_mm[20];
+	fixedptu deltap_inch[20];
+  uint8_t  submenu;
+  char Text[6];
+  char Unit[6];
+  uint8_t level;
+  char infeed_mm[6];
+  char infeed_inch[6];
+  uint8_t infeed_strategy;
+}
+S_WORK_SETUP;
+
+S_WORK_SETUP work_setup;
+
+const fixedptud enc_setup = 0x9000000000000;
+
+void recalculate_setup(){
+	work_setup.Q824 	= Thread_Info[Menu_Step].Q824;
+	work_setup.pitch 	= (fixedptud)enc_setup / (fixedptud)work_setup.Q824;
+	fixedpt_str( work_setup.pitch, (char *)&work_setup.Text, 2 );
+
+	work_setup.thread_depth = fixedpt_mul( work_setup.pitch, 10905190 );
+	work_setup.total_pass = 10;
+	work_setup.pass = 0;
+	
+	work_setup.infeed_mod = 7823344;
+
+	fixedptu sqrt_steps = fixedptu_fromint( work_setup.total_pass - 1 );
+	sqrt_steps = fixedpt_sqrt( sqrt_steps );
+
+
+// first step coefficient = 0.3, sqrt(0.3) = 0,547722558 = fpt9189259
+// step 1 with coeff. 0.3
+	work_setup.deltap_mm[0] 	= fixedptu_div( fixedptu_mul( work_setup.thread_depth, 9189259 ), sqrt_steps );
+	work_setup.deltap_inch[0] = fixedptu_div( work_setup.deltap_mm[0], 426141286 );
+
+	for(int step = 1; step < work_setup.total_pass; step++ ) {
+		work_setup.deltap_mm[step] 		= fixedptu_div( fixedptu_mul( work_setup.thread_depth, fixedpt_sqrt( fixedptu_fromint( step ) ) ), sqrt_steps );
+		work_setup.deltap_inch[step] 	= fixedptu_div( work_setup.deltap_mm[step], 426141286 );
+	}
+}
+
 // реализация конечного автомата обработки событий кнопки
 inline void process_button(void){
 /*
@@ -347,13 +371,14 @@ click DKA:
 	}
 }
 
+
 void redraw_screen(){
 	SSD1306_Fill(SSD1306_COLOR_BLACK);
 	SSD1306_GotoXY(0, 16*1); //Устанавливаем курсор в позицию 0;16. Сначала по горизонтали, потом вертикали.
 	SSD1306_Puts2(Thread_Info[Menu_Step].Text, &microsoftSansSerif_20ptFontInfo, SSD1306_COLOR_WHITE);
 
 
-	SSD1306_GotoXY(0, 16*0); //Устанавливаем курсор в позицию 0;0. Сначала по горизонтали, потом вертикали.
+	SSD1306_GotoXY(0, 16*0);
 	SSD1306_Puts2(Thread_Info[Menu_Step].Unit, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
 
 

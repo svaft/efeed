@@ -174,13 +174,32 @@ void SSD1306_Putc2big(char ch, const FONT_INFO* Font) {
 	SSD1306.CurrentX += Font->charInfo[ch_index].widthBits + 1;
 }
 
+void SSD1306_Putc2bigInv(char ch, const FONT_INFO* Font) {
+	char ch_index = ch - Font->startChar;
+	uint16_t offset =  Font->charInfo[ch_index].offset;
+	uint16_t x = SSD1306.CurrentX, y = SSD1306.CurrentY / 8;
+	for (int h = y; h < Font->heightPages + y; h++ ){
+		for (int w = x; w < Font->charInfo[ch_index].widthBits+x; w++ ){
+			SSD1306_Buffer[w + h * SSD1306_WIDTH] = !Font->data[offset++];
+		}
+	}
+	SSD1306.CurrentX += Font->charInfo[ch_index].widthBits + 1;
+}
 
 char SSD1306_Puts2(char* str, const FONT_INFO* Font, uint8_t color) {
 	/* Write characters */
-	while (*str) {
-		/* Write character by character */
-		SSD1306_Putc2big(*str, Font);
-		str++;
+	if(color){
+		while (*str) {
+			/* Write character by character */
+			SSD1306_Putc2big(*str, Font);
+			str++;
+		}
+	} else {
+		while (*str) {
+			/* Write character by character */
+			SSD1306_Putc2bigInv(*str, Font);
+			str++;
+		}
 	}
 
 	/* Everything OK, zero should be returned */

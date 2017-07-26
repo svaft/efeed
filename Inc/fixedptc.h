@@ -103,6 +103,7 @@ typedef	__uint128_t fixedptud;
 
 #define fixedpt_rconst(R) ((fixedpt)((R) * FIXEDPT_ONE + ((R) >= 0 ? 0.5 : -0.5)))
 #define fixedpt_fromint(I) ((fixedptd)(I) << FIXEDPT_FBITS)
+#define fixedptu_fromint(I) ((fixedptud)(I) << FIXEDPT_FBITS)
 #define fixedpt_toint(F) ((F) >> FIXEDPT_FBITS)
 #define fixedpt_add(A,B) ((A) + (B))
 #define fixedpt_sub(A,B) ((A) - (B))
@@ -135,12 +136,24 @@ fixedpt_mul(fixedpt A, fixedpt B)
 	return (((fixedptd)A * (fixedptd)B) >> FIXEDPT_FBITS);
 }
 
+static inline fixedptu
+fixedptu_mul(fixedptu A, fixedptu B)
+{
+	return (((fixedptud)A * (fixedptud)B) >> FIXEDPT_FBITS);
+}
+
 
 /* Divides two fixedpt numbers, returns the result. */
 static inline fixedpt
 fixedpt_div(fixedpt A, fixedpt B)
 {
 	return (((fixedptd)A << FIXEDPT_FBITS) / (fixedptd)B);
+}
+
+static inline fixedptu
+fixedptu_div(fixedptu A, fixedptu B)
+{
+	return (((fixedptud)A << FIXEDPT_FBITS) / (fixedptud)B);
 }
 
 /*

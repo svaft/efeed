@@ -460,14 +460,14 @@
           <GroupName>Application/User</GroupName>
           <Files>
             <File>
-              <FileName>stm32f1xx_it.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Src/stm32f1xx_it.c</FilePath>
-            </File>
-            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/main.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f1xx_it.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/stm32f1xx_it.c</FilePath>
             </File>
             <File>
               <FileName>stm32f1xx_hal_msp.c</FileName>
@@ -488,6 +488,11 @@
               <FileName>ssd1306.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\ssd1306.c</FilePath>
+            </File>
+            <File>
+              <FileName>i2c_interface.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\i2c_interface.c</FilePath>
             </File>
           </Files>
         </Group>

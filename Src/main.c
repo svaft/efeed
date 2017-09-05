@@ -42,6 +42,8 @@
 /* USER CODE BEGIN Includes */
 #include "ssd1306.h"
 #include "fixedptc.h"
+#include "i2c_interface.h"
+
 //#define ARM_MATH_CM3
 //#include "arm_math.h"
 /* USER CODE END Includes */
@@ -60,6 +62,8 @@ void process_button(void);
 
 /* Private variables ---------------------------------------------------------*/
 int count;
+
+	sample_log_t i2c_device_logging;
 
 uint32_t current_pos = 0, thread_limit = 0, mode = 10, clk_mode = 10;
 
@@ -456,6 +460,12 @@ int main(void)
 	redraw_screen();
 #endif
 
+	uint32_t p = 2500;
+	while(p>0)
+		p--;
+
+	i2c_device_init(&hi2c2);
+
 
 /* 
 //72MGz процессор, 1 так = 1/72us, 1 цикл пустого for(для света до 255)  равен 14 тактам + 6 тактов,
@@ -509,6 +519,7 @@ count = 1000;
 
   /* USER CODE BEGIN 3 */
 		process_button();
+		read_sample_i2c(&hi2c2,&i2c_device_logging.sample[i2c_device_logging.index]);
 
 /* main DKA:	
 0. ходим по меню, long_press_start: переход по папкам меню, DOUBLE_CLICK: смена первичного направления

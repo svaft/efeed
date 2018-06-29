@@ -2,7 +2,7 @@
  * original author:  Tilen Majerle<tilen@majerle.eu>
  * modification for STM32f10x: Alexander Lutsai<s.lyra@ya.ru>
    ----------------------------------------------------------------------
-   	Copyright (C) Alexander Lutsai, 2016
+    Copyright (C) Alexander Lutsai, 2016
     Copyright (C) Tilen Majerle, 2015
     
     This program is free software: you can redistribute it and/or modify
@@ -30,26 +30,26 @@ extern C {
 #include "stm32f1xx_hal.h"
 #include "string.h"
 
-	// This structure describes a single character's display information
+    // This structure describes a single character's display information
 typedef struct
 {
-	const uint8_t widthBits;					// width, in bits (or pixels), of the character
-	const uint8_t heightBits;					// width, in bits (or pixels), of the character
-	const uint16_t offset;					// offset of the character's bitmap, in bytes, into the the FONT_INFO's data array
-	
-} FONT_CHAR_INFO;	
+    const uint8_t widthBits;                    // width, in bits (or pixels), of the character
+    const uint8_t heightBits;                   // width, in bits (or pixels), of the character
+    const uint16_t offset;                  // offset of the character's bitmap, in bytes, into the the FONT_INFO's data array
+    
+} FONT_CHAR_INFO;   
 
 // Describes a single font
 typedef struct
 {
-	const uint8_t 			heightPages;	// height, in pages (8 pixels), of the font's characters
-	const uint8_t 			startChar;		// the first character in the font (e.g. in charInfo and data)
-	const uint8_t 			endChar;		// the last character in the font
-	const uint8_t			spacePixels;	// number of pixels that a space character takes up
-	const FONT_CHAR_INFO*	charInfo;		// pointer to array of char information
-	const uint8_t*			data;			// pointer to generated array of character visual representation
-		
-} FONT_INFO;	
+    const uint8_t           heightPages;    // height, in pages (8 pixels), of the font's characters
+    const uint8_t           startChar;      // the first character in the font (e.g. in charInfo and data)
+    const uint8_t           endChar;        // the last character in the font
+    const uint8_t           spacePixels;    // number of pixels that a space character takes up
+    const FONT_CHAR_INFO*   charInfo;       // pointer to array of char information
+    const uint8_t*          data;           // pointer to generated array of character visual representation
+        
+} FONT_INFO;    
 
 
 /* Font data for Microsoft Sans Serif 12pt */
@@ -79,6 +79,10 @@ extern const unsigned char microsoftSansSerif_20ptBitmaps[];
 extern const FONT_INFO microsoftSansSerif_20ptFontInfo;
 extern const FONT_CHAR_INFO microsoftSansSerif_20ptDescriptors[];
 
+/* Font data for Consolas 8pt */
+extern const unsigned char consolas_8ptBitmaps[];
+extern const FONT_INFO consolas_8ptFontInfo;
+extern const FONT_CHAR_INFO consolas_8ptDescriptors[];
 
 
 

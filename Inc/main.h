@@ -51,12 +51,24 @@
 
 #define LED_Pin GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_X_STEP_Pin GPIO_PIN_6
+
+#define MOTOR_Z_STEP_Pin GPIO_PIN_6
+#define MOTOR_Z_STEP_GPIO_Port GPIOA
+#define MOTOR_Z_DIR_Pin GPIO_PIN_7
+#define MOTOR_Z_DIR_GPIO_Port GPIOA
+#define MOTOR_Z_ENABLE_Pin GPIO_PIN_1
+#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
+
+// crosslide feed:
+#define MOTOR_X_STEP_Pin GPIO_PIN_0
 #define MOTOR_X_STEP_GPIO_Port GPIOA
-#define MOTOR_X_DIR_Pin GPIO_PIN_7
-#define MOTOR_X_DIR_GPIO_Port GPIOA
+#define MOTOR_X_DIR_Pin GPIO_PIN_15
+#define MOTOR_X_DIR_GPIO_Port GPIOC
 #define MOTOR_X_ENABLE_Pin GPIO_PIN_1
-#define MOTOR_X_ENABLE_GPIO_Port GPIOB
+#define MOTOR_X_ENABLE_GPIO_Port GPIOA
+
+
+
 #define ENC_A_Pin GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
 #define ENC_B_Pin GPIO_PIN_7
@@ -84,12 +96,12 @@
 
 
 
-#define Motor_X_SetPulse()           __HAL_TIM_ENABLE(&htim3)
-#define Motor_X_RemovePulse()        // dummy macro, pulse disabled by hardware
-#define Motor_X_Forward()            MOTOR_X_DIR_GPIO_Port->BSRR = MOTOR_X_DIR_Pin
-#define Motor_X_Reverse()            MOTOR_X_DIR_GPIO_Port->BRR = MOTOR_X_DIR_Pin
-#define Motor_X_Enable()             MOTOR_X_ENABLE_GPIO_Port->BSRR = MOTOR_X_ENABLE_Pin
-#define Motor_X_Disable()            MOTOR_X_ENABLE_GPIO_Port->BRR = MOTOR_X_ENABLE_Pin
+#define MOTOR_Z_SetPulse()           __HAL_TIM_ENABLE(&htim3)
+#define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
+#define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR = MOTOR_Z_DIR_Pin
+#define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR = MOTOR_Z_DIR_Pin
+#define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
+#define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BRR = MOTOR_Z_ENABLE_Pin
 
 
 // ***** Taho *****

@@ -37,44 +37,30 @@
 
 /* USER CODE BEGIN 0 */
 #include "fixedptc.h"
+#include "buttons.h"
 
 
 #if  defined ( _SIMU )
-        #define tacho tacho_debug
-        bool encoder;
-        
+	#define tacho tacho_debug
+	bool encoder;
 #else
-        #define tacho            t4sr[TIM_SR_CC3IF_Pos]
-        #define encoder t4sr[TIM_SR_UIF_Pos]
+	#define tacho 	t4sr[TIM_SR_CC3IF_Pos]
+	#define encoder t4sr[TIM_SR_UIF_Pos]
 #endif
-
-
 
 _Bool ramp_down(void);
 inline _Bool ramp_up(void);
 void move(void);
 void at_move_end(void);
-extern bool feed_direction;
 
+
+extern bool feed_direction;
 extern TIM_HandleTypeDef htim3;
-//extern uint32_t count;
-uint32_t count2 = 0;
 extern uint8_t Spindle_Direction;
 
-
-extern uint32_t Q824set;
-extern uint32_t Q824count;
-//extern uint32_t infeed_steps;
 uint32_t infeed_step = 0;
 uint32_t infeed_steps = 10;
 
-extern fixedptud prolong_addSteps;
-fixedptud prolong_fract = 0;
-
-
-extern uint32_t current_pos, thread_limit, mode;
-extern uint32_t buttons_mstick;
-extern uint32_t menu_changed;
 
 uint16_t infeed_map[]={
 0,
@@ -147,7 +133,6 @@ uint32_t ramp[]={
         0x040B7F1D,
         0x04000DF9,
 };
-extern uint32_t ramp_step; // = 0;
 #define ramp_map 50
 
 extern bool auto_mode;
@@ -182,21 +167,21 @@ void SysTick_Handler(void)
         
 //simulate spindle
         if(++tacho_cnt == 1800 ){
-                tacho_debug = 1;
-                tacho_cnt = 0;
-                TIM4_IRQHandler();
+					tacho_debug = 1;
+					tacho_cnt = 0;
+					TIM4_IRQHandler();
         }
         if(++TIM4->CNT > TIM4->ARR) {
-                TIM4->CNT = 0; // overflow emulation
-            encoder = true;
-                TIM4_IRQHandler();
+					TIM4->CNT = 0; // overflow emulation
+					encoder = true;
+					TIM4_IRQHandler();
         }
 #endif
 
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
-        if( buttons_mstick > 0 )
-                buttons_mstick++;
+        if( bt.buttons_mstick > 0 )
+					bt.buttons_mstick++;
     /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -233,7 +218,7 @@ void TIM4_IRQHandler(void)
 // direction changed, count not updated and no pulse to motor
                         Spindle_Direction    = dir;
                 } else{
-                                switch(mode){
+                                switch(z_axis.mode){
                                         case 20:        { // not used?
                                                 disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
                                                 MOTOR_Z_Enable();
@@ -241,21 +226,21 @@ void TIM4_IRQHandler(void)
                                                         MOTOR_Z_Forward();
                                                 else
                                                         MOTOR_Z_Reverse();
-                                                mode = 24; //intermediate state to wait tacho pulse.
+                                                z_axis.mode = 24; //intermediate state to wait tacho pulse.
                                                 break;
                                         }
                                         case 25:        { // direct movement: first pass, thread recording: ramp up: accel by ramp map
                                                 MOTOR_Z_SetPulse();
-                                                current_pos++;
+                                                z_axis.current_pos++;
                                                 if(ramp_up()){
-                                                        mode = 26;
+                                                        z_axis.mode = 26;
                                                         LED_GPIO_Port->BSRR = LED_Pin; //led off
                                                 }
                                                 break;
                                         }
                                         case 26:        { // direct movement: first pass, thread recording: main part
                                                 MOTOR_Z_SetPulse();
-                                                current_pos++;
+                                                z_axis.current_pos++;
                                                 move();
                                                 break;
                                         }
@@ -266,26 +251,26 @@ void TIM4_IRQHandler(void)
                                                 // поэтому проверяем общее количество на четность(0й бит), если нечетное число делаем еще один шаг,
                                                 // иначе начинаем замедляться
                                                 MOTOR_Z_SetPulse();
-                                                current_pos++;
-                                                uint32_t all_count = ramp_step + current_pos - 1;
+                                                z_axis.current_pos++;
+                                                uint32_t all_count = z_axis.ramp_step + z_axis.current_pos - 1;
                                                 uint32_t masked_count = all_count & ~(step_divider - 1);
                                                 if(masked_count != all_count){
                                                         move();
                                                 } else {
                                                         if(ramp_down()){
-                                                                thread_limit = current_pos;
+                                                                z_axis.end_pos = z_axis.current_pos;
                                                                 at_move_end();
                                                         } else {
-                                                            mode = 30;
+                                                            z_axis.mode = 30;
                                                         }
                                                 }
                                                 break;
                                         }
                                         case 30:        { // direct movement: ramp down: deccel part + stop
                                                 MOTOR_Z_SetPulse();
-                                                current_pos++;
+                                                z_axis.current_pos++;
                                                 if(ramp_down()){
-                                                        thread_limit = current_pos;
+                                                        z_axis.end_pos = z_axis.current_pos;
                                                         at_move_end();
                                                 }
                                                 break;
@@ -300,28 +285,28 @@ void TIM4_IRQHandler(void)
                                                 else
                                                         MOTOR_Z_Reverse();
                                                 enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
-                                                mode = 45;
+                                                z_axis.mode = 45;
                                                 break;
                                         }
                                         case 45:        { // reverse movement: ramp up: accel part
                                                 MOTOR_Z_SetPulse();
-                                                --current_pos;
+                                                --z_axis.current_pos;
                                                 if(ramp_up())
-                                                        mode = 46;
+                                                        z_axis.mode = 46;
                                                 break;
                                         }
                                         case 46:        { // reverse movement: main part
                                                 MOTOR_Z_SetPulse();
-                                            if( --current_pos > ramp_step ){
+                                            if( --z_axis.current_pos > z_axis.ramp_step ){
                                             } else {
-                                                        mode = 47;
+                                                        z_axis.mode = 47;
                                                 }
                                                 break;
                                         }
                                         case 47:        { // reverse movement: ramp down: deccel part + stop
-                                                if (current_pos > 0) {
+                                                if (z_axis.current_pos > 0) {
                                                     MOTOR_Z_SetPulse();
-                                                    --current_pos;
+                                                    --z_axis.current_pos;
                                                 }
                                                 if(ramp_down()){
                                                         at_move_end();
@@ -330,13 +315,13 @@ void TIM4_IRQHandler(void)
                                         }                            
                                             case 48:        { // reverse movement: main part with prolong activated. todo split it with 46 mode?
                                                     MOTOR_Z_SetPulse();
-                                                    --current_pos;
-                                                    if(current_pos == ramp_step){ // we reach end of main path and have long_pressed key, so just add additional thread full turn to shift initial start point
-                                                        prolong_fract += prolong_addSteps; // fract part from prev step
-                                                        uint32_t prolong_fixpart = prolong_fract >> 24;
-                                                        current_pos += prolong_fixpart; // add fixed part
-                                                        thread_limit += prolong_fixpart;
-                                                        prolong_fract &= FIXEDPT_FMASK; // leave fract part to accumulate with next dividing cycle
+                                                    --z_axis.current_pos;
+                                                    if(z_axis.current_pos == z_axis.ramp_step){ // we reach end of main path and have long_pressed key, so just add additional thread full turn to shift initial start point
+                                                        z_axis.prolong_fract += z_axis.prolong_addSteps; // fract part from prev step
+                                                        uint32_t prolong_fixpart = z_axis.prolong_fract >> 24;
+                                                        z_axis.current_pos += prolong_fixpart; // add fixed part
+                                                        z_axis.end_pos += prolong_fixpart;
+                                                        z_axis.prolong_fract &= FIXEDPT_FMASK; // leave fract part to accumulate with next dividing cycle
                                                         // when long_press end, get back to 46 mode to proceed 
                                                     }
                                                     break;
@@ -347,28 +332,28 @@ void TIM4_IRQHandler(void)
                                                         MOTOR_Z_Forward();
                                                 else
                                                         MOTOR_Z_Reverse();
-                                                mode = 54; //intermediate state to wait tacho pulse
+                                                z_axis.mode = 54; //intermediate state to wait tacho pulse
                                                 disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
                                                 break;
                                         }
                                         
                                         case 55:        { // direct movement: ramp up: accel by ramp map
                                                 MOTOR_Z_SetPulse();
-                                                current_pos++;
+                                                z_axis.current_pos++;
                                                 if(ramp_up()) {
                                                         LED_GPIO_Port->BSRR = LED_Pin;   // led off
-                                                        mode = 56;
+                                                        z_axis.mode = 56;
                                                 }
                                                 break;
                                         }
                                         case 56:        { // direct movement: main part
                                                 MOTOR_Z_SetPulse();
-                                                current_pos++;
-                                                if( current_pos < ( thread_limit - ramp_step ) ){
+                                                z_axis.current_pos++;
+                                                if( z_axis.current_pos < ( z_axis.end_pos - z_axis.ramp_step ) ){
                                                         move();
                                                 }
                                                 else { 
-                                                        mode = 30;
+                                                        z_axis.mode = 30;
                                                 }
                                                 break;
                                         }
@@ -380,17 +365,17 @@ void TIM4_IRQHandler(void)
 //  if( TIM4->SR & TIM_SR_CC3IF ) {
                 tacho_debug = 0;
                 if (dir == Spindle_Direction_CW ){
-                        count2++;
+//                        count2++;
                 } else {
-                        count2--;
+//                        count2--;
                 }
-                switch(mode){
+                switch(z_axis.mode){
                     case 35:
                         MOTOR_Z_Disable(); //disable motor
                         break;
                         
                     case 24: {
-                                mode = 25;
+                                z_axis.mode = 25;
 //                          TIM4->ARR = fixedpt_toint(Q824set) - 1;
                                 infeed_step = 0;
                                 LED_GPIO_Port->BRR = LED_Pin; //led on
@@ -404,7 +389,7 @@ void TIM4_IRQHandler(void)
                                 break;
                         }
                         case 54: {
-                                mode = 55;
+                                z_axis.mode = 55;
                                 //reinit counter
 //                          TIM4->ARR = fixedpt_toint(Q824set) - 1;
                                 LED_GPIO_Port->BRR = LED_Pin; //led on
@@ -434,53 +419,49 @@ void TIM4_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 _Bool ramp_up(void){
-//  move();
-//  return true;
-    const fixedptu  set_with_fract = ramp[ramp_step];
-        if(Q824set > set_with_fract || ramp_step == ramp_map ){ // reach desired speed or end of ramp map
-                Q824count = 0;
-                TIM4->ARR = fixedpt_toint(Q824set) - 1; // update register ARR
+	const fixedptu  set_with_fract = ramp[z_axis.ramp_step];
+	if(z_axis.Q824set > set_with_fract || z_axis.ramp_step == ramp_map ){ // reach desired speed or end of ramp map
+		z_axis.Q824count = 0;
+		TIM4->ARR = fixedpt_toint(z_axis.Q824set) - 1; // update register ARR
 //          TIM4->CNT = 0;
-                Q824count = fixedpt_fracpart(Q824set); // save fract part for future use on next step
-                return true;
-        }    else {
-                ramp_step++;
-                TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-//          TIM4->CNT = 0;
-        }
-        return false;
+		z_axis.Q824count = fixedpt_fracpart(z_axis.Q824set); // save fract part for future use on next step
+		return true;
+	}    else {
+		z_axis.ramp_step++;
+		TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+//  TIM4->CNT = 0;
+	}
+	return false;
 }
 
 inline _Bool ramp_down(void){
-//  move();
-//  return true;
-    if (ramp_step == 0)
-        return true;        
-    const fixedptu  set_with_fract = ramp[--ramp_step];
-//  set_with_fract = fixedpt_add(set_with_fract, Q824count);
-        TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-//  TIM4->CNT = 0;
-//  Q824count = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-        if(ramp_step == 0)
-                return true;
-        return false;
+	if (z_axis.ramp_step == 0)
+		return true;        
+	const fixedptu set_with_fract = ramp[--z_axis.ramp_step];
+	//  set_with_fract = fixedpt_add(set_with_fract, Q824count);
+	TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+	//  TIM4->CNT = 0;
+	//  Q824count = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	if(z_axis.ramp_step == 0)
+		return true;
+	return false;
         
 }
 
 void move(void){
-        const fixedptu set_with_fract = fixedpt_add(Q824set, Q824count); // calculate new step delay with fract from previous step
-        TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-//  TIM4->CNT = 0;
-        Q824count = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	const fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.Q824count); // calculate new step delay with fract from previous step
+	TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+	//  TIM4->CNT = 0;
+	z_axis.Q824count = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 }
 
 void at_move_end(void){
-        disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
-//      MOTOR_Z_Disable(); //disable motor
-        if(auto_mode == true)    auto_mode_delay = auto_mode_delay_ms; // reengage auto mode
-        feed_direction = !feed_direction; //change feed direction
-        menu_changed = 1; //update menu
-        mode = 35; // dummy mode
+	disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
+	//      MOTOR_Z_Disable(); //disable motor
+	if(auto_mode == true)    auto_mode_delay = auto_mode_delay_ms; // reengage auto mode
+	feed_direction = !feed_direction; //change feed direction
+	menu_changed = 1; //update menu
+	z_axis.mode = 35; // dummy mode
 }
 
 /* USER CODE END 1 */

@@ -1,7 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : main.h
-  * Description        : This file contains the common defines of the application
+  * @file           : main.h
+  * @brief          : Header for main.c file.
+  *                   This file contains the common defines of the application.
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -9,7 +10,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2017 STMicroelectronics
+  * COPYRIGHT(c) 2018 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -35,10 +36,12 @@
   *
   ******************************************************************************
   */
+
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __MAIN_H
-#define __MAIN_H
-  /* Includes ------------------------------------------------------------------*/
+#ifndef __MAIN_H__
+#define __MAIN_H__
+
+/* Includes ------------------------------------------------------------------*/
 
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
@@ -50,18 +53,27 @@
 /* Private define ------------------------------------------------------------*/
 #define min_pulse 145
 
-
-// LED
 #define LED_Pin GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-
-// encoder:
+#define MOTOR_X_STEP_Pin GPIO_PIN_6
+#define MOTOR_X_STEP_GPIO_Port GPIOA
+#define MOTOR_X_DIR_Pin GPIO_PIN_7
+#define MOTOR_X_DIR_GPIO_Port GPIOA
+#define MOTOR_X_ENABLE_Pin GPIO_PIN_1
+#define MOTOR_X_ENABLE_GPIO_Port GPIOB
 #define ENC_A_Pin GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
 #define ENC_B_Pin GPIO_PIN_7
 #define ENC_B_GPIO_Port GPIOB
 #define ENC_ZERO_Pin GPIO_PIN_8
 #define ENC_ZERO_GPIO_Port GPIOB
+
+/* ########################## Assert Selection ############################## */
+/**
+  * @brief Uncomment the line below to expanse the "assert_param" macro in the 
+  *        HAL drivers code
+  */
+/* #define USE_FULL_ASSERT    1U */
 
 /* USER CODE BEGIN Private defines */
 
@@ -92,23 +104,23 @@
 
 #define MOTOR_Z_SetPulse()           __HAL_TIM_ENABLE(&htim3)
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
-#define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR 		= MOTOR_Z_DIR_Pin
-#define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR			= MOTOR_Z_DIR_Pin
+#define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR        = MOTOR_Z_DIR_Pin
+#define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR         = MOTOR_Z_DIR_Pin
 #define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
 #define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BRR  = MOTOR_Z_ENABLE_Pin
 
 typedef struct
 {
-	uint32_t current_pos;
-	uint32_t end_pos;
-	uint32_t mode;
-	uint32_t mode_prev;
-	
-	uint32_t Q824set;
-	uint32_t Q824count;
-	uint64_t prolong_addSteps;
-	uint64_t prolong_fract;
-	uint8_t ramp_step;
+    uint32_t current_pos;
+    uint32_t end_pos;
+    uint32_t mode;
+    uint32_t mode_prev;
+    
+    uint32_t Q824set;
+    uint32_t fract_part; // Q8.24 format fract part
+    uint64_t prolong_addSteps;
+    uint64_t prolong_fract;
+    uint8_t ramp_step;
 } axis;
 
 extern axis z_axis;
@@ -154,17 +166,16 @@ extern uint32_t menu_changed;
 
 /* USER CODE END Private defines */
 
+#ifdef __cplusplus
+ extern "C" {
+#endif
 void _Error_Handler(char *, int);
 
 #define Error_Handler() _Error_Handler(__FILE__, __LINE__)
+#ifdef __cplusplus
+}
+#endif
 
-/**
-  * @}
-  */ 
+#endif /* __MAIN_H__ */
 
-/**
-  * @}
-*/ 
-
-#endif /* __MAIN_H */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

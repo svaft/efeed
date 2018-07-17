@@ -8,7 +8,6 @@
 #include "stm32f1xx_hal.h"
 
 #include "i2c_interface.h"
-#include "error_code.h"
 #include "string.h"
 #include "main.h"
 

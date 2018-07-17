@@ -46,6 +46,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
 #include <stdint.h>
+#include "fixedptc.h"
 #define TRUE true
 #define FALSE false
 /* USER CODE END Includes */
@@ -55,12 +56,16 @@
 
 #define LED_Pin GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_X_STEP_Pin GPIO_PIN_6
-#define MOTOR_X_STEP_GPIO_Port GPIOA
-#define MOTOR_X_DIR_Pin GPIO_PIN_7
-#define MOTOR_X_DIR_GPIO_Port GPIOA
-#define MOTOR_X_ENABLE_Pin GPIO_PIN_1
-#define MOTOR_X_ENABLE_GPIO_Port GPIOB
+#define MOTOR_Z_STEP_Pin GPIO_PIN_6
+#define MOTOR_Z_STEP_GPIO_Port GPIOA
+#define MOTOR_Z_DIR_Pin GPIO_PIN_7
+#define MOTOR_Z_DIR_GPIO_Port GPIOA
+#define MOTOR_Z_ENABLE_Pin GPIO_PIN_1
+#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
+#define BUTTON_1_Pin GPIO_PIN_8
+#define BUTTON_1_GPIO_Port GPIOA
+#define BUTTON_2_Pin GPIO_PIN_9
+#define BUTTON_2_GPIO_Port GPIOA
 #define ENC_A_Pin GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
 #define ENC_B_Pin GPIO_PIN_7
@@ -92,16 +97,7 @@
 
 #define step_divider 2 //stepper driver divider microstep
 
-
-
 // main carriage
-#define MOTOR_Z_STEP_Pin GPIO_PIN_6
-#define MOTOR_Z_STEP_GPIO_Port GPIOA
-#define MOTOR_Z_DIR_Pin GPIO_PIN_7
-#define MOTOR_Z_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_ENABLE_Pin GPIO_PIN_1
-#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
-
 #define MOTOR_Z_SetPulse()           __HAL_TIM_ENABLE(&htim3)
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR        = MOTOR_Z_DIR_Pin
@@ -122,6 +118,45 @@ typedef struct
     uint64_t prolong_fract;
     uint8_t ramp_step;
 } axis;
+
+
+typedef struct {
+	fixedptu Q824; //Q8.24 fix math format
+	uint8_t submenu;
+	char Text[6];
+	char Unit[6];
+	uint8_t level;
+	char infeed_mm[6];
+	char infeed_inch[6];
+	uint8_t infeed_strategy;
+} THREAD_INFO;
+
+extern THREAD_INFO Thread_Info[];
+extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
+
+typedef struct {
+	fixedptu Q824; //Q8.24 fix math format
+	fixedptu pitch;
+	uint8_t total_pass;
+	uint8_t pass;
+
+	fixedptu thread_depth;
+//	fixedptu thread_angle; // tan(60 / 2 ) = 0,5774 >>>> fixedtp
+
+	fixedptu infeed_mod; // =TAN(radians(B4/2-B5))
+	fixedptu init_delta;
+	fixedptu deltap_mm[20];
+	fixedptu deltap_inch[20];
+	uint8_t submenu;
+	char Text[6];
+	char Unit[6];
+	uint8_t level;
+	char infeed_mm[6];
+	char infeed_inch[6];
+	uint8_t infeed_strategy;
+} S_WORK_SETUP;
+
+
 
 extern axis z_axis;
 

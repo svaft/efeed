@@ -147,7 +147,7 @@ extern DMA_HandleTypeDef hdma_i2c2_tx;
 extern TIM_HandleTypeDef htim4;
 
 /******************************************************************************/
-/*            Cortex-M3 Processor Interruption and Exception Handlers         */ 
+/*            Cortex-M3 Processor Interruption and Exception Handlers         */
 /******************************************************************************/
 
 /**
@@ -155,12 +155,12 @@ extern TIM_HandleTypeDef htim4;
 */
 void SysTick_Handler(void)
 {
-  /* USER CODE BEGIN SysTick_IRQn 0 */
+	/* USER CODE BEGIN SysTick_IRQn 0 */
 
-  /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
-  HAL_SYSTICK_IRQHandler();
-  /* USER CODE BEGIN SysTick_IRQn 1 */
+	/* USER CODE END SysTick_IRQn 0 */
+	HAL_IncTick();
+	HAL_SYSTICK_IRQHandler();
+	/* USER CODE BEGIN SysTick_IRQn 1 */
 
 
 #if  defined ( _SIMU )
@@ -180,9 +180,11 @@ void SysTick_Handler(void)
 
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
-	if( bt.buttons_mstick > 0 )
-		bt.buttons_mstick++;
-  /* USER CODE END SysTick_IRQn 1 */
+	for(int a = 0; a<BT_TOTAL-1;a++){
+		if( bt[a].buttons_mstick > 0 )
+			bt[a].buttons_mstick++;
+	}
+	/* USER CODE END SysTick_IRQn 1 */
 }
 
 /******************************************************************************/
@@ -197,13 +199,13 @@ void SysTick_Handler(void)
 */
 void DMA1_Channel4_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
+	/* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
 
-  /* USER CODE END DMA1_Channel4_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_i2c2_tx);
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
+	/* USER CODE END DMA1_Channel4_IRQn 0 */
+	HAL_DMA_IRQHandler(&hdma_i2c2_tx);
+	/* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
 
-  /* USER CODE END DMA1_Channel4_IRQn 1 */
+	/* USER CODE END DMA1_Channel4_IRQn 1 */
 }
 
 /**
@@ -211,7 +213,7 @@ void DMA1_Channel4_IRQHandler(void)
 */
 void TIM4_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM4_IRQn 0 */
+	/* USER CODE BEGIN TIM4_IRQn 0 */
 	_Bool dir = t4cr1[TIM_CR1_DIR_Pos];
 	if(encoder) {
 		if ( dir != Spindle_Direction ) {
@@ -409,11 +411,11 @@ void TIM4_IRQHandler(void)
 		}
 	}
 
-  /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
-  /* USER CODE BEGIN TIM4_IRQn 1 */
+	/* USER CODE END TIM4_IRQn 0 */
+	HAL_TIM_IRQHandler(&htim4);
+	/* USER CODE BEGIN TIM4_IRQn 1 */
 
-  /* USER CODE END TIM4_IRQn 1 */
+	/* USER CODE END TIM4_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

@@ -16,6 +16,7 @@
 #define SAMPLE_SIZE		10
 
 #include "stm32f1xx_hal.h"
+#include "error_code.h"
 
 typedef enum{
 	BUTTON_RELEASED,
@@ -44,5 +45,7 @@ typedef enum{
 }logging_status_t;
 
 void sampling_task(void const * argument);
+error_code_t i2c_device_init(I2C_HandleTypeDef *hi2c);
+error_code_t read_sample_i2c(I2C_HandleTypeDef *hi2c, i2c_sample_t *sample);
 
 #endif /* I2C_INTERFACE_H_ */

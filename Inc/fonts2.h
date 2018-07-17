@@ -30,6 +30,24 @@ extern C {
 #include "stm32f1xx_hal.h"
 #include "string.h"
 
+/**
+ * @brief  Font structure used on my LCD libraries
+ */
+typedef struct {
+    uint8_t FontWidth;    /*!< Font width in pixels */
+    uint8_t FontHeight;   /*!< Font height in pixels */
+//  uint8_t CharBytes;    /*!< Count of bytes for one character */
+    const uint16_t *data; /*!< Pointer to data font data array */
+} FontDef_t;
+
+/** 
+ * @brief  String length and height 
+ */
+typedef struct {
+    uint16_t Length;      /*!< String length in units of pixels */
+    uint16_t Height;      /*!< String height in units of pixels */
+} FONTS_SIZE_t;
+	
     // This structure describes a single character's display information
 typedef struct
 {

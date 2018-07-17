@@ -22,7 +22,9 @@
  */
 #include "ssd1306.h"
 
-extern I2C_HandleTypeDef hi2c2;
+I2C_HandleTypeDef *hi2c_screen;
+
+//extern I2C_HandleTypeDef hi2c2;
 
 /* Write command */
 #define SSD1306_WRITECOMMAND(command)      ssd1306_I2C_Write(SSD1306_I2C_ADDR, 0x00, (command))
@@ -45,13 +47,14 @@ typedef struct {
 /* Private variable */
 static SSD1306_t SSD1306;
 
-uint8_t SSD1306_Init(void) {
+uint8_t SSD1306_Init(I2C_HandleTypeDef *hi2c) {
 
+	hi2c_screen = hi2c;
 	/* Init I2C */
 	ssd1306_I2C_Init();
 	
 	/* Check if LCD connected to I2C */
-	if (HAL_I2C_IsDeviceReady(&hi2c2, SSD1306_I2C_ADDR, 5, 1000) != HAL_OK) {
+	if (HAL_I2C_IsDeviceReady(hi2c_screen, SSD1306_I2C_ADDR, 5, 1000) != HAL_OK) {
 		/* Return false */
 		return 0;
 	}
@@ -110,8 +113,8 @@ uint8_t SSD1306_Init(void) {
 
 void SSD1306_UpdateScreen(void) {
 	SSD1306_Buffer_all[0] = 0x40;
-	HAL_I2C_Master_Transmit_DMA(&hi2c2, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1);
-	while(HAL_DMA_GetState(hi2c2.hdmatx) != HAL_DMA_STATE_READY)
+	HAL_I2C_Master_Transmit_DMA(hi2c_screen, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1);
+	while(HAL_DMA_GetState(hi2c_screen->hdmatx) != HAL_DMA_STATE_READY)
 	{
 		HAL_Delay(1); //Change for your RTOS
 	}
@@ -574,7 +577,7 @@ void ssd1306_I2C_Init() {
 	uint32_t p = 250000;
 	while(p>0)
 		p--;
-	//HAL_I2C_DeInit(&hi2c2);
+	//HAL_I2C_DeInit(hi2c_screen);
 	//p = 250000;
 	//while(p>0)
 	//	p--;
@@ -587,13 +590,13 @@ void ssd1306_I2C_WriteMulti(uint8_t address, uint8_t reg, uint8_t* data, uint16_
 	uint8_t i;
 	for(i = 1; i <= count; i++)
 		dt[i] = data[i-1];
-	HAL_I2C_Master_Transmit(&hi2c2, address, dt, count, 10);
+	HAL_I2C_Master_Transmit(hi2c_screen, address, dt, count, 10);
 }
 
 
 void ssd1306_I2C_WriteMulti_DMA(uint8_t address, uint8_t reg, uint8_t* data, uint16_t count) {	
-	HAL_I2C_Master_Transmit(&hi2c2, address, &reg, 1, 100);
-	HAL_I2C_Master_Transmit_DMA(&hi2c2, address, data, count);
+	HAL_I2C_Master_Transmit(hi2c_screen, address, &reg, 1, 100);
+	HAL_I2C_Master_Transmit_DMA(hi2c_screen, address, data, count);
 }
 
 
@@ -601,5 +604,5 @@ void ssd1306_I2C_Write(uint8_t address, uint8_t reg, uint8_t data) {
 	uint8_t dt[2];
 	dt[0] = reg;
 	dt[1] = data;
-	HAL_I2C_Master_Transmit(&hi2c2, address, dt, 2, 10);
+	HAL_I2C_Master_Transmit(hi2c_screen, address, dt, 2, 10);
 }

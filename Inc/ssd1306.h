@@ -47,7 +47,7 @@ SDA        |PB7          |Serial data line
 
 #include "stm32f1xx_hal.h"
 //#include "i2c.h"
-#include "fonts.h"
+//#include "fonts.h"
 #include "fonts2.h"
 
 #include "stdlib.h"
@@ -75,7 +75,7 @@ SDA        |PB7          |Serial data line
 /*!< Pixel is set. Color depends on LCD */
 #define SSD1306_COLOR_WHITE 0x01
 
-
+extern I2C_HandleTypeDef *hi2c_screen;
 
 /**
  * @brief  Initializes SSD1306 LCD
@@ -84,7 +84,7 @@ SDA        |PB7          |Serial data line
  *           - 0: LCD was not detected on I2C port
  *           - > 0: LCD initialized OK and ready to use
  */
-uint8_t SSD1306_Init(void);
+uint8_t SSD1306_Init(I2C_HandleTypeDef *hi2c);
 
 /** 
  * @brief  Updates buffer from internal RAM to LCD

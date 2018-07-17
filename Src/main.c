@@ -41,7 +41,8 @@
 #include "stm32f1xx_hal.h"
 
 /* USER CODE BEGIN Includes */
-#include "ssd1306.h"
+#include "screen.h"
+//#include "ssd1306.h"
 #include "fixedptc.h"
 #include "i2c_interface.h"
 #include "buttons.h"
@@ -72,9 +73,6 @@ sample_log_t i2c_device_logging;
 //uint32_t current_pos = 0, cpv = 0, end_pos = 0, mode = 10, mode_prev = 10;
 
 // ***** Stepper Motor *****
-#define auto_symbol 0
-#define left_arrow	1
-#define right_arrow 2
 
 bool Spindle_Direction = Spindle_Direction_CW;
 bool feed_direction = feed_direction_left;
@@ -96,18 +94,6 @@ recommendation: mm(tpi) - passes
 				1,75-2,00(14-12) - 8-10,
 				2,50-3,00(11,5-9) - 9-12
 */
-
-typedef struct {
-	fixedptu Q824; //Q8.24 fix math format
-	uint8_t submenu;
-	char Text[6];
-	char Unit[6];
-	uint8_t level;
-	char infeed_mm[6];
-	char infeed_inch[6];
-	uint8_t infeed_strategy;
-}
-THREAD_INFO;
 
 // основное меню. Считаем по формуле:
 // Enc_Line/(Step_Per_Revolution/Feed_Screw*Thread_mm)
@@ -174,29 +160,6 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-
-typedef struct {
-	fixedptu Q824; //Q8.24 fix math format
-	fixedptu pitch;
-	uint8_t total_pass;
-	uint8_t pass;
-
-	fixedptu thread_depth;
-//	fixedptu thread_angle; // tan(60 / 2 ) = 0,5774 >>>> fixedtp
-
-	fixedptu infeed_mod; // =TAN(radians(B4/2-B5))
-	fixedptu init_delta;
-	fixedptu deltap_mm[20];
-	fixedptu deltap_inch[20];
-	uint8_t submenu;
-	char Text[6];
-	char Unit[6];
-	uint8_t level;
-	char infeed_mm[6];
-	char infeed_inch[6];
-	uint8_t infeed_strategy;
-}
-S_WORK_SETUP;
 
 S_WORK_SETUP work_setup;
 
@@ -369,7 +332,7 @@ void recalculate_setup()  // todo: not ready yet
 	}
 }
 
-
+/*
 char * utoa_builtin_div(uint32_t value, char *buffer)
 {
 	buffer += 11;
@@ -445,7 +408,7 @@ void redraw_screen()
 //#endif
 }
 
-
+*/
 /* USER CODE END 0 */
 
 /**
@@ -466,7 +429,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -485,10 +447,14 @@ int main(void)
   MX_TIM2_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+	init_buttons();
+	init_screen(&hi2c2);
+
 // инициализация дисплея
 //#if !defined ( _SIMU )
-	SSD1306_Init();
-	redraw_screen();
+//	SSD1306_Init();
+//	redraw_screen();
 //#endif
 
 	uint32_t p = 2500;
@@ -525,7 +491,7 @@ int main(void)
 
 	TIM3->CCER = TIM_CCER_CC1E; /* Enable the Compare output channel 1 */
 
-	__HAL_TIM_SetCounter(&htim4,0);
+	__HAL_TIM_SET_COUNTER(&htim4,0);
 	HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_1 | TIM_CHANNEL_2 );
 	if(HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_3) != HAL_OK) {
 		/* Starting Error */
@@ -535,13 +501,6 @@ int main(void)
 //	TIM4->CR1 |= TIM_CR1_URS; // to update ARR register immediateley(skip shadow mechanism)
 
 // init buttons
-
-#if defined ( _SIMU )
-//	buttons_mask = buttons = GPIO_PIN_8;				//button pressed by default
-	bt.buttons_mask = bt.buttons = GPIOA->IDR & GPIO_PIN_8;
-#else
-	bt.buttons_mask = bt.buttons = GPIOA->IDR & GPIO_PIN_8;
-#endif
 
 	LED_GPIO_Port->BSRR = LED_Pin; // led off
 
@@ -624,6 +583,10 @@ int main(void)
 			menu_changed = 1;
 			break;
 		}
+		case (long_press_start_Msk | long_press_start_Msk2): { // two buttons long pressed same time
+			// todo check if it work
+			break;
+		}
 		case long_press_start_Msk: {
 			switch(z_axis.mode) {
 			case 10: {
@@ -664,7 +627,7 @@ int main(void)
 			}
 			break;
 		}
-		case long_press_end_Msk:				{
+		case long_press_end_Msk: {
 			switch(z_axis.mode) {
 			case 26: {
 //																					if(auto_mode == true){
@@ -701,7 +664,7 @@ int main(void)
 		}
 // update display info
 		if(menu_changed == 1) {
-			redraw_screen();
+			update_screen();
 			menu_changed = 0;
 		}
 
@@ -949,10 +912,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(MOTOR_X_ENABLE_GPIO_Port, MOTOR_X_ENABLE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : LED_Pin */
   GPIO_InitStruct.Pin = LED_Pin;
@@ -967,20 +930,18 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA0 PA1 PA4 PA5 
-                           PA9 PA10 PA11 PA12 
-                           PA15 */
+                           PA10 PA11 PA12 PA15 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5 
-                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12 
-                          |GPIO_PIN_15;
+                          |GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MOTOR_X_DIR_Pin */
-  GPIO_InitStruct.Pin = MOTOR_X_DIR_Pin;
+  /*Configure GPIO pin : MOTOR_Z_DIR_Pin */
+  GPIO_InitStruct.Pin = MOTOR_Z_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(MOTOR_X_DIR_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(MOTOR_Z_DIR_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB0 PB2 PB12 PB13 
                            PB14 PB15 PB3 PB4 
@@ -991,15 +952,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MOTOR_X_ENABLE_Pin */
-  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin;
+  /*Configure GPIO pin : MOTOR_Z_ENABLE_Pin */
+  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(MOTOR_X_ENABLE_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(MOTOR_Z_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA8 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  /*Configure GPIO pins : BUTTON_1_Pin BUTTON_2_Pin */
+  GPIO_InitStruct.Pin = BUTTON_1_Pin|BUTTON_2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);

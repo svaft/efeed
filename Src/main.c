@@ -449,7 +449,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 	init_buttons();
-	init_screen(&hi2c2);
 
 // инициализация дисплея
 //#if !defined ( _SIMU )
@@ -460,8 +459,9 @@ int main(void)
 	uint32_t p = 2500;
 	while(p>0)
 		p--;
+	init_screen(&hi2c2);
 
-	i2c_device_init(&hi2c2);
+//	i2c_device_init(&hi2c2);
 //				fixedptud prolong_fract = 0;
 
 
@@ -509,7 +509,7 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 		process_button();
-		read_sample_i2c(&hi2c2,&i2c_device_logging.sample[i2c_device_logging.index]);
+//		read_sample_i2c(&hi2c2,&i2c_device_logging.sample[i2c_device_logging.index]);
 
 		/*	main Finite-state machine(Nondeterministic finite automaton):
 		0.	menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
@@ -545,6 +545,11 @@ int main(void)
 		}
 
 		switch(buttons_flag_set) {
+		case single_click_Msk2: {
+			feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
+			menu_changed = 1;
+			break;
+		}
 		case single_click_Msk: {
 			if(z_axis.end_pos != 0) {
 				if(auto_mode == true && auto_mode_delay > 0) { // single click in auto mode temporary disable auto_mode, processing to be continued at next single click

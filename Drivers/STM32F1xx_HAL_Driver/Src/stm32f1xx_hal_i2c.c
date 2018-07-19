@@ -2027,7 +2027,7 @@ HAL_StatusTypeDef HAL_I2C_Master_Transmit_DMA(I2C_HandleTypeDef *hi2c, uint16_t 
       HAL_DMA_Start_IT(hi2c->hdmatx, (uint32_t)hi2c->pBuffPtr, (uint32_t)&hi2c->Instance->DR, hi2c->XferSize);
 
       /* Enable Acknowledge */
-      hi2c->Instance->CR1 |= I2C_CR1_ACK;
+//      hi2c->Instance->CR1 |= I2C_CR1_ACK;
 
       /* Generate Start */
       hi2c->Instance->CR1 |= I2C_CR1_START;
@@ -2048,7 +2048,7 @@ HAL_StatusTypeDef HAL_I2C_Master_Transmit_DMA(I2C_HandleTypeDef *hi2c, uint16_t 
     else
     {
       /* Enable Acknowledge */
-      hi2c->Instance->CR1 |= I2C_CR1_ACK;
+//      hi2c->Instance->CR1 |= I2C_CR1_ACK;
 
       /* Generate Start */
       hi2c->Instance->CR1 |= I2C_CR1_START;
@@ -2145,7 +2145,7 @@ HAL_StatusTypeDef HAL_I2C_Master_Receive_DMA(I2C_HandleTypeDef *hi2c, uint16_t D
       HAL_DMA_Start_IT(hi2c->hdmarx, (uint32_t)&hi2c->Instance->DR, (uint32_t)hi2c->pBuffPtr, hi2c->XferSize);
 
       /* Enable Acknowledge */
-      hi2c->Instance->CR1 |= I2C_CR1_ACK;
+ //     hi2c->Instance->CR1 |= I2C_CR1_ACK;
 
       /* Generate Start */
       hi2c->Instance->CR1 |= I2C_CR1_START;
@@ -2166,7 +2166,7 @@ HAL_StatusTypeDef HAL_I2C_Master_Receive_DMA(I2C_HandleTypeDef *hi2c, uint16_t D
     else
     {
       /* Enable Acknowledge */
-      hi2c->Instance->CR1 |= I2C_CR1_ACK;
+  //    hi2c->Instance->CR1 |= I2C_CR1_ACK;
 
       /* Generate Start */
       hi2c->Instance->CR1 |= I2C_CR1_START;

@@ -24,7 +24,7 @@ char * utoa_builtin_div_1(uint32_t value, char *buffer)
 }
 
 
-inline void update_screen(){
+inline int update_screen(){
 	SSD1306_Fill(SSD1306_COLOR_BLACK);
 // first line
 	SSD1306_GotoXY(0, 16*0);
@@ -78,5 +78,6 @@ inline void update_screen(){
 */
 //#if !defined ( _SIMU )
 	SSD1306_UpdateScreen();
+	return 0;
 //#endif
 }

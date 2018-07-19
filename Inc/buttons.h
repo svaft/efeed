@@ -11,7 +11,7 @@
 
 #define BT_TOTAL	2
 
-#define BB_VAR   0x20001000
+#define BB_VAR   0x20004000
 //#define BB_VAR 0x20004000
 #define BITBAND_SRAM_REF   0x20000000
 #define BITBAND_SRAM_BASE  0x22000000

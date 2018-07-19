@@ -113,11 +113,13 @@ uint8_t SSD1306_Init(I2C_HandleTypeDef *hi2c) {
 
 void SSD1306_UpdateScreen(void) {
 	SSD1306_Buffer_all[0] = 0x40;
-	HAL_I2C_Master_Transmit_DMA(hi2c_screen, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1);
-	while(HAL_DMA_GetState(hi2c_screen->hdmatx) != HAL_DMA_STATE_READY)
-	{
-		HAL_Delay(1); //Change for your RTOS
-	}
+	if(hi2c_screen->hdmatx->State == HAL_DMA_STATE_READY)
+		HAL_I2C_Master_Transmit_DMA(hi2c_screen, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1);
+//	HAL_I2C_Master_Transmit(hi2c_screen, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1, 100);
+//	while(HAL_DMA_GetState(hi2c_screen->hdmatx) != HAL_DMA_STATE_READY)
+//	{
+//		HAL_Delay(1); //Change for your RTOS
+//	}
 }
 
 void SSD1306_ToggleInvert(void) {

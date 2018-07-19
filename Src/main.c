@@ -59,8 +59,6 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
-UART_HandleTypeDef huart2;
-
 /* USER CODE BEGIN PV */
 
 axis z_axis = { 0,0,0,0,0,0,0,0 };
@@ -149,7 +147,6 @@ static void MX_TIM4_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_USART2_UART_Init(void);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                                 
@@ -332,83 +329,6 @@ void recalculate_setup()  // todo: not ready yet
 	}
 }
 
-/*
-char * utoa_builtin_div(uint32_t value, char *buffer)
-{
-	buffer += 11;
-// 11 байт достаточно для десятичного представления 32-х байтного числа
-// и		завершающего нуля
-	*--buffer = 0;
-	do {
-		*--buffer = value % 10 + '0';
-		value /= 10;
-	} while (value != 0);
-	return buffer;
-}
-
-void redraw_screen()
-{
-	SSD1306_Fill(SSD1306_COLOR_BLACK);
-// first line
-	SSD1306_GotoXY(0, 16*0);
-	feed_direction == feed_direction_left ? SSD1306_Putc2big(left_arrow, &consolas_18ptFontInfo) : SSD1306_Putc2big(right_arrow, &consolas_18ptFontInfo);
-	SSD1306_Puts2(Thread_Info[Menu_Step].Unit, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
-	SSD1306_Puts2(Thread_Info[Menu_Step].infeed_inch, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // infeed recommendation
-
-
-	char text_buffer[11];
-
-//					uint8_t data;
-//			circular_buf_get(&cbuf, &data);
-
-	SSD1306_GotoXY(SSD1306_WIDTH - 16, 0);
-	SSD1306_Puts2(utoa_builtin_div(z_axis.mode, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
-
-	SSD1306_GotoXY(SSD1306_WIDTH - 60, 16);
-	SSD1306_Puts2(utoa_builtin_div(z_axis.current_pos, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
-
-	SSD1306_GotoXY(SSD1306_WIDTH - 60, 32);
-	SSD1306_Puts2(utoa_builtin_div(rs, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
-
-// second line
-
-	SSD1306_GotoXY(0, 16*1); //Устанавливаем курсор в позицию 0;16. Сначала по горизонтали, потом вертикали.
-	SSD1306_Puts2(Thread_Info[Menu_Step].Text, &microsoftSansSerif_20ptFontInfo, SSD1306_COLOR_WHITE);
-
-
-
-	//			SSD1306_GotoXY(50, 16*1);
-	//			SSD1306_Puts2(Thread_Info[Menu_Step].infeed_mm, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
-	//			SSD1306_GotoXY(50, 16*2);
-	//			SSD1306_Puts2(Thread_Info[Menu_Step].infeed_inch, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
-
-	SSD1306_GotoXY(0, 16*3);
-	switch(Thread_Info[Menu_Step].infeed_strategy) {
-	case 0:
-		SSD1306_Puts2("radial", &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
-		break;
-	case 1:
-		SSD1306_Puts2("flank", &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
-		break;
-	case 2:
-		SSD1306_Puts2("incremental", &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
-		break;
-	}
-
-
-
-	if(auto_mode == true) {
-		SSD1306_GotoXY(SSD1306_WIDTH - 32, 0);
-		SSD1306_Putc2big('A', &microsoftSansSerif_12ptFontInfo);
-//					SSD1306_Putc2big(auto_symbol, &consolas_18ptFontInfo);
-	}
-
-//#if !defined ( _SIMU )
-	SSD1306_UpdateScreen();
-//#endif
-}
-
-*/
 /* USER CODE END 0 */
 
 /**
@@ -445,24 +365,12 @@ int main(void)
   MX_TIM3_Init();
   MX_I2C2_Init();
   MX_TIM2_Init();
-  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
 	init_buttons();
 
 // инициализация дисплея
-//#if !defined ( _SIMU )
-//	SSD1306_Init();
-//	redraw_screen();
-//#endif
-
-	uint32_t p = 2500;
-	while(p>0)
-		p--;
 	init_screen(&hi2c2);
-
-//	i2c_device_init(&hi2c2);
-//				fixedptud prolong_fract = 0;
 
 
 	/*
@@ -668,9 +576,8 @@ int main(void)
 			menu_changed = 1;
 		}
 // update display info
-		if(menu_changed == 1) {
-			update_screen();
-			menu_changed = 0;
+		if(menu_changed == 1 && hi2c2.hdmatx->State == HAL_DMA_STATE_READY) {
+			menu_changed = update_screen();
 		}
 
 	}
@@ -859,25 +766,6 @@ static void MX_TIM4_Init(void)
 
 }
 
-/* USART2 init function */
-static void MX_USART2_UART_Init(void)
-{
-
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-}
-
 /** 
   * Enable DMA controller clock
   */
@@ -934,10 +822,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA0 PA1 PA4 PA5 
-                           PA10 PA11 PA12 PA15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5 
-                          |GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_15;
+  /*Configure GPIO pins : PA0 PA1 PA2 PA3 
+                           PA4 PA5 PA10 PA11 
+                           PA12 PA15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3 
+                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_11 
+                          |GPIO_PIN_12|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 

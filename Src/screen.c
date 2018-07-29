@@ -1,5 +1,6 @@
 #include "screen.h"
 #include "ssd1306.h"
+#include "i2c_interface.h"
 
 extern THREAD_INFO Thread_Info[];
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
@@ -40,9 +41,14 @@ inline int update_screen(){
 	SSD1306_GotoXY(SSD1306_WIDTH - 60, 16);
 	SSD1306_Puts2(utoa_builtin_div_1(z_axis.current_pos, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
 
+//	SSD1306_GotoXY(SSD1306_WIDTH - 60, 32);
+//	SSD1306_Puts2(utoa_builtin_div_1(z_axis.ramp_step, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
+if(i2c_device_logging.sample[i2c_device_logging.index].button_c > 0){
 	SSD1306_GotoXY(SSD1306_WIDTH - 60, 32);
-	SSD1306_Puts2(utoa_builtin_div_1(z_axis.ramp_step, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
+	SSD1306_Puts2(utoa_builtin_div_1(i2c_device_logging.sample[i2c_device_logging.index].button_c, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
+}
 
+	
 // second line
 
 	SSD1306_GotoXY(0, 16*1); //Устанавливаем курсор в позицию 0;16. Сначала по горизонтали, потом вертикали.

@@ -66,7 +66,6 @@ axis z_axis = { 0,0,0,0,0,0,0,0 };
 /* Private variables ---------------------------------------------------------*/
 //int count;
 
-sample_log_t i2c_device_logging;
 
 //uint32_t current_pos = 0, cpv = 0, end_pos = 0, mode = 10, mode_prev = 10;
 
@@ -372,6 +371,7 @@ int main(void)
 // инициализация дисплея
 	init_screen(&hi2c2);
 
+	i2c_device_init(&hi2c2);
 
 	/*
 	//72MGz процессор, 1 так = 1/72us, 1 цикл пустого for(для света до 255) равен 14 тактам + 6 тактов,
@@ -417,7 +417,7 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 		process_button();
-//		read_sample_i2c(&hi2c2,&i2c_device_logging.sample[i2c_device_logging.index]);
+		read_sample_i2c(&hi2c2,&i2c_device_logging.sample[i2c_device_logging.index]);
 
 		/*	main Finite-state machine(Nondeterministic finite automaton):
 		0.	menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
@@ -703,10 +703,15 @@ static void MX_TIM3_Init(void)
   }
 
   sConfigOC.OCMode = TIM_OCMODE_PWM2;
-  sConfigOC.Pulse = 1;
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
@@ -802,50 +807,41 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, LED_Pin|MOTOR_X_DIR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, MOTOR_X_ENABLE_Pin|MOTOR_Z_DIR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : LED_Pin */
-  GPIO_InitStruct.Pin = LED_Pin;
+  /*Configure GPIO pins : LED_Pin MOTOR_X_DIR_Pin */
+  GPIO_InitStruct.Pin = LED_Pin|MOTOR_X_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PC14 PC15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
+  /*Configure GPIO pin : PC14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA0 PA1 PA2 PA3 
-                           PA4 PA5 PA10 PA11 
-                           PA12 PA15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3 
-                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_11 
-                          |GPIO_PIN_12|GPIO_PIN_15;
+  /*Configure GPIO pins : PA0 PA2 PA3 PA4 
+                           PA5 PA10 PA11 PA12 
+                           PA15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4 
+                          |GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12 
+                          |GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MOTOR_Z_DIR_Pin */
-  GPIO_InitStruct.Pin = MOTOR_Z_DIR_Pin;
+  /*Configure GPIO pins : MOTOR_X_ENABLE_Pin MOTOR_Z_DIR_Pin */
+  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_Z_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(MOTOR_Z_DIR_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB0 PB2 PB12 PB13 
-                           PB14 PB15 PB3 PB4 
-                           PB5 PB9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13 
-                          |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_3|GPIO_PIN_4 
-                          |GPIO_PIN_5|GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MOTOR_Z_ENABLE_Pin */
   GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin;
@@ -853,6 +849,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(MOTOR_Z_ENABLE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB2 PB12 PB13 PB14 
+                           PB15 PB3 PB4 PB5 
+                           PB9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
+                          |GPIO_PIN_15|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5 
+                          |GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BUTTON_1_Pin BUTTON_2_Pin */
   GPIO_InitStruct.Pin = BUTTON_1_Pin|BUTTON_2_Pin;

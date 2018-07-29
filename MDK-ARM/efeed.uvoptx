@@ -155,25 +155,25 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>80</LineNumber>
+          <LineNumber>28</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134232002</Address>
+          <Address>134231588</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\screen.c</Filename>
+          <Filename>..\Src\i2c_interface.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/screen.c\80</Expression>
+          <Expression>\\efeed\../Src/i2c_interface.c\28</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
           <LineNumber>101</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134228644</Address>
+          <Address>134229564</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -255,6 +255,21 @@
           <count>13</count>
           <WinNumber>1</WinNumber>
           <ItemText>SystemInit</ItemText>
+        </Ww>
+        <Ww>
+          <count>14</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>sample</ItemText>
+        </Ww>
+        <Ww>
+          <count>15</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>hi2c</ItemText>
+        </Ww>
+        <Ww>
+          <count>16</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>i2c_device_logging</ItemText>
         </Ww>
       </WatchWindow1>
       <Tracepoint>

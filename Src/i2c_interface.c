@@ -12,7 +12,9 @@
 #include "main.h"
 
 #define USER_BUTTON_DEBOUNCE 5
-sample_log_t i2c_device_logging1;
+sample_log_t i2c_device_logging;
+
+uint8_t  device_ready = 0;
 /**
  * Sent the first command to init the device
  * @param hi2c
@@ -23,17 +25,18 @@ error_code_t i2c_device_init(I2C_HandleTypeDef *hi2c){
 	uint8_t  handShake[2];
 	handShake[0]=0xf0;
 	handShake[1]=0x55;
-	if (HAL_I2C_Master_Transmit(hi2c,i2c_device_id,handShake, 2,0x1000) != HAL_OK){
+	if (HAL_I2C_Master_Transmit_DMA(hi2c,i2c_device_id,handShake, 2) != HAL_OK){
 		return ERROR_INIT_I2C;
 	}
 	HAL_Delay(100);
 	handShake[0]=0xfb;
 	handShake[1]=0x00;
 
-	if (HAL_I2C_Master_Transmit(hi2c,i2c_device_id,handShake, 2,0x1000)!= HAL_OK){
+	if (HAL_I2C_Master_Transmit_DMA(hi2c,i2c_device_id,handShake, 2)!= HAL_OK){
 		return ERROR_INIT_I2C;
 	}
 	HAL_Delay(100);
+	device_ready = 1;
 	return ERROR_OK;
 }
 
@@ -44,10 +47,12 @@ error_code_t i2c_device_init(I2C_HandleTypeDef *hi2c){
  * @return error code
  */
 error_code_t read_sample_i2c(I2C_HandleTypeDef *hi2c, i2c_sample_t *sample){
+	if (device_ready == 0 || 	hi2c->hdmatx->State != HAL_DMA_STATE_READY)
+		return ERROR_OK;
 	uint8_t cmd[1];
 	uint8_t data[6];
 	cmd[0]=0x00;
-	if (HAL_I2C_Master_Transmit(hi2c,i2c_device_id,cmd, 1,0x1000) != HAL_OK){
+	if (HAL_I2C_Master_Transmit_DMA(hi2c,i2c_device_id,cmd, 1) != HAL_OK){
 		return ERROR_I2C_SAMPLE;
 	}
 	HAL_Delay(1);

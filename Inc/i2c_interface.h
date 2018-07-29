@@ -39,6 +39,9 @@ typedef struct{
 	i2c_sample_t sample[SAMPLE_SIZE];
 }sample_log_t;
 
+extern sample_log_t i2c_device_logging;
+
+
 typedef enum{
 	NOT_LOGGING,
 	LOGGING

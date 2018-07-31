@@ -40,15 +40,18 @@ typedef struct{
 }sample_log_t;
 
 extern sample_log_t i2c_device_logging;
-
+extern uint8_t  device_ready;
 
 typedef enum{
 	NOT_LOGGING,
 	LOGGING
 }logging_status_t;
 
+extern uint8_t dma_data[];
+
 void sampling_task(void const * argument);
 error_code_t i2c_device_init(I2C_HandleTypeDef *hi2c);
-error_code_t read_sample_i2c(I2C_HandleTypeDef *hi2c, i2c_sample_t *sample);
+error_code_t read_sample_i2c(i2c_sample_t *sample);
+error_code_t reqest_sample_i2c_dma(void);
 
 #endif /* I2C_INTERFACE_H_ */

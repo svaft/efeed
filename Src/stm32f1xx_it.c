@@ -207,7 +207,7 @@ void SysTick_Handler(void)
 
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
-	for(int a = 0; a<BT_TOTAL-1;a++){
+	for(int a = 0; a<BT_TOTAL;a++){
 		if( bt[a].buttons_mstick > 0 )
 			bt[a].buttons_mstick++;
 	}

@@ -9,7 +9,7 @@
 #include "stm32f1xx_hal.h"
 
 
-#define BT_TOTAL	2
+#define BT_TOTAL	4
 
 #define BB_VAR   0x20004000
 //#define BB_VAR 0x20004000
@@ -70,6 +70,8 @@ typedef struct
 extern BUTTON bt[BT_TOTAL];
 
 extern uint32_t buttons_flag_set;//  __attribute__((at(BB_VAR)));
+extern __IO uint8_t  ubTransferComplete;
+
 
 //#define buttons_flag_setbb ((BITBAND_SRAM_BASE + (&buttons_flag_set-BITBAND_SRAM_REF)*32))  // Convert SRAM address
 #define buttons_flag_setbb ((uint32_t *)((0x22000000  + ((BB_VAR)-0x20000000)*32)))
@@ -80,7 +82,7 @@ extern uint32_t buttons_flag_set;//  __attribute__((at(BB_VAR)));
 
 void init_buttons(void);
 void process_button(void);
-
+void process_joystick(void);
 //uint32_t downTime = 0;               // time the button was pressed down
 //uint32_t buttons = 0, buttons_mstick = 0, buttons_flag = 0, buttons_mask = 0;
 

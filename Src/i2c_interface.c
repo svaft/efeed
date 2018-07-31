@@ -10,33 +10,53 @@
 #include "i2c_interface.h"
 #include "string.h"
 #include "main.h"
+//#include "buttons.h"
 
 #define USER_BUTTON_DEBOUNCE 5
 sample_log_t i2c_device_logging;
+I2C_HandleTypeDef *hi2c_ref;
 
 uint8_t  device_ready = 0;
+uint8_t dma_data[6];
 /**
  * Sent the first command to init the device
  * @param hi2c
  * @return
  */
 error_code_t i2c_device_init(I2C_HandleTypeDef *hi2c){
-
+  hi2c_ref = hi2c;
 	uint8_t  handShake[2];
 	handShake[0]=0xf0;
 	handShake[1]=0x55;
-	if (HAL_I2C_Master_Transmit_DMA(hi2c,i2c_device_id,handShake, 2) != HAL_OK){
+	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
+		HAL_Delay(10);
+	}
+	if (HAL_I2C_Master_Transmit_DMA(hi2c_ref,i2c_device_id,handShake, 2) != HAL_OK){
 		return ERROR_INIT_I2C;
 	}
 	HAL_Delay(100);
 	handShake[0]=0xfb;
 	handShake[1]=0x00;
 
-	if (HAL_I2C_Master_Transmit_DMA(hi2c,i2c_device_id,handShake, 2)!= HAL_OK){
+	if (HAL_I2C_Master_Transmit_DMA(hi2c_ref,i2c_device_id,handShake, 2)!= HAL_OK){
 		return ERROR_INIT_I2C;
 	}
 	HAL_Delay(100);
 	device_ready = 1;
+	return ERROR_OK;
+}
+
+error_code_t reqest_sample_i2c_dma(){
+	if (device_ready == 0 || 	hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY || 	hi2c_ref->hdmarx->State != HAL_DMA_STATE_READY)
+		return ERROR_OK;
+	uint8_t cmd[1];
+	cmd[0]=0x00;
+	if (HAL_I2C_Master_Transmit_DMA(hi2c_ref,i2c_device_id,cmd, 1) != HAL_OK){
+		return ERROR_I2C_SAMPLE;
+	}
+	HAL_Delay(1);
+	if(hi2c_ref->hdmarx->State == HAL_DMA_STATE_READY)
+		HAL_I2C_Master_Receive_DMA(hi2c_ref, i2c_device_id, dma_data,6);
 	return ERROR_OK;
 }
 
@@ -46,18 +66,26 @@ error_code_t i2c_device_init(I2C_HandleTypeDef *hi2c){
  * @param sample - out put sample pointer
  * @return error code
  */
-error_code_t read_sample_i2c(I2C_HandleTypeDef *hi2c, i2c_sample_t *sample){
-	if (device_ready == 0 || 	hi2c->hdmatx->State != HAL_DMA_STATE_READY)
+error_code_t read_sample_i2c(i2c_sample_t *sample){
+	if (device_ready == 0) //|| 	hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY)
 		return ERROR_OK;
 	uint8_t cmd[1];
 	uint8_t data[6];
+///	memset(&dma_data,);
 	cmd[0]=0x00;
-	if (HAL_I2C_Master_Transmit_DMA(hi2c,i2c_device_id,cmd, 1) != HAL_OK){
+
+	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
+		HAL_Delay(1);
+	}
+
+	if (HAL_I2C_Master_Transmit_DMA(hi2c_ref,i2c_device_id,cmd, 1) != HAL_OK){
 		return ERROR_I2C_SAMPLE;
 	}
-	HAL_Delay(1);
+	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
+		HAL_Delay(1);
+	}
 
-	if (HAL_I2C_Master_Receive(hi2c, i2c_device_id, data,6,0x1000) != HAL_OK){
+	if (HAL_I2C_Master_Receive(hi2c_ref, i2c_device_id, data,6,0x1000) != HAL_OK){
 		return ERROR_I2C_SAMPLE;
 	}
 	sample->joy_x = data[0];
@@ -68,6 +96,8 @@ error_code_t read_sample_i2c(I2C_HandleTypeDef *hi2c, i2c_sample_t *sample){
 	sample->button_c=(data[5]&0x02)>>1;
 	sample->button_z=data[5]&0x01;
 
+	dma_data[5] = data[5];
+	
 	return ERROR_OK;
 }
 /**

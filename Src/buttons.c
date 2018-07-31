@@ -1,4 +1,5 @@
 #include "buttons.h"
+#include "i2c_interface.h"
 
 
 //uint32_t buttons_flag_set = 0;
@@ -6,9 +7,10 @@ uint32_t buttons_flag_set __attribute__((at(BB_VAR)));
 
 uint32_t buttons_flag_set_prev = 0;
 BUTTON bt[BT_TOTAL];
-
+__IO uint8_t  ubTransferComplete = 0;
 
 void init_buttons(void){
+
 	bt[0].clk_mode = 10;
 	bt[0].GPIOx = BUTTON_1_GPIO_Port;
 	bt[0].button_pin = BUTTON_1_Pin;
@@ -19,6 +21,34 @@ void init_buttons(void){
 	bt[1].button_pin = BUTTON_2_Pin;
 	bt[1].buttons = bt[1].buttons_mask = bt[1].GPIOx->IDR & bt[1].button_pin;
 
+	if(device_ready == 1){
+		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);		
+//		reqest_sample_i2c_dma();
+//		while(ubTransferComplete == 0){
+//		}
+	}
+	bt[2].clk_mode = 10;
+	bt[2].button_pin = 0x02; // button_c code
+	bt[2].buttons = bt[2].buttons_mask = dma_data[5]&bt[2].button_pin; // = bt[1].GPIOx->IDR & bt[1].button_pin;
+	bt[3].clk_mode = 10;
+	bt[3].button_pin = 0x01; // button_c code
+	bt[3].buttons = bt[3].buttons_mask = dma_data[5]&bt[3].button_pin; // = bt[1].GPIOx->IDR & bt[1].button_pin;
+
+}
+inline void process_joystick()
+{
+// to make sure ew really receive this data we need to set flag in interrapt in dma i2c RX dma handler 
+//	sample->joy_x = dma_data[0];
+//	sample->joy_y = data[1];
+//	sample->accel_x = (data[2] << 2)|((data[5] >> 2) & 0x03) ;
+//	sample->accel_y = (data[3] << 2)|((data[5] >> 4) & 0x03) ;
+//	sample->accel_z = (data[4] << 2)|((data[5] >> 6) & 0x03) ;
+
+	if(ubTransferComplete == 1){
+		ubTransferComplete = 0;
+		uint8_t button_c=(dma_data[5]&0x02)>>1;
+		uint8_t button_z=dma_data[5]&0x01;
+	}
 }
 
 // реализация конечного автомата обработки событий кнопки
@@ -38,11 +68,19 @@ inline void process_button()
 	90. кнопку отпустили, генерим DOUBLE_CLICK, идем в 10
 	*/
 
-	#if defined ( _SIMU )
-		uint32_t tmp_buttons = bt[a].GPIOx->IDR & bt[a].button_pin;
-	#else
-		uint32_t tmp_buttons = bt[a].GPIOx->IDR & bt[a].button_pin; //BUTTON_1_GPIO_Port->IDR & bt[a].button_pin;
-	#endif
+//	#if defined ( _SIMU )
+//		uint32_t tmp_buttons = bt[a].GPIOx->IDR & bt[a].button_pin;
+//	#else
+		uint32_t tmp_buttons;
+		if(bt[a].GPIOx != 0)
+			tmp_buttons = bt[a].GPIOx->IDR & bt[a].button_pin; //BUTTON_1_GPIO_Port->IDR & bt[a].button_pin;
+		else{
+			
+//			if(ubTransferComplete == 0)
+//				continue;
+			tmp_buttons = dma_data[5] & bt[a].button_pin;
+		}
+//	#endif
 
 
 		if( tmp_buttons != bt[a].buttons ) { // start debounce
@@ -128,5 +166,5 @@ inline void process_button()
 			}
 		}
 	}
-
+//	ubTransferComplete = 0;
 }

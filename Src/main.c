@@ -366,12 +366,13 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-	init_buttons();
-
 // инициализация дисплея
 	init_screen(&hi2c2);
 
 	i2c_device_init(&hi2c2);
+
+	init_buttons();
+
 
 	/*
 	//72MGz процессор, 1 так = 1/72us, 1 цикл пустого for(для света до 255) равен 14 тактам + 6 тактов,
@@ -416,8 +417,11 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+//		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
+		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 		process_button();
-		read_sample_i2c(&hi2c2,&i2c_device_logging.sample[i2c_device_logging.index]);
+//		process_joystick();
+//		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 
 		/*	main Finite-state machine(Nondeterministic finite automaton):
 		0.	menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change

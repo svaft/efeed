@@ -25,38 +25,37 @@
 #define CLICKTIME_MS 250 
 //#define LONGHOLDTIME_MS 3000       // ms long hold period: how long to wait for press+hold event
 
-#define long_press_start			buttons_flag_setbb[0]
+//#define long_press_start			buttons_flag_setbb[0]
 #define long_press_start_Pos	(0U)
 #define long_press_start_Msk  (0x1U << long_press_start_Pos)
 
-#define long_press_end        buttons_flag_setbb[1]
+//#define long_press_end        buttons_flag_setbb[1]
 #define long_press_end_Pos    (1U)
 #define long_press_end_Msk    (0x1U << long_press_end_Pos)
 
-#define single_click          buttons_flag_setbb[2]
+//#define single_click          buttons_flag_setbb[2]
 #define single_click_Pos      (2U)
 #define single_click_Msk      (0x1U << single_click_Pos)
 
-#define double_click          buttons_flag_setbb[3]
+//#define double_click          buttons_flag_setbb[3]
 #define double_click_Pos      (3U)
 #define double_click_Msk      (0x1U << double_click_Pos)
 
-// events for 2nd button
-#define long_press_start2			buttons_flag_setbb[4]
-#define long_press_start_Pos2	(4U)
-#define long_press_start_Msk2  (0x1U << long_press_start_Pos2)
+#define long_press_start_Msk2	(long_press_start_Msk << 1*4)
+#define long_press_start_Msk3	(long_press_start_Msk << 2*4)
+#define long_press_start_Msk4	(long_press_start_Msk << 3*4)
 
-#define long_press_end2        buttons_flag_setbb[5]
-#define long_press_end_Pos2    (5U)
-#define long_press_end_Msk2    (0x1U << long_press_end_Pos2)
+#define long_press_end_Msk2    (long_press_end_Msk << 1*4)
+#define long_press_end_Msk3    (long_press_end_Msk << 1*4)
+#define long_press_end_Msk4    (long_press_end_Msk << 1*4)
 
-#define single_click2          buttons_flag_setbb[6]
-#define single_click_Pos2      (6U)
-#define single_click_Msk2      (0x1U << single_click_Pos2)
+#define single_click_Msk2      (single_click_Msk << 1*4)
+#define single_click_Msk3      (single_click_Msk << 2*4)
+#define single_click_Msk4      (single_click_Msk << 3*4)
 
-#define double_click2          buttons_flag_setbb[7]
-#define double_click_Pos2      (7U)
-#define double_click_Msk2      (0x1U << double_click_Pos2)
+#define double_click_Msk2      (double_click_Msk << 1*4)
+#define double_click_Msk3      (double_click_Msk << 2*4)
+#define double_click_Msk4      (double_click_Msk << 3*4)
 
 
 typedef struct

@@ -457,7 +457,13 @@ int main(void)
 		}
 
 		switch(buttons_flag_set) {
-		case single_click_Msk2: {
+			case single_click_Msk3: {
+			feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
+			menu_changed = 1;
+			break;
+		}
+
+			case single_click_Msk2: {
 			feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
 			menu_changed = 1;
 			break;

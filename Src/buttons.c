@@ -46,8 +46,8 @@ inline void process_joystick()
 
 	if(ubTransferComplete == 1){
 		ubTransferComplete = 0;
-		uint8_t button_c=(dma_data[5]&0x02)>>1;
-		uint8_t button_z=dma_data[5]&0x01;
+//		uint8_t button_c=(dma_data[5]&0x02)>>1;
+//		uint8_t button_z=dma_data[5]&0x01;
 	}
 }
 
@@ -112,7 +112,7 @@ inline void process_button()
 				break;
 			}
 			case 30: { // long_press_start event
-				long_press_start = 1;
+				buttons_flag_setbb[(a<<2)+long_press_start_Pos]  = 1; //long_press_start = 1;
 				bt[a].clk_mode = 40;
 				break;
 			}
@@ -130,9 +130,9 @@ inline void process_button()
 			}
 			case 60: {//60 if tick count < 1000 generate CLICK event, else generate long_press_end event, go to 10 state
 				if(bt[a].downTime < HOLDTIME_MS) { //single CLICK event
-					single_click = 1;
+					buttons_flag_setbb[(a<<2)+single_click_Pos]  = 1; //single_click = 1;
 				} else { //  long_press_end event
-					long_press_end = 1;
+					buttons_flag_setbb[(a<<2)+long_press_end_Pos]  = 1; //long_press_end = 1;
 				}
 				bt[a].downTime = bt[a].buttons_mstick = 0;
 				bt[a].clk_mode = 10;
@@ -158,7 +158,7 @@ inline void process_button()
 				break;
 			}
 			case 90: { // сигнал DOUBLE_CLICK
-				double_click = 1;
+				buttons_flag_setbb[(a<<2)+double_click_Pos]  = 1; //double_click = 1;
 				bt[a].clk_mode = 10;
 				bt[a].buttons_mstick = 0;
 				break;

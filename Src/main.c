@@ -54,6 +54,7 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c2;
 DMA_HandleTypeDef hdma_i2c2_tx;
+DMA_HandleTypeDef hdma_i2c2_rx;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
@@ -417,8 +418,8 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-//		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
-		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
+		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
+//		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 		process_button();
 //		process_joystick();
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
@@ -462,8 +463,7 @@ int main(void)
 			menu_changed = 1;
 			break;
 		}
-
-			case single_click_Msk2: {
+		case single_click_Msk2: {
 			feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
 			menu_changed = 1;
 			break;
@@ -793,6 +793,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
 }
 

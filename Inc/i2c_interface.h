@@ -41,7 +41,7 @@ typedef struct{
 
 extern sample_log_t i2c_device_logging;
 extern uint8_t  device_ready;
-
+extern volatile uint32_t dma_delay;
 typedef enum{
 	NOT_LOGGING,
 	LOGGING

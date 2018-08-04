@@ -22,8 +22,8 @@ void init_buttons(void){
 	bt[1].buttons = bt[1].buttons_mask = bt[1].GPIOx->IDR & bt[1].button_pin;
 
 	if(device_ready == 1){
-		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);		
-//		reqest_sample_i2c_dma();
+//		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);		
+		reqest_sample_i2c_dma();
 //		while(ubTransferComplete == 0){
 //		}
 	}
@@ -78,6 +78,13 @@ inline void process_button()
 			
 //			if(ubTransferComplete == 0)
 //				continue;
+			//	dma_delay = 0;
+//	while(hi2c2->hdmarx->State != HAL_DMA_STATE_READY){
+//		dma_delay++;
+//		HAL_Delay(1);
+//	}
+//	dma_delay2 = dma_delay;
+
 			tmp_buttons = dma_data[5] & bt[a].button_pin;
 		}
 //	#endif

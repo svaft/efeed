@@ -67,7 +67,7 @@ inline void process_button()
 	80. ждем отпуска кнопки, далее в 90
 	90. кнопку отпустили, генерим DOUBLE_CLICK, идем в 10
 	*/
-
+ 
 //	#if defined ( _SIMU )
 //		uint32_t tmp_buttons = bt[a].GPIOx->IDR & bt[a].button_pin;
 //	#else

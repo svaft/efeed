@@ -270,25 +270,25 @@ void TIM4_IRQHandler(void)
 					MOTOR_Z_Forward();
 				else
 					MOTOR_Z_Reverse();
-				z_axis.mode = 24; //intermediate state to wait tacho pulse.
+				z_axis.mode = fsm_wait_tacho; //intermediate state to wait tacho pulse.
 				break;
 			}
-			case 25:        { // direct movement: first pass, thread recording: ramp up: accel by ramp map
+			case fsm_first_cut_ramp_up:        { // direct movement: first pass, thread recording: ramp up: accel by ramp map
 				MOTOR_Z_SetPulse();
 				z_axis.current_pos++;
 				if(ramp_up()) {
-					z_axis.mode = 26;
+					z_axis.mode = fsm_first_cut_main_part;
 					LED_GPIO_Port->BSRR = LED_Pin; //led off
 				}
 				break;
 			}
-			case 26:        { // direct movement: first pass, thread recording: main part
+			case fsm_first_cut_main_part:        { // direct movement: first pass, thread recording: main part
 				MOTOR_Z_SetPulse();
 				z_axis.current_pos++;
 				move();
 				break;
 			}
-			case 27:        { // direct movement: first pass, thread recording: post-main part
+			case fsm_first_cut_lpe:        { // direct movement: first pass, thread recording: post-main part
 				// для 1/2 микрошага нужно что бы общее количество шагов в цикле резьбы было кратно 2,(для 1/4 кратно 4 и тп).
 				// это нужно для того что бы в конце шаговый мотор остановился на одном из двухсот устойчивых шагов,
 				// не перескакивая на соседние шаги при потере питания.
@@ -305,12 +305,12 @@ void TIM4_IRQHandler(void)
 						z_axis.end_pos = z_axis.current_pos;
 						at_move_end();
 					} else {
-						z_axis.mode = 30;
+						z_axis.mode = fsm_first_cut_ramp_down;
 					}
 				}
 				break;
 			}
-			case 30:        { // direct movement: ramp down: deccel part + stop
+			case fsm_first_cut_ramp_down:        { // direct movement: ramp down: deccel part + stop
 				MOTOR_Z_SetPulse();
 				z_axis.current_pos++;
 				if(ramp_down()) {
@@ -320,34 +320,34 @@ void TIM4_IRQHandler(void)
 				break;
 			}
 
-			case 35:        { // do nothing here and wait button click event, interrupt for encoder ticks can be disabled
+			case fsm_wait_sclick:        { // do nothing here and wait button click event, interrupt for encoder ticks can be disabled
 				break;
 			}
-			case 40:        { // reverse movement: set direction for motor
+			case fsm_sclick_event:        { // reverse movement: set direction for motor
 				if(feed_direction)
 					MOTOR_Z_Forward();
 				else
 					MOTOR_Z_Reverse();
 				enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
-				z_axis.mode = 45;
+				z_axis.mode = fsm_main_cut_back_ramp_up;
 				break;
 			}
-			case 45:        { // reverse movement: ramp up: accel part
+			case fsm_main_cut_back_ramp_up:        { // reverse movement: ramp up: accel part
 				MOTOR_Z_SetPulse();
 				--z_axis.current_pos;
 				if(ramp_up())
-					z_axis.mode = 46;
+					z_axis.mode = fsm_main_cut_back;
 				break;
 			}
-			case 46:        { // reverse movement: main part
+			case fsm_main_cut_back:        { // reverse movement: main part
 				MOTOR_Z_SetPulse();
 				if( --z_axis.current_pos > z_axis.ramp_step ) {
 				} else {
-					z_axis.mode = 47;
+					z_axis.mode = fsm_main_cut_back_ramp_down;
 				}
 				break;
 			}
-			case 47:        { // reverse movement: ramp down: deccel part + stop
+			case fsm_main_cut_back_ramp_down:        { // reverse movement: ramp down: deccel part + stop
 				if (z_axis.current_pos > 0) {
 					MOTOR_Z_SetPulse();
 					--z_axis.current_pos;
@@ -357,7 +357,7 @@ void TIM4_IRQHandler(void)
 				}
 				break;
 			}
-			case 48:        { // reverse movement: main part with prolong activated. todo split it with 46 mode?
+			case fsm_main_cut_back_prolong:        { // reverse movement: main part with prolong activated. todo split it with 46 mode?
 				MOTOR_Z_SetPulse();
 				--z_axis.current_pos;
 				if(z_axis.current_pos == z_axis.ramp_step) { // we reach end of main path and have long_pressed key, so just add additional thread full turn to shift initial start point
@@ -371,32 +371,32 @@ void TIM4_IRQHandler(void)
 				break;
 			}
 
-			case 50:        { // direct movement: set direction for motor
+			case fsm_main_cut_wait_tacho:        { // direct movement: set direction for motor
 				if(feed_direction)
 					MOTOR_Z_Forward();
 				else
 					MOTOR_Z_Reverse();
-				z_axis.mode = 54; // intermediate state to wait tacho pulse
+				z_axis.mode = fsm_main_cut_ramp_up; // intermediate state to wait tacho pulse
 				disable_encoder_ticks(); // reset interrupt for encoder ticks, only tacho
 				break;
 			}
 
-			case 55:        { // direct movement: ramp up: accel by ramp map
+			case fsm_main_cut:        { // direct movement: ramp up: accel by ramp map
 				MOTOR_Z_SetPulse();
 				z_axis.current_pos++;
 				if(ramp_up()) {
 					LED_GPIO_Port->BSRR = LED_Pin;   // led off
-					z_axis.mode = 56;
+					z_axis.mode = fsm_main_cut_infeed;
 				}
 				break;
 			}
-			case 56:        { // direct movement: main part
+			case fsm_main_cut_infeed:        { // direct movement: main part
 				MOTOR_Z_SetPulse();
 				z_axis.current_pos++;
 				if( z_axis.current_pos < ( z_axis.end_pos - z_axis.ramp_step ) ) {
 					move();
 				} else {
-					z_axis.mode = 30;
+					z_axis.mode = fsm_first_cut_ramp_down;
 				}
 				break;
 			}
@@ -404,7 +404,7 @@ void TIM4_IRQHandler(void)
 		}
 	}
 // tacho event found!
-	if( tacho ) {
+	if( tacho ) { 
 //  if( TIM4->SR & TIM_SR_CC3IF ) {
 		tacho_debug = 0;
 		if (dir == Spindle_Direction_CW ) {
@@ -413,12 +413,12 @@ void TIM4_IRQHandler(void)
 //                        count2--;
 		}
 		switch(z_axis.mode) {
-		case 35:
+		case fsm_wait_sclick:
 			MOTOR_Z_Disable(); //disable motor
 			break;
 
-		case 24: {
-			z_axis.mode = 25;
+		case fsm_wait_tacho: {
+			z_axis.mode = fsm_first_cut_ramp_up;
 //                          TIM4->ARR = fixedpt_toint(Q824set) - 1;
 			infeed_step = 0;
 			LED_GPIO_Port->BRR = LED_Pin; //led on
@@ -431,8 +431,8 @@ void TIM4_IRQHandler(void)
 //                          fract_part = fixedpt_fracpart( Q824set ); // save fract part
 			break;
 		}
-		case 54: {
-			z_axis.mode = 55;
+		case fsm_main_cut_ramp_up: {
+			z_axis.mode = fsm_main_cut;
 			//reinit counter
 //                          TIM4->ARR = fixedpt_toint(Q824set) - 1;
 			LED_GPIO_Port->BRR = LED_Pin; //led on
@@ -530,7 +530,7 @@ void at_move_end(void)
 	if(auto_mode == true)    auto_mode_delay = auto_mode_delay_ms; // reengage auto mode
 	feed_direction = !feed_direction; //change feed direction
 	menu_changed = 1; //update menu
-	z_axis.mode = 35; // dummy mode
+	z_axis.mode = fsm_wait_sclick; // dummy mode
 }
 
 /* USER CODE END 1 */

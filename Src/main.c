@@ -62,7 +62,7 @@ TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
 
-axis z_axis = { 0,0,0,0,0,0,0,0 };
+axis z_axis = { 0,0,fsm_menu,fsm_menu,0,0,0,0 };
 
 /* Private variables ---------------------------------------------------------*/
 //int count;
@@ -339,7 +339,7 @@ void recalculate_setup()  // todo: not ready yet
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	z_axis.mode = 10;
+	z_axis.mode = fsm_menu_lps;
 	rs = 11;
   /* USER CODE END 1 */
 
@@ -423,31 +423,28 @@ int main(void)
 		process_button();
 //		process_joystick();
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
-
-		/*	main Finite-state machine(Nondeterministic finite automaton):
-		0.	menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
-		10. long_press_start: end_pos = current_pos = 0, идем в п. 20
-		20. начало выбранного режима, инициируем направление, включаем мотор, идем в п.24
-		24. wait tacho pulse, go to 25 (ждем тахо пульс, идем в п.25)
-		25. tacho pulse interrupt: включаем прерывание по тикам энкодера, начинаем разгоняться(ramp up) по таблице пока не выйдем на расчетную скорость,далее в режим 26
-		26. step until long_press_end event, then go to 27
-		27. long_press_end event: проверяем общее расчетное количество шагов(разгон+infeed+основной путь+торможение),
-						при необходимости делаем дошагиваем до кратного целого в зависимости от микрошага, далее в режим торможения, п. 30
-		30. режим торможения(ramp down) пока по таблице разгона не дойдем обратно до нуля, останавливаем мотор, end_pos = current_pos,
-						меняем направление, обновляем экран, идем в п.35
-		35. ждем SINGLE_CLICK: если current_pos > 0 ? идем в mode = 40 иначе в	mode = 50
-		40. клик: включаем моторы обратно, идем в п.45
-		45. если счетчик current_pos > 0 то едем обратно до нуля: разгон
-
-		46. main path back to initial position. If long_press_start detected during process, activate prolonged mode ( 48).
-		47. аналогично 27, торможение, останавливаем мотор, меняем направление, обновляем экран, идем в п.35
-		48. prolonged mode used to extend cutting path until long_press released. step back until current_pos reach start position add full revolution steps of servo. when released go back to 46
-		50. клик: включаем моторы вперед, ждем тахо, идем в п.52
-		54. тахо пульс обнаружен, включаем прерывание по тикам энкодера, можно шагать, идем в п.35
-		55. если счетчик current_pos = 0 то в зависимости от выбранной стратегии вычисляем infeed и идем в режим резьбы до end_pos: разгон, далее идем в п.56
-		стратегии врезания(infeed): 0: radial infeed, 1: incremental infeed, 2: modifyed flank infeed
-		56. infeed для резьбы: в зависимости от номера прохода сдвигаем каретку на определенное количество шагов для облегчения резания+основной путь, далее в п. 30
-		*/
+/*
+//main Finite-state machine(Nondeterministic finite automaton):
+	fsm_menu,										//0 . menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
+	fsm_menu_lps, 							//10. long_press_start: end_pos = current_pos = 0, идем в п. fsm_first_cut_lps
+	fsm_first_cut_lps, 					//20. init selected mode, init direction, motor on, goto fsm_wait_tacho
+	fsm_wait_tacho, 						//24. wait tacho pulse, go to 25
+	fsm_first_cut_ramp_up, 			//25. tacho pulse interrupt: включаем прерывание по тикам энкодера, начинаем разгоняться(ramp up) по таблице пока не выйдем на расчетную скорость,далее в режим 26
+	fsm_first_cut_main_part, 		//26. step until long_press_end event, then go to 27
+	fsm_first_cut_lpe,					//27. long_press_end event: проверяем общее расчетное количество шагов(разгон+infeed+основной путь+торможение), при необходимости делаем дошагиваем до кратного целого в зависимости от микрошага, далее в режим торможения, п. 30
+	fsm_first_cut_ramp_down,		//30. режим торможения(ramp down) пока по таблице разгона не дойдем обратно до нуля, останавливаем мотор, end_pos = current_pos, меняем направление, обновляем экран, идем в п.35
+	fsm_wait_sclick,          	//35. ждем SINGLE_CLICK: если current_pos > 0 ? идем в mode = 40 иначе в	mode = 50
+	fsm_sclick_event,         	//40. клик: включаем моторы обратно, идем в п.45
+	fsm_main_cut_back_ramp_up,	//45. если счетчик current_pos > 0 то едем обратно до нуля: разгон
+	fsm_main_cut_back,					//46. main path back to initial position. If long_press_start detected during process, activate prolonged mode ( 48).
+	fsm_main_cut_back_ramp_down,//47. аналогично 27, торможение, останавливаем мотор, меняем направление, обновляем экран, идем в п.35
+	fsm_main_cut_back_prolong,	//48. prolonged mode used to extend cutting path until long_press released. step back until current_pos reach start position add full revolution steps of servo. when released go back to 46
+	fsm_main_cut_wait_tacho,		//50. клик: включаем моторы вперед, ждем тахо, идем в п.52
+	fsm_main_cut_ramp_up,				//54. тахо пульс обнаружен, включаем прерывание по тикам энкодера, можно шагать, идем в п.55
+	fsm_main_cut,								//55. если счетчик current_pos = 0 то в зависимости от выбранной стратегии вычисляем infeed и идем в режим резьбы до end_pos: разгон, далее идем в п.56
+//стратегии врезания(infeed): 0: radial infeed, 1: incremental infeed, 2: modifyed flank infeed
+	fsm_main_cut_infeed,				//56. infeed для резьбы: в зависимости от номера прохода сдвигаем каретку на определенное количество шагов для облегчения резания+основной путь, далее в п. 30
+*/
 
 		uint8_t level = Thread_Info[Menu_Step].level;
 
@@ -479,9 +476,9 @@ int main(void)
 				//	to switch between modes to process all other cuts
 				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
 				for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver
-				z_axis.mode = z_axis.current_pos > 0 ? 40 : 50;
+				z_axis.mode = z_axis.current_pos > 0 ? fsm_sclick_event : fsm_main_cut_wait_tacho;
 			} else { // controller in initial state, scroll menu
-				z_axis.mode = 10;
+				z_axis.mode = fsm_menu_lps;
 				for (int a = Menu_Step+1; a<Menu_size; a++) {
 					if(Thread_Info[a].level == level) {
 						Menu_Step = a;
@@ -512,7 +509,7 @@ int main(void)
 		}
 		case long_press_start_Msk: {
 			switch(z_axis.mode) {
-			case 10: {
+			case fsm_menu_lps: {
 				if(Thread_Info[Menu_Step].Q824 != 0) { // long press detected, start new thread from current position
 					//mode 20:
 					disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
@@ -528,7 +525,7 @@ int main(void)
 					const uint64_t upl = (uint64_t)3600 << 48;
 					z_axis.prolong_addSteps = upl / (fixedptud)z_axis.Q824set;
 
-					z_axis.mode = 24; // go straight to 24 to wait tacho
+					z_axis.mode = fsm_wait_tacho; // go straight to 24 to wait tacho
 //																																																			count = 0;
 				} else { // goto submenu
 					for (int a = 0; a<Menu_size; a++) {
@@ -542,9 +539,9 @@ int main(void)
 				}
 				break;
 			}
-			case 46: { // we going back to initial position and want to add some additional travel.
+			case fsm_main_cut_back: { // we going back to initial position and want to add some additional travel.
 //															usecase: set thread cutter into current thread, with long press go to end of the thread and on way back home enlarge path to get full thread into work
-				z_axis.mode = 48; // go to 48 mode to add threads until long_press end
+				z_axis.mode = fsm_main_cut_back_prolong; // go to 48 mode to add threads until long_press end
 				break;
 			}
 			}
@@ -552,16 +549,16 @@ int main(void)
 		}
 		case long_press_end_Msk: {
 			switch(z_axis.mode) {
-			case 26: {
+			case fsm_first_cut_main_part: {
 //																					if(auto_mode == true){
 //																									auto_mode_delay = auto_mode_delay_ms; //engage countdown timer to auto generate click event
 //																					}
 //																					Q824count = 0;
-				z_axis.mode = 27;
+				z_axis.mode = fsm_first_cut_lpe;
 				break;
 			}
-			case 48: { // end of prolonged mode
-				z_axis.mode = 46;
+			case fsm_main_cut_back_prolong: { // end of prolonged mode
+				z_axis.mode = fsm_main_cut_back;
 				break;
 			}
 			}

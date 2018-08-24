@@ -46,6 +46,8 @@
 #include "fixedptc.h"
 #include "i2c_interface.h"
 #include "buttons.h"
+#include "fsm.h"
+#include "stm32f1xx_it.h"
 
 //#define ARM_MATH_CM3
 //#include "arm_math.h"
@@ -63,6 +65,7 @@ TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN PV */
 
 axis z_axis = { 0,0,fsm_menu,fsm_menu,0,0,0,0 };
+state_t state = { do_fsm_menu_lps };
 
 /* Private variables ---------------------------------------------------------*/
 //int count;
@@ -77,7 +80,7 @@ bool feed_direction = feed_direction_left;
 
 uint32_t menu_changed = 0;
 
-
+#define _SIMU
 bool auto_mode = false;
 int32_t auto_mode_delay = -1; // default delay between change direction is 6 secons
 
@@ -341,6 +344,9 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	z_axis.mode = fsm_menu_lps;
 	rs = 11;
+//	do_fsm_wait_tacho(&state);
+	
+//	TIM4_IRQHandler();
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -368,14 +374,14 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 // инициализация дисплея
+#ifndef _SIMU
 	init_screen(&hi2c2);
-
 	i2c_device_init(&hi2c2);
+#endif
 
 	init_buttons();
 
-
-	/*
+/*
 	//72MGz процессор, 1 так = 1/72us, 1 цикл пустого for(для света до 255) равен 14 тактам + 6 тактов,
 	//для больших чисел около 16 тактов на цикл + загрузка
 	//	на первичную загрузку в первом цикле, т.е. 10*14+6=146 тактов, чуть более 2us
@@ -418,154 +424,25 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+#ifndef _SIMU		
 		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
+#endif		
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 		process_button();
 //		process_joystick();
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
-/*
-//main Finite-state machine(Nondeterministic finite automaton):
-	fsm_menu,										//0 . menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
-	fsm_menu_lps, 							//10. long_press_start: end_pos = current_pos = 0, идем в п. fsm_first_cut_lps
-	fsm_first_cut_lps, 					//20. init selected mode, init direction, motor on, goto fsm_wait_tacho
-	fsm_wait_tacho, 						//24. wait tacho pulse, go to 25
-	fsm_first_cut_ramp_up, 			//25. tacho pulse interrupt: включаем прерывание по тикам энкодера, начинаем разгоняться(ramp up) по таблице пока не выйдем на расчетную скорость,далее в режим 26
-	fsm_first_cut_main_part, 		//26. step until long_press_end event, then go to 27
-	fsm_first_cut_lpe,					//27. long_press_end event: проверяем общее расчетное количество шагов(разгон+infeed+основной путь+торможение), при необходимости делаем дошагиваем до кратного целого в зависимости от микрошага, далее в режим торможения, п. 30
-	fsm_first_cut_ramp_down,		//30. режим торможения(ramp down) пока по таблице разгона не дойдем обратно до нуля, останавливаем мотор, end_pos = current_pos, меняем направление, обновляем экран, идем в п.35
-	fsm_wait_sclick,          	//35. ждем SINGLE_CLICK: если current_pos > 0 ? идем в mode = 40 иначе в	mode = 50
-	fsm_sclick_event,         	//40. клик: включаем моторы обратно, идем в п.45
-	fsm_main_cut_back_ramp_up,	//45. если счетчик current_pos > 0 то едем обратно до нуля: разгон
-	fsm_main_cut_back,					//46. main path back to initial position. If long_press_start detected during process, activate prolonged mode ( 48).
-	fsm_main_cut_back_ramp_down,//47. аналогично 27, торможение, останавливаем мотор, меняем направление, обновляем экран, идем в п.35
-	fsm_main_cut_back_prolong,	//48. prolonged mode used to extend cutting path until long_press released. step back until current_pos reach start position add full revolution steps of servo. when released go back to 46
-	fsm_main_cut_wait_tacho,		//50. клик: включаем моторы вперед, ждем тахо, идем в п.52
-	fsm_main_cut_ramp_up,				//54. тахо пульс обнаружен, включаем прерывание по тикам энкодера, можно шагать, идем в п.55
-	fsm_main_cut,								//55. если счетчик current_pos = 0 то в зависимости от выбранной стратегии вычисляем infeed и идем в режим резьбы до end_pos: разгон, далее идем в п.56
-//стратегии врезания(infeed): 0: radial infeed, 1: incremental infeed, 2: modifyed flank infeed
-	fsm_main_cut_infeed,				//56. infeed для резьбы: в зависимости от номера прохода сдвигаем каретку на определенное количество шагов для облегчения резания+основной путь, далее в п. 30
-*/
 
-		uint8_t level = Thread_Info[Menu_Step].level;
 
-		if(auto_mode == true) {
-			if ( auto_mode_delay == 0 ) {
-				buttons_flag_set = single_click_Msk; //
-			}
-		}
+//		uint8_t level = Thread_Info[Menu_Step].level;
 
-		switch(buttons_flag_set) {
-			case single_click_Msk3: {
-			feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
-			menu_changed = 1;
-			break;
-		}
-		case single_click_Msk2: {
-			feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
-			menu_changed = 1;
-			break;
-		}
-		case single_click_Msk: {
-			if(z_axis.end_pos != 0) {
-				if(auto_mode == true && auto_mode_delay > 0) { // single click in auto mode temporary disable auto_mode, processing to be continued at next single click
-					auto_mode_delay = -1;
-					break;
-				}
+//		if(auto_mode == true) {
+//			if ( auto_mode_delay == 0 ) {
+//				buttons_flag_set = single_click_Msk; //
+//			}
+//		}
 
-				// first pass of thread cut was complete, so just use single click
-				//	to switch between modes to process all other cuts
-				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-				for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver
-				z_axis.mode = z_axis.current_pos > 0 ? fsm_sclick_event : fsm_main_cut_wait_tacho;
-			} else { // controller in initial state, scroll menu
-				z_axis.mode = fsm_menu_lps;
-				for (int a = Menu_Step+1; a<Menu_size; a++) {
-					if(Thread_Info[a].level == level) {
-						Menu_Step = a;
-						menu_changed = 1;
-						break;
-					}
-				}
-				if(menu_changed != 1) {
-					for (int a = 0; a<Menu_Step; a++) {
-						if(Thread_Info[a].level == level) {
-							Menu_Step = a;
-							menu_changed = 1;
-							break;
-						}
-					}
-				}
-			}
-			break;
-		}
-		case double_click_Msk: {
-			feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
-			menu_changed = 1;
-			break;
-		}
-		case (long_press_start_Msk | long_press_start_Msk2): { // two buttons long pressed same time
-			// todo check if it work
-			break;
-		}
-		case long_press_start_Msk: {
-			switch(z_axis.mode) {
-			case fsm_menu_lps: {
-				if(Thread_Info[Menu_Step].Q824 != 0) { // long press detected, start new thread from current position
-					//mode 20:
-					disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
-					MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-					if( feed_direction == feed_direction_right )
-						MOTOR_Z_Forward();
-					else
-						MOTOR_Z_Reverse();
-					for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver
-
-					z_axis.Q824set = Thread_Info[Menu_Step].Q824;
-					z_axis.end_pos = z_axis.current_pos = 0;
-					const uint64_t upl = (uint64_t)3600 << 48;
-					z_axis.prolong_addSteps = upl / (fixedptud)z_axis.Q824set;
-
-					z_axis.mode = fsm_wait_tacho; // go straight to 24 to wait tacho
-//																																																			count = 0;
-				} else { // goto submenu
-					for (int a = 0; a<Menu_size; a++) {
-						if(Thread_Info[a].level == Thread_Info[Menu_Step].submenu) {
-							Menu_Step = a;
-							menu_changed = 1;
-							//																													mode = 0;
-							break;
-						}
-					}
-				}
-				break;
-			}
-			case fsm_main_cut_back: { // we going back to initial position and want to add some additional travel.
-//															usecase: set thread cutter into current thread, with long press go to end of the thread and on way back home enlarge path to get full thread into work
-				z_axis.mode = fsm_main_cut_back_prolong; // go to 48 mode to add threads until long_press end
-				break;
-			}
-			}
-			break;
-		}
-		case long_press_end_Msk: {
-			switch(z_axis.mode) {
-			case fsm_first_cut_main_part: {
-//																					if(auto_mode == true){
-//																									auto_mode_delay = auto_mode_delay_ms; //engage countdown timer to auto generate click event
-//																					}
-//																					Q824count = 0;
-				z_axis.mode = fsm_first_cut_lpe;
-				break;
-			}
-			case fsm_main_cut_back_prolong: { // end of prolonged mode
-				z_axis.mode = fsm_main_cut_back;
-				break;
-			}
-			}
-			break;
-		}
-		}
-		buttons_flag_set = 0; // reset button flags
+		do_fsm_menu(&state);
+//		buttons_flag_set = 0; // reset button flags
 
 //								if(z_axis.current_pos != z_axis.cpv) {
 //										z_axis.cpv = z_axis.current_pos;
@@ -589,7 +466,6 @@ int main(void)
 
 	}
   /* USER CODE END 3 */
-
 }
 
 /**

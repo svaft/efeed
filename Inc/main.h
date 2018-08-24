@@ -192,11 +192,11 @@ typedef struct {
 	uint8_t infeed_strategy;
 } S_WORK_SETUP;
 
-
-
 extern axis z_axis;
 
 extern uint32_t menu_changed;
+
+
 
 // crosslide feed:
 /*

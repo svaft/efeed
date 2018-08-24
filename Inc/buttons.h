@@ -9,7 +9,7 @@
 #include "stm32f1xx_hal.h"
 
 
-#define BT_TOTAL	4
+#define BT_TOTAL	1
 
 #define BB_VAR   0x20004000
 //#define BB_VAR 0x20004000

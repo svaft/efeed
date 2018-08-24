@@ -38,6 +38,7 @@
 /* USER CODE BEGIN 0 */
 #include "fixedptc.h"
 #include "buttons.h"
+#include "fsm.h"
 
 
 #if  defined ( _SIMU )
@@ -190,7 +191,7 @@ void SysTick_Handler(void)
   HAL_SYSTICK_IRQHandler();
   /* USER CODE BEGIN SysTick_IRQn 1 */
 
-
+/*
 #if  defined ( _SIMU )
 
 //simulate spindle
@@ -205,7 +206,7 @@ void SysTick_Handler(void)
 		TIM4_IRQHandler();
 	}
 #endif
-
+*/
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
 	for(int a = 0; a<BT_TOTAL;a++){
@@ -256,14 +257,20 @@ void DMA1_Channel5_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-	_Bool dir = t4cr1[TIM_CR1_DIR_Pos];
+//	_Bool dir = t4cr1[TIM_CR1_DIR_Pos];
+	state.function(&state);
+
+/*	
 	if(encoder) {
 		if ( dir != Spindle_Direction ) {
 // direction changed, count not updated and no pulse to motor
 			Spindle_Direction    = dir;
 		} else {
+
+			state.function(&state);
+
 			switch(z_axis.mode) {
-			case 20:        { // not used?
+			case fsm_first_cut_lps:        { // not used?
 				disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
 				MOTOR_Z_Enable();
 				if(feed_direction)
@@ -452,6 +459,8 @@ void TIM4_IRQHandler(void)
 			break;
 		}
 	}
+*/
+//	TIM4->SR &= ~TIM_SR_UIF; //Сбрасываем бит вызова прерывания. 
 
   /* USER CODE END TIM4_IRQn 0 */
   HAL_TIM_IRQHandler(&htim4);

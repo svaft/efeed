@@ -15,7 +15,7 @@ void init_buttons(void){
 	bt[0].GPIOx = BUTTON_1_GPIO_Port;
 	bt[0].button_pin = BUTTON_1_Pin;
 	bt[0].buttons = bt[0].buttons_mask = bt[0].GPIOx->IDR & bt[0].button_pin;
-	
+	return;
 	bt[1].clk_mode = 10;
 	bt[1].GPIOx = BUTTON_2_GPIO_Port;
 	bt[1].button_pin = BUTTON_2_Pin;

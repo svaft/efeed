@@ -14,7 +14,8 @@ typedef void (*state_func_t)( struct state* );
 typedef struct state
 {
   state_func_t function;
-
+	_Bool f_encoder;
+	_Bool f_tacho;
   // other stateful data
 
 } state_t;

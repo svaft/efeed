@@ -64,7 +64,7 @@ TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
 
-axis z_axis = { 0,0,fsm_menu,fsm_menu,0,0,0,0 };
+axis z_axis = { 0,0,0,0,0,0 };
 state_t state = { do_fsm_menu_lps };
 
 /* Private variables ---------------------------------------------------------*/
@@ -80,7 +80,7 @@ bool feed_direction = feed_direction_left;
 
 uint32_t menu_changed = 0;
 
-#define _SIMU
+//#define _SIMU
 bool auto_mode = false;
 int32_t auto_mode_delay = -1; // default delay between change direction is 6 secons
 
@@ -100,7 +100,8 @@ recommendation: mm(tpi) - passes
 // Enc_Line/(Step_Per_Revolution/Feed_Screw*Thread_mm)
 // перегенерация есть в excel файле
 THREAD_INFO Thread_Info[] = {
-	{ 0x12000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
+//	{ 0x12000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
+	{ 0x02400000, 0, "4.00", "mm", 10, "1.26", ".050", 0 },
 //{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
 	{ 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 1 },
 	{ 0x04800000, 0, "2.00", "mm", 0, "1.26", ".050", 2 },
@@ -342,7 +343,7 @@ void recalculate_setup()  // todo: not ready yet
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	z_axis.mode = fsm_menu_lps;
+//	z_axis.mode = fsm_menu_lps;
 	rs = 11;
 //	do_fsm_wait_tacho(&state);
 	
@@ -442,7 +443,7 @@ int main(void)
 //		}
 
 		do_fsm_menu(&state);
-//		buttons_flag_set = 0; // reset button flags
+		buttons_flag_set = 0; // reset button flags
 
 //								if(z_axis.current_pos != z_axis.cpv) {
 //										z_axis.cpv = z_axis.current_pos;
@@ -454,11 +455,12 @@ int main(void)
 			menu_changed = 1;
 		}
 
-
+/*
 		if(z_axis.mode != z_axis.mode_prev) {
 			z_axis.mode_prev = z_axis.mode;
 			menu_changed = 1;
 		}
+*/		
 // update display info
 		if(menu_changed == 1 && hi2c2.hdmatx->State == HAL_DMA_STATE_READY) {
 			menu_changed = update_screen();

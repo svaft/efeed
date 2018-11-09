@@ -145,8 +145,8 @@ typedef struct
 {
     uint32_t current_pos;
     uint32_t end_pos;
-    fsm_t mode;
-    fsm_t mode_prev;
+//    fsm_t mode;
+//    fsm_t mode_prev;
     
     uint32_t Q824set;
     uint32_t fract_part; // Q8.24 format fract part

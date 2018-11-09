@@ -16,6 +16,7 @@ void init_buttons(void){
 	bt[0].button_pin = BUTTON_1_Pin;
 	bt[0].buttons = bt[0].buttons_mask = bt[0].GPIOx->IDR & bt[0].button_pin;
 	return;
+	bt[1] = bt[0];
 	bt[1].clk_mode = 10;
 	bt[1].GPIOx = BUTTON_2_GPIO_Port;
 	bt[1].button_pin = BUTTON_2_Pin;
@@ -30,6 +31,7 @@ void init_buttons(void){
 	bt[2].clk_mode = 10;
 	bt[2].button_pin = 0x02; // button_c code
 	bt[2].buttons = bt[2].buttons_mask = dma_data[5]&bt[2].button_pin; // = bt[1].GPIOx->IDR & bt[1].button_pin;
+	
 	bt[3].clk_mode = 10;
 	bt[3].button_pin = 0x01; // button_c code
 	bt[3].buttons = bt[3].buttons_mask = dma_data[5]&bt[3].button_pin; // = bt[1].GPIOx->IDR & bt[1].button_pin;
@@ -89,7 +91,9 @@ inline void process_button()
 		}
 //	#endif
 
-
+		if(z_axis.current_pos < 20)
+			tmp_buttons = 0;
+		
 		if( tmp_buttons != bt[a].buttons ) { // start debounce
 			bt[a].buttons = tmp_buttons;
 			// reset debounce counter and start count every one ms

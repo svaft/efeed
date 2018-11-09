@@ -36,7 +36,7 @@ inline int update_screen(){
 	char text_buffer[11];
 
 	SSD1306_GotoXY(SSD1306_WIDTH - 16, 0);
-	SSD1306_Puts2(utoa_builtin_div_1(z_axis.mode, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
+//	SSD1306_Puts2(utoa_builtin_div_1(z_axis.mode, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
 
 	SSD1306_GotoXY(SSD1306_WIDTH - 60, 16);
 	SSD1306_Puts2(utoa_builtin_div_1(z_axis.current_pos, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode

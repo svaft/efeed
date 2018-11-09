@@ -1,6 +1,58 @@
 #include "fsm.h"
 #include "buttons.h"
 
+
+uint32_t ramp[]= {
+	0x1E000000,
+//      0x00000000, // zero delay to disable ramp up
+	0x15E353F7,
+	0x110624DD,
+	0x0E67A909,
+	0x0CB5D163,
+	0x0B7FEE35,
+	0x0A946A82,
+	0x09D9A0F5,
+	0x0940CD81,
+	0x08C0C265,
+	0x0853743B,
+	0x07F4B905,
+	0x07A19758,
+	0x0757DEEB,
+	0x0715E90F,
+	0x06DA701C,
+	0x06A47489,
+	0x06732AAA,
+	0x0645EDE1,
+	0x061C377E,
+	0x05F59819,
+	0x05D1B2A3,
+	0x05B038B1,
+	0x0590E7A4,
+	0x0573867F,
+	0x0557E426,
+	0x053DD60D,
+	0x0525371D,
+	0x050DE6D9,
+	0x04F7C8A5,
+	0x04E2C336,
+	0x04CEC017,
+	0x04BBAB40,
+	0x04A972C8,
+	0x04980698,
+	0x04875834,
+	0x04775A84,
+	0x046801AD,
+	0x045942E9,
+	0x044B1467,
+	0x043D6D31,
+	0x04304514,
+	0x0423948C,
+	0x041754AE,
+	0x040B7F1D,
+	0x04000DF9,
+};
+#define ramp_map 5
+
 /*//main Finite-state machine(Nondeterministic finite automaton):
 	fsm_menu,										//0 . menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
 	fsm_menu_lps, 							//10. long_press_start: end_pos = current_pos = 0, идем в п. fsm_first_cut_lps
@@ -29,22 +81,96 @@ extern TIM_HandleTypeDef htim3;
 
 extern uint32_t infeed_step;
 extern uint32_t infeed_steps;
-extern uint16_t infeed_map[];
 
 
-void at_move_end(void);
-void move(void);
-_Bool ramp_up(void);
-_Bool ramp_down(void);
+uint32_t infeed_step = 0;
+uint32_t infeed_steps = 10;
+
+
+uint16_t infeed_map[]= {
+	0,
+	188,
+	264,
+	322,
+	370,
+	413,
+	452,
+	488,
+	521,
+	552,
+	582,
+	610,
+	637,
+	662,
+	687,
+	711,
+	734,
+	756,
+};
+
+
+
+_Bool z_axis_ramp_up(void)
+{
+	const fixedptu  set_with_fract = ramp[z_axis.ramp_step];
+	if(z_axis.Q824set > set_with_fract || z_axis.ramp_step == ramp_map ) { // reach desired speed or end of ramp map
+		TIM4->ARR = fixedpt_toint(z_axis.Q824set) - 1; // update register ARR
+		TIM4->EGR |= TIM_EGR_UG;
+		z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); // save fract part for future use on next step
+		return true;
+	} else {
+		z_axis.ramp_step++;
+		TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+		TIM4->EGR |= TIM_EGR_UG;
+//		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	}
+	return false;
+}
+
+_Bool z_axis_ramp_down(void)
+{
+	if (z_axis.ramp_step == 0)
+		return true;
+	const fixedptu set_with_fract = ramp[--z_axis.ramp_step];
+	TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+	TIM4->EGR |= TIM_EGR_UG;
+//	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	if(z_axis.ramp_step == 0)
+		return true;
+	return false;
+}
+
+void z_axis_move(void)
+{
+	const fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
+	TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+	TIM4->EGR |= TIM_EGR_UG;
+	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+}
+
+
+void z_axis_at_move_end(state_t* s)
+{
+	disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
+	//      MOTOR_Z_Disable(); //disable motor later on next tacho event (or after some ticks count?) to completely process last step
+//	if(auto_mode == true)    auto_mode_delay = auto_mode_delay_ms; // reengage auto mode
+	feed_direction = !feed_direction; //change feed direction
+	menu_changed = 1; //update menu
+	s->function = do_fsm_wait_sclick;
+//	z_axis.mode = fsm_wait_sclick; // dummy mode
+}
+
+
 
 
 void do_fsm_wait_tacho(state_t* s)
 {
-	if(t4sr[TIM_SR_CC3IF_Pos]) { // if tacho event
+	if(s->f_tacho) { // if tacho event
 		s->function = do_fsm_first_cut_ramp_up;
 //		infeed_step = 0; todo
 		LED_GPIO_Port->BRR = LED_Pin; //led on
 		TIM4->ARR = 1; // start stepper motor ramp up procedure immediately after tacho event
+		TIM4->EGR |= TIM_EGR_UG;
 		TIM4->CNT = 0;
 		enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
 	}
@@ -135,6 +261,15 @@ void do_fsm_menu(state_t* s)
 		break;
 	}
 	case long_press_end_Msk: {
+		if(s->function == do_fsm_first_cut_main_part){
+			s->function = do_fsm_first_cut_lpe;
+			break;
+		}
+		if(s->function == do_fsm_main_cut_back_prolong){ // end of prolonged mode
+			s->function = do_fsm_main_cut_back;
+			break;
+		}
+		/*
 		switch(z_axis.mode) {
 		case fsm_first_cut_main_part: {
 //																					if(auto_mode == true){
@@ -149,6 +284,7 @@ void do_fsm_menu(state_t* s)
 			break;
 		}
 		}
+		*/
 		break;
 	}
 	}
@@ -181,8 +317,7 @@ void do_fsm_first_cut_ramp_up(state_t* s)          // direct movement: first pas
 {
 	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
-	if(ramp_up()) {
-		s->function = do_fsm_first_cut_main_part;
+	if(z_axis_ramp_up()) {
 		s->function = do_fsm_first_cut_main_part;
 		LED_GPIO_Port->BSRR = LED_Pin; //led off
 	}
@@ -193,7 +328,7 @@ void do_fsm_first_cut_main_part(state_t* s)          // direct movement: first p
 {
 	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
-	move();
+	z_axis_move();
 }
 
 
@@ -209,11 +344,11 @@ void do_fsm_first_cut_lpe(state_t* s)          // direct movement: first pass, t
 	uint32_t all_count = z_axis.ramp_step + z_axis.current_pos - 1;
 	uint32_t masked_count = all_count & ~(step_divider - 1);
 	if(masked_count != all_count) {
-		move();
+		z_axis_move();
 	} else {
-		if(ramp_down()) {
+		if(z_axis_ramp_down()) {
 			z_axis.end_pos = z_axis.current_pos;
-			at_move_end();
+			z_axis_at_move_end(s);
 		} else {
 			s->function = do_fsm_first_cut_ramp_down;
 		}
@@ -229,9 +364,9 @@ void do_fsm_first_cut_ramp_down(state_t* s)          // direct movement: ramp do
 {
 	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
-	if(ramp_down()) {
+	if(z_axis_ramp_down()) {
 		z_axis.end_pos = z_axis.current_pos;
-		at_move_end();
+		z_axis_at_move_end(s);
 	}
 }
 
@@ -255,7 +390,7 @@ void do_fsm_main_cut_back_ramp_up(state_t* s)          // reverse movement: ramp
 {
 	MOTOR_Z_SetPulse();
 	--z_axis.current_pos;
-	if(ramp_up())
+	if(z_axis_ramp_up())
 		s->function = do_fsm_main_cut_back;
 }
 
@@ -282,8 +417,8 @@ void do_fsm_main_cut_back_ramp_down(state_t* s)   // reverse movement: ramp down
 		MOTOR_Z_SetPulse();
 		--z_axis.current_pos;
 	}
-	if(ramp_down()) {
-		at_move_end();
+	if(z_axis_ramp_down()) {
+		z_axis_at_move_end(s);
 	}
 }
 
@@ -322,7 +457,7 @@ void do_fsm_main_cut(state_t* s)   // direct movement: ramp up: accel by ramp ma
 {
 	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
-	if(ramp_up()) {
+	if(z_axis_ramp_up()) {
 		LED_GPIO_Port->BSRR = LED_Pin;   // led off
 		s->function = do_fsm_main_cut_infeed;
 	}
@@ -334,7 +469,7 @@ void do_fsm_main_cut_infeed(state_t* s)   // direct movement: main part
 	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
 	if( z_axis.current_pos < ( z_axis.end_pos - z_axis.ramp_step ) ) {
-		move();
+		z_axis_move();
 	} else {
 		s->function = do_fsm_first_cut_ramp_down;
 	}
@@ -358,6 +493,7 @@ void do_fsm_main_cut_ramp_up(state_t* s)
 	} else {
 		TIM4->ARR = 1;  // start stepper motor ramp up procedure immediately after tacho event
 	}
+	TIM4->EGR |= TIM_EGR_UG;
 
 	TIM4->CNT = 0;
 	enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set

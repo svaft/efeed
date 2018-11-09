@@ -49,95 +49,16 @@ bool encoder;
 #define encoder t4sr[TIM_SR_UIF_Pos]
 #endif
 
-_Bool ramp_down(void);
-inline _Bool ramp_up(void);
-void move(void);
-void at_move_end(void);
+//_Bool ramp_down(void);
+//inline _Bool ramp_up(void);
+//void move(void);
+//void at_move_end(void);
 
 
 extern bool feed_direction;
 extern TIM_HandleTypeDef htim3;
 extern uint8_t Spindle_Direction;
 
-uint32_t infeed_step = 0;
-uint32_t infeed_steps = 10;
-
-
-uint16_t infeed_map[]= {
-	0,
-	188,
-	264,
-	322,
-	370,
-	413,
-	452,
-	488,
-	521,
-	552,
-	582,
-	610,
-	637,
-	662,
-	687,
-	711,
-	734,
-	756,
-};
-
-
-uint32_t ramp[]= {
-	0x1E000000,
-//      0x00000000, // zero delay to disable ramp up
-	0x15E353F7,
-	0x110624DD,
-	0x0E67A909,
-	0x0CB5D163,
-	0x0B7FEE35,
-	0x0A946A82,
-	0x09D9A0F5,
-	0x0940CD81,
-	0x08C0C265,
-	0x0853743B,
-	0x07F4B905,
-	0x07A19758,
-	0x0757DEEB,
-	0x0715E90F,
-	0x06DA701C,
-	0x06A47489,
-	0x06732AAA,
-	0x0645EDE1,
-	0x061C377E,
-	0x05F59819,
-	0x05D1B2A3,
-	0x05B038B1,
-	0x0590E7A4,
-	0x0573867F,
-	0x0557E426,
-	0x053DD60D,
-	0x0525371D,
-	0x050DE6D9,
-	0x04F7C8A5,
-	0x04E2C336,
-	0x04CEC017,
-	0x04BBAB40,
-	0x04A972C8,
-	0x04980698,
-	0x04875834,
-	0x04775A84,
-	0x046801AD,
-	0x045942E9,
-	0x044B1467,
-	0x043D6D31,
-	0x04304514,
-	0x0423948C,
-	0x041754AE,
-	0x040B7F1D,
-	0x04000DF9,
-};
-#define ramp_map 50
-
-extern bool auto_mode;
-extern int32_t auto_mode_delay;
 
 uint32_t tacho_cnt = 0;
 uint32_t tacho_debug = 0;
@@ -258,8 +179,10 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 //	_Bool dir = t4cr1[TIM_CR1_DIR_Pos];
+	state.f_encoder = encoder;
+	state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
 	state.function(&state);
-
+	
 /*	
 	if(encoder) {
 		if ( dir != Spindle_Direction ) {
@@ -498,6 +421,7 @@ void I2C2_ER_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+/*
 _Bool ramp_up(void)
 {
 	const fixedptu  set_with_fract = ramp[z_axis.ramp_step];
@@ -531,7 +455,8 @@ void move(void)
 	TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
 	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 }
-
+*/
+/*
 void at_move_end(void)
 {
 	disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
@@ -540,7 +465,8 @@ void at_move_end(void)
 	feed_direction = !feed_direction; //change feed direction
 	menu_changed = 1; //update menu
 	z_axis.mode = fsm_wait_sclick; // dummy mode
+	state.function = 
 }
-
+*/
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

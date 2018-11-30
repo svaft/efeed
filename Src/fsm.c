@@ -78,6 +78,8 @@ extern bool feed_direction;
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 extern const uint8_t Menu_size;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
+extern TIM_HandleTypeDef htim2;
 
 extern uint32_t infeed_step;
 extern uint32_t infeed_steps;
@@ -234,18 +236,22 @@ void do_fsm_menu(state_t* s)
 				//mode 20:
 				disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
 				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
+				s->main_feed_direction = feed_direction; // save main feed direction, where cut is on
 				if( feed_direction == feed_direction_right )
 					MOTOR_Z_Forward();
 				else
 					MOTOR_Z_Reverse();
-				for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver
+				
+				for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver todo dumb method
 
 				z_axis.Q824set = Thread_Info[Menu_Step].Q824;
 				z_axis.end_pos = z_axis.current_pos = 0;
-				const uint64_t upl = (uint64_t)3600 << 48;
+
+				const uint64_t upl = (uint64_t)3600 << 48; //calculate some constants for prolong mode
 				z_axis.prolong_addSteps = upl / (fixedptud)z_axis.Q824set;
 
 				s->function = do_fsm_wait_tacho; // go straight to 24 to wait tacho
+
 			} else { // goto submenu
 				for (int a = 0; a<Menu_size; a++) {
 					if(Thread_Info[a].level == Thread_Info[Menu_Step].submenu) {
@@ -298,6 +304,7 @@ void do_fsm_menu_lps(state_t* s)
 
 void do_fsm_first_cut_lps(state_t* s)  // not used?
 {
+	
 	disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
 	MOTOR_Z_Enable();
 	if(feed_direction)
@@ -305,7 +312,6 @@ void do_fsm_first_cut_lps(state_t* s)  // not used?
 	else
 		MOTOR_Z_Reverse();
 	s->function = do_fsm_wait_tacho; //intermediate state to wait tacho pulse.
-	s->function = do_fsm_wait_tacho;
 }
 
 
@@ -497,4 +503,134 @@ void do_fsm_main_cut_ramp_up(state_t* s)
 
 	TIM4->CNT = 0;
 	enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
+}
+
+
+
+//---------------------------------------------------------------------------------------------
+void do_fsm_move_start(state_t* s){
+	if(s->main_feed_direction != feed_direction || s->f_tacho ) { // if tacho event or we going to start back feed to initial position with async clock
+		s->function = do_fsm_ramp_up;
+		if(s->main_feed_direction == feed_direction) {
+			s->sync = true;
+			s->syncbase = &htim4; 									// sync with spindle
+		} else {
+			s->syncbase = &htim2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+		}
+
+		s->syncbase->Instance->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
+		s->syncbase->Instance->EGR |= TIM_EGR_UG; // upload ARR value immediately 
+		s->syncbase->Instance->CNT = 0;						// reset counter
+		enable_encoder_ticks(); 									// enable thread specific interrupt controlled by Q824set
+	}	
+}
+
+void do_fsm_ramp_up(state_t* s)
+{
+	MOTOR_Z_SetPulse();
+	z_axis.current_pos++;
+	if(z_axis_ramp_up2(s)) {
+		if(z_axis.end_pos != 0){
+			s->function = do_fsm_move;
+		} else {
+			s->function = do_fsm_move;
+		}
+	}
+}
+
+void do_fsm_move(state_t* s)
+{
+	MOTOR_Z_SetPulse();
+	z_axis.current_pos++;
+	if( z_axis.current_pos < ( z_axis.end_pos - z_axis.ramp_step ) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be mach more lager then current_pos
+		z_axis_move2(s);
+	} else {
+		s->function = do_fsm_ramp_down;
+	}
+}
+
+void do_long_press_end_callback(state_t* s)          // direct movement: first pass, thread recording: long press release callback
+{
+	// для 1/2 микрошага нужно что бы общее количество шагов в цикле резьбы было кратно 2,(для 1/4 кратно 4 и тп).
+	// это нужно для того что бы в конце шаговый мотор остановился на одном из двухсот устойчивых шагов,
+	// не перескакивая на соседние шаги при потере питания.
+	// поэтому проверяем общее количество на четность(0й бит), если нечетное число делаем еще один шаг,
+	// иначе начинаем замедляться
+	MOTOR_Z_SetPulse();
+	z_axis.current_pos++;
+	uint32_t all_count = z_axis.ramp_step + z_axis.current_pos - 1;
+	uint32_t masked_count = all_count & ~(step_divider - 1);
+	if(masked_count != all_count) {
+		z_axis_move();
+	} else {
+		if(z_axis_ramp_down2(s)) {
+			z_axis.end_pos = z_axis.current_pos;
+			do_fsm_move_end(s);
+		} else {
+			s->function = do_fsm_ramp_down;
+		}
+	}
+}
+
+
+void do_fsm_ramp_down(state_t* s)
+{
+	MOTOR_Z_SetPulse();
+	z_axis.current_pos++;
+	if(z_axis_ramp_down2(s)) {
+		if(z_axis.end_pos != z_axis.current_pos) {
+			z_axis.end_pos = z_axis.current_pos;
+		}
+		s->function = do_fsm_move_end;
+	}
+}
+
+void do_fsm_move_end(state_t* s){
+	disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
+	//      MOTOR_Z_Disable(); 									//disable motor later on next tacho event (or after some ticks count?) to completely process last step
+	feed_direction = !feed_direction; 					//change feed direction
+	menu_changed = 1; 													//update menu
+	s->function = do_fsm_wait_sclick;
+
+	z_axis.current_pos = 0;
+}
+
+
+_Bool z_axis_ramp_up2(state_t* s)
+{
+	const fixedptu  set_with_fract = ramp[z_axis.ramp_step];
+	if(z_axis.Q824set > set_with_fract || z_axis.ramp_step == ramp_map ) { 	// reach desired speed or end of ramp map
+		s->syncbase->Instance->ARR = fixedpt_toint(z_axis.Q824set) - 1; 			// update register ARR
+		s->syncbase->Instance->EGR |= TIM_EGR_UG;
+		z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); 								// save fract part for future use on next step
+//		z_axis.end_minus_ramp_delta =
+		return true;
+	} else {
+		z_axis.ramp_step++;
+		s->syncbase->Instance->ARR = fixedpt_toint(set_with_fract) - 1; 			// update register ARR
+		s->syncbase->Instance->EGR |= TIM_EGR_UG;
+//		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); 						// save fract part for future use on next step
+	}
+	return false;
+}
+
+_Bool z_axis_ramp_down2(state_t* s)
+{
+	if (z_axis.ramp_step == 0)
+		return true;
+	const fixedptu set_with_fract = ramp[--z_axis.ramp_step];
+	s->syncbase->Instance->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+	s->syncbase->Instance->EGR |= TIM_EGR_UG;
+//	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	if(z_axis.ramp_step == 0)
+		return true;
+	return false;
+}
+
+void z_axis_move2(state_t* s)
+{
+	const fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
+	s->syncbase->Instance->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+	s->syncbase->Instance->EGR |= TIM_EGR_UG;
+	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 }

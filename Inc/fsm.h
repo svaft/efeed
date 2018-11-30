@@ -16,6 +16,9 @@ typedef struct state
   state_func_t function;
 	_Bool f_encoder;
 	_Bool f_tacho;
+	_Bool sync;
+	_Bool main_feed_direction;
+	TIM_HandleTypeDef *syncbase;
   // other stateful data
 
 } state_t;
@@ -40,6 +43,18 @@ void do_fsm_main_cut_wait_tacho(state_t*);		//50. клик: включаем м�
 void do_fsm_main_cut_ramp_up(state_t*);				//54. тахо пульс обнаружен, включаем прерывание по тикам энкодера, можно шагать, идем в п.55
 void do_fsm_main_cut(state_t*);								//55. если счетчик current_pos = 0 то в зависимости от выбранной стратегии вычисляем infeed и идем в режим резьбы до end_pos: разгон, далее идем в п.56
 void do_fsm_main_cut_infeed(state_t*);				//56. infeed для резьбы: в зависимости от номера прохода сдвигаем каретку на определенное количество шагов для облегчения резания+основной путь, далее в п. 30
+
+
+
+void do_fsm_move_start(state_t* );
+void do_fsm_ramp_up(state_t* );
+void do_fsm_move(state_t*);
+void do_fsm_ramp_down(state_t* );
+void do_fsm_move_end(state_t* );
+
+_Bool z_axis_ramp_up2(state_t* );
+_Bool z_axis_ramp_down2(state_t* );
+void z_axis_move2(state_t* );
 
 
 #endif /* FSM_H_ */

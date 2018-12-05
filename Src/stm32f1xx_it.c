@@ -60,6 +60,11 @@ extern TIM_HandleTypeDef htim3;
 extern uint8_t Spindle_Direction;
 
 
+extern uint16_t text_buffer[];
+extern uint32_t tbc;
+
+extern uint32_t async_z;
+
 uint32_t tacho_cnt = 0;
 uint32_t tacho_debug = 0;
 /* USER CODE END 0 */
@@ -70,6 +75,7 @@ extern DMA_HandleTypeDef hdma_i2c2_rx;
 extern I2C_HandleTypeDef hi2c2;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim4;
+
 
 /******************************************************************************/
 /*            Cortex-M3 Processor Interruption and Exception Handlers         */ 
@@ -179,6 +185,22 @@ void DMA1_Channel5_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
+// prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
+//	if ( async_z == 1) {
+	if ( state.async_z == 1) {
+//		state.f_encoder = encoder;
+//		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
+//		LED_GPIO_Port->BSRR = LED_Pin;   // led off
+//		LED_GPIO_Port->BRR = LED_Pin;
+//    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+
+		state.function(&state);
+		
+		TIM2->ARR = state.z_period;
+		TIM2->EGR |= TIM_EGR_UG;
+
+		text_buffer[tbc++] = TIM2->ARR;
+	}
 
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);
@@ -194,9 +216,11 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 //	_Bool dir = t4cr1[TIM_CR1_DIR_Pos];
-	state.f_encoder = encoder;
-	state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
-	state.function(&state);
+	if (state.sync == true) {
+		state.f_encoder = encoder;
+		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
+		state.function(&state);
+	}
 	
 /*	
 	if(encoder) {

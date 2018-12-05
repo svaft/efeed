@@ -13,13 +13,23 @@ typedef void (*state_func_t)( struct state* );
 
 typedef struct state
 {
+// Z axis
   state_func_t function;
+	uint32_t async_z;
+	uint32_t current_pos;
+	uint8_t z_period;
 	_Bool f_encoder;
 	_Bool f_tacho;
 	_Bool sync;
 	_Bool main_feed_direction;
 	TIM_HandleTypeDef *syncbase;
   // other stateful data
+
+  // X axis
+  state_func_t function_x;
+	_Bool sync_x;
+	TIM_HandleTypeDef *syncbase_x;
+	uint8_t x_period;
 
 } state_t;
 
@@ -55,6 +65,15 @@ void do_fsm_move_end(state_t* );
 _Bool z_axis_ramp_up2(state_t* );
 _Bool z_axis_ramp_down2(state_t* );
 void z_axis_move2(state_t* );
+
+
+
+void do_fsm_ramp_up_async(state_t* );
+void do_fsm_move_async(state_t*);
+void do_fsm_ramp_down_async(state_t* );
+_Bool z_axis_ramp_up_async(state_t* );
+_Bool z_axis_ramp_down_async(state_t* );
+
 
 
 #endif /* FSM_H_ */

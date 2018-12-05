@@ -140,6 +140,8 @@ THREAD_INFO Thread_Info[] = {
 
 uint8_t Menu_Step = 0;																					// выборка из массива по умолчанию (1.5mm)
 const uint8_t Menu_size = sizeof(Thread_Info)/sizeof(Thread_Info[0]);
+uint16_t text_buffer[100];
+uint32_t tbc = 0;
 
 /* USER CODE END PV */
 
@@ -345,7 +347,12 @@ int main(void)
   /* USER CODE BEGIN 1 */
 //	z_axis.mode = fsm_menu_lps;
 	rs = 11;
-//	do_fsm_wait_tacho(&state);
+	z_axis.end_pos = 50;
+	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
+
+	state.main_feed_direction = 1;
+	do_fsm_move_start(&state);
+	//	do_fsm_wait_tacho(&state);
 	
 //	TIM4_IRQHandler();
   /* USER CODE END 1 */
@@ -551,9 +558,9 @@ static void MX_TIM2_Init(void)
   TIM_OC_InitTypeDef sConfigOC;
 
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 4;
+  htim2.Init.Prescaler = 720;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 36000;
+  htim2.Init.Period = 0;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)

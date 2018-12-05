@@ -90,7 +90,7 @@
 
 
 #ifndef _SIMU
-//#define _SIMU
+#define _SIMU
 #endif /* __MAIN_H */
 
 #define t4cr1       ((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))

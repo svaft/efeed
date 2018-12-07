@@ -1,10 +1,12 @@
 /**
   ******************************************************************************
-  * @file    stm32f1xx_it.h
-  * @brief   This file contains the headers of the interrupt handlers.
+  * @file    stm32f1xx_ll_pwr.c
+  * @author  MCD Application Team
+  * @brief   PWR LL module driver.
   ******************************************************************************
+  * @attention
   *
-  * COPYRIGHT(c) 2018 STMicroelectronics
+  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -30,40 +32,70 @@
   *
   ******************************************************************************
   */
-
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __STM32F1xx_IT_H
-#define __STM32F1xx_IT_H
-
-#ifdef __cplusplus
- extern "C" {
-#endif 
+#if defined(USE_FULL_LL_DRIVER)
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f1xx.h"
-#include "stm32f1xx_ll_system.h"
-#include "stm32f1xx_ll_gpio.h"
-#include "stm32f1xx_ll_exti.h"
-#include "main.h"
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
+#include "stm32f1xx_ll_pwr.h"
+#include "stm32f1xx_ll_bus.h"
 
-void SVC_Handler(void);
-void PendSV_Handler(void);
-void SysTick_Handler(void);
-void DMA1_Channel4_IRQHandler(void);
-void TIM1_UP_IRQHandler(void);
-void TIM2_IRQHandler(void);
-void TIM4_IRQHandler(void);
-void I2C2_EV_IRQHandler(void);
-void I2C2_ER_IRQHandler(void);
+/** @addtogroup STM32F1xx_LL_Driver
+  * @{
+  */
 
-#ifdef __cplusplus
+#if defined(PWR)
+
+/** @defgroup PWR_LL PWR
+  * @{
+  */
+
+/* Private types -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Private constants ---------------------------------------------------------*/
+/* Private macros ------------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+
+/* Exported functions --------------------------------------------------------*/
+/** @addtogroup PWR_LL_Exported_Functions
+  * @{
+  */
+
+/** @addtogroup PWR_LL_EF_Init
+  * @{
+  */
+
+/**
+  * @brief  De-initialize the PWR registers to their default reset values.
+  * @retval An ErrorStatus enumeration value:
+  *          - SUCCESS: PWR registers are de-initialized
+  *          - ERROR: not applicable
+  */
+ErrorStatus LL_PWR_DeInit(void)
+{
+  /* Force reset of PWR clock */
+  LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_PWR);
+
+  /* Release reset of PWR clock */
+  LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_PWR);
+
+  return SUCCESS;
 }
-#endif
 
-#endif /* __STM32F1xx_IT_H */
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
+#endif /* defined(PWR) */
+/**
+  * @}
+  */
+
+#endif /* USE_FULL_LL_DRIVER */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

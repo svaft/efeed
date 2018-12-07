@@ -6,7 +6,7 @@
 #ifndef FSM_H_
 #define FSM_H_
 
-#include "stm32f1xx_hal.h"
+#include "main.h"
 
 struct state;
 typedef void (*state_func_t)( struct state* );
@@ -22,13 +22,13 @@ typedef struct state
 	_Bool f_tacho;
 	_Bool sync;
 	_Bool main_feed_direction;
-	TIM_HandleTypeDef *syncbase;
+	TIM_TypeDef *syncbase;
   // other stateful data
 
   // X axis
   state_func_t function_x;
 	_Bool sync_x;
-	TIM_HandleTypeDef *syncbase_x;
+	TIM_TypeDef *syncbase_x;
 	uint8_t x_period;
 
 } state_t;

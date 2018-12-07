@@ -119,9 +119,9 @@ uint32_t ramp[]= {
 extern bool feed_direction;
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 extern const uint8_t Menu_size;
-extern TIM_HandleTypeDef htim3;
-extern TIM_HandleTypeDef htim4;
-extern TIM_HandleTypeDef htim2;
+//extern TIM_TypeDef htim3;
+//extern TIM_TypeDef htim4;
+//extern TIM_HandleTypeDef htim2;
 
 extern uint32_t infeed_step;
 extern uint32_t infeed_steps;
@@ -558,16 +558,25 @@ void do_fsm_move_start(state_t* s){
 		if(s->main_feed_direction == feed_direction) {
 			s->function = do_fsm_ramp_up;
 			s->sync = true;
-			s->syncbase = &htim4; 									// sync with spindle
-			
-			s->syncbase->Instance->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
-			s->syncbase->Instance->EGR |= TIM_EGR_UG; // upload ARR value immediately 
-			s->syncbase->Instance->CNT = 0;						// reset counter
+			s->async_z = 0;
+			s->syncbase = TIM4; 									// sync with spindle
+
+			s->syncbase->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
+			s->syncbase->EGR |= TIM_EGR_UG; // upload ARR value immediately 
+			s->syncbase->CNT = 0;						// reset counter
 			enable_encoder_ticks(); 									// enable thread specific interrupt controlled by Q824set
 		} else {
+
 			s->async_z = 1;
-			s->syncbase = &htim2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+//			s->syncbase = &htim2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 			s->function = do_fsm_ramp_up_async;
+
+		/* Enable counter */
+		LL_TIM_EnableCounter(TIM2);
+		/* Force update generation */
+		LL_TIM_GenerateEvent_UPDATE(TIM2);
+
+//			LL_TIM_EnableIT_UPDATE(TIM2);
 		}
 
 	}	
@@ -630,10 +639,13 @@ void do_fsm_ramp_down(state_t* s)
 }
 
 void do_fsm_move_end(state_t* s){
-	s->async_z = 1;
+	s->async_z = 0;
 	s->syncbase = 0; // reset syncbase to stop calling it from timer interrupt
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
+	} else {
+		LL_TIM_DisableCounter(TIM2); // pause async timer
+//		LL_TIM_DisableIT_UPDATE(TIM2);
 	}
   MOTOR_Z_Disable(); 									//disable motor later on next tacho event (or after some ticks count?) to completely process last step
 	feed_direction = !feed_direction; 					//change feed direction
@@ -648,15 +660,15 @@ _Bool z_axis_ramp_up2(state_t* s)
 {
 	const fixedptu  set_with_fract = ramp[z_axis.ramp_step];
 	if(z_axis.Q824set > set_with_fract || z_axis.ramp_step == ramp_map) { 	// reach desired speed or end of ramp map
-		s->syncbase->Instance->ARR = fixedpt_toint(z_axis.Q824set) - 1; 			// update register ARR
-		s->syncbase->Instance->EGR |= TIM_EGR_UG;
+		s->syncbase->ARR = fixedpt_toint(z_axis.Q824set) - 1; 			// update register ARR
+		s->syncbase->EGR |= TIM_EGR_UG;
 		z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); 								// save fract part for future use on next step
 //		z_axis.end_minus_ramp_delta =
 		return true;
 	} else {
 		z_axis.ramp_step++;
-		s->syncbase->Instance->ARR = fixedpt_toint(set_with_fract) - 1; 			// update register ARR
-		s->syncbase->Instance->EGR |= TIM_EGR_UG;
+		s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1; 			// update register ARR
+		s->syncbase->EGR |= TIM_EGR_UG;
 //		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); 						// save fract part for future use on next step
 	}
 	return false;
@@ -667,8 +679,8 @@ _Bool z_axis_ramp_down2(state_t* s)
 	if (z_axis.ramp_step == 0)
 		return true;
 	const fixedptu set_with_fract = ramp[--z_axis.ramp_step];
-	s->syncbase->Instance->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-	s->syncbase->Instance->EGR |= TIM_EGR_UG;
+	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+	s->syncbase->EGR |= TIM_EGR_UG;
 //	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	if(z_axis.ramp_step == 0)
 		return true;
@@ -678,8 +690,8 @@ _Bool z_axis_ramp_down2(state_t* s)
 void z_axis_move2(state_t* s)
 {
 	const fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
-	s->syncbase->Instance->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-	s->syncbase->Instance->EGR |= TIM_EGR_UG;
+	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
+	s->syncbase->EGR |= TIM_EGR_UG;
 	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 }
 
@@ -723,8 +735,8 @@ void do_fsm_ramp_down_async(state_t* s)
 	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
 
-	if (z_axis.ramp_step != 0) {
-		const uint8_t z_arr = ramp2[--z_axis.ramp_step];
+	if (--z_axis.ramp_step != 0) {
+		const uint8_t z_arr = ramp2[z_axis.ramp_step];
 		s->z_period = z_arr;
 	} else {
 // for last step there is no need to wail long, motor can be start to desabled after 145 processor ticks, so with prescaler =145 and more ARR = 1 is enought

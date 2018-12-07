@@ -7,14 +7,13 @@ uint32_t buttons_flag_set __attribute__((at(BB_VAR)));
 
 uint32_t buttons_flag_set_prev = 0;
 BUTTON bt[BT_TOTAL];
-__IO uint8_t  ubTransferComplete = 0;
 
 void init_buttons(void){
 
 	bt[0].clk_mode = 10;
 	bt[0].GPIOx = BUTTON_1_GPIO_Port;
 	bt[0].button_pin = BUTTON_1_Pin;
-	bt[0].buttons = bt[0].buttons_mask = bt[0].GPIOx->IDR & bt[0].button_pin;
+	bt[0].buttons = bt[0].buttons_mask = LL_GPIO_IsInputPinSet(bt[0].GPIOx,BUTTON_1_Pin); //bt[0].GPIOx->IDR & bt[0].button_pin;
 	return;
 	bt[1] = bt[0];
 	bt[1].clk_mode = 10;
@@ -75,7 +74,8 @@ inline void process_button()
 //	#else
 		uint32_t tmp_buttons;
 		if(bt[a].GPIOx != 0)
-			tmp_buttons = bt[a].GPIOx->IDR & bt[a].button_pin; //BUTTON_1_GPIO_Port->IDR & bt[a].button_pin;
+			tmp_buttons = LL_GPIO_IsInputPinSet(bt[a].GPIOx,bt[a].button_pin);
+//			tmp_buttons = bt[a].GPIOx->IDR & bt[a].button_pin; //BUTTON_1_GPIO_Port->IDR & bt[a].button_pin;
 		else{
 			
 //			if(ubTransferComplete == 0)
@@ -91,8 +91,8 @@ inline void process_button()
 		}
 //	#endif
 
-		if(z_axis.current_pos < 20)
-			tmp_buttons = 0;
+//		if(z_axis.current_pos < 20)
+//			tmp_buttons = 0;
 		
 		if( tmp_buttons != bt[a].buttons ) { // start debounce
 			bt[a].buttons = tmp_buttons;

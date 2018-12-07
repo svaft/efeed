@@ -45,14 +45,15 @@ SCL        |PB6          |Serial clock line
 SDA        |PB7          |Serial data line
  */
 
-#include "stm32f1xx_hal.h"
+//#include "stm32f1xx_hal.h"
+#include "main.h"
 //#include "i2c.h"
 //#include "fonts.h"
 #include "fonts2.h"
 
 #include "stdlib.h"
 #include "string.h"
-
+#include "i2c_interface.h"
 
 /* I2C address */
 #ifndef SSD1306_I2C_ADDR
@@ -75,7 +76,7 @@ SDA        |PB7          |Serial data line
 /*!< Pixel is set. Color depends on LCD */
 #define SSD1306_COLOR_WHITE 0x01
 
-extern I2C_HandleTypeDef *hi2c_screen;
+extern I2C_TypeDef *hi2c_screen;
 
 /**
  * @brief  Initializes SSD1306 LCD
@@ -84,7 +85,7 @@ extern I2C_HandleTypeDef *hi2c_screen;
  *           - 0: LCD was not detected on I2C port
  *           - > 0: LCD initialized OK and ready to use
  */
-uint8_t SSD1306_Init(I2C_HandleTypeDef *hi2c);
+uint8_t SSD1306_Init(I2C_TypeDef *hi2c);
 
 /** 
  * @brief  Updates buffer from internal RAM to LCD
@@ -266,8 +267,8 @@ void ssd1306_I2C_Write(uint8_t address, uint8_t reg, uint8_t data);
  * @param  count: how many bytes will be written
  * @retval None
  */
-void ssd1306_I2C_WriteMulti(uint8_t address, uint8_t reg, uint8_t *data, uint16_t count);
-void ssd1306_I2C_WriteMulti_DMA(uint8_t address, uint8_t reg, uint8_t* data, uint16_t count);
+//void ssd1306_I2C_WriteMulti(uint8_t address, uint8_t reg, uint8_t *data, uint16_t count);
+//void ssd1306_I2C_WriteMulti_DMA(uint8_t address, uint8_t reg, uint8_t* data, uint16_t count);
 
 /* C++ detection */
 #ifdef __cplusplus

@@ -6,7 +6,7 @@ extern THREAD_INFO Thread_Info[];
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 extern bool feed_direction;
 
-void init_screen(I2C_HandleTypeDef *hi2c){
+void init_screen(I2C_TypeDef *hi2c){
 	SSD1306_Init(hi2c);
 }
 
@@ -14,8 +14,7 @@ void init_screen(I2C_HandleTypeDef *hi2c){
 char * utoa_builtin_div_1(uint32_t value, char *buffer)
 {
 	buffer += 11;
-// 11 байт достаточно для десятичного представления 32-х байтного числа
-// и		завершающего нуля
+// 11 байт достаточно для десятичного представления 32-х байтного числа и завершающего нуля
 	*--buffer = 0;
 	do {
 		*--buffer = value % 10 + '0';
@@ -25,7 +24,7 @@ char * utoa_builtin_div_1(uint32_t value, char *buffer)
 }
 
 
-inline int update_screen(){
+void update_screen(void){
 	SSD1306_Fill(SSD1306_COLOR_BLACK);
 // first line
 	SSD1306_GotoXY(0, 16*0);
@@ -43,19 +42,15 @@ inline int update_screen(){
 
 //	SSD1306_GotoXY(SSD1306_WIDTH - 60, 32);
 //	SSD1306_Puts2(utoa_builtin_div_1(z_axis.ramp_step, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
-if(i2c_device_logging.sample[i2c_device_logging.index].button_c > 0){
-	SSD1306_GotoXY(SSD1306_WIDTH - 60, 32);
-	SSD1306_Puts2(utoa_builtin_div_1(i2c_device_logging.sample[i2c_device_logging.index].button_c, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
-}
+	if(i2c_device_logging.sample[i2c_device_logging.index].button_c > 0){
+		SSD1306_GotoXY(SSD1306_WIDTH - 60, 32);
+		SSD1306_Puts2(utoa_builtin_div_1(i2c_device_logging.sample[i2c_device_logging.index].button_c, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
+	}
 
-	
 // second line
 
 	SSD1306_GotoXY(0, 16*1); //Устанавливаем курсор в позицию 0;16. Сначала по горизонтали, потом вертикали.
 	SSD1306_Puts2(Thread_Info[Menu_Step].Text, &microsoftSansSerif_20ptFontInfo, SSD1306_COLOR_WHITE);
-
-
-
 	//			SSD1306_GotoXY(50, 16*1);
 	//			SSD1306_Puts2(Thread_Info[Menu_Step].infeed_mm, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
 	//			SSD1306_GotoXY(50, 16*2);
@@ -84,6 +79,6 @@ if(i2c_device_logging.sample[i2c_device_logging.index].button_c > 0){
 */
 //#if !defined ( _SIMU )
 	SSD1306_UpdateScreen();
-	return 0;
+//	return 0;
 //#endif
 }

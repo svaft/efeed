@@ -42,6 +42,18 @@
 #define __MAIN_H__
 
 /* Includes ------------------------------------------------------------------*/
+#include "stm32f1xx_ll_dma.h"
+#include "stm32f1xx_ll_i2c.h"
+#include "stm32f1xx_ll_rcc.h"
+#include "stm32f1xx_ll_bus.h"
+#include "stm32f1xx_ll_system.h"
+#include "stm32f1xx_ll_exti.h"
+#include "stm32f1xx_ll_cortex.h"
+#include "stm32f1xx_ll_utils.h"
+#include "stm32f1xx_ll_pwr.h"
+#include "stm32f1xx_ll_tim.h"
+#include "stm32f1xx.h"
+#include "stm32f1xx_ll_gpio.h"
 
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
@@ -54,30 +66,42 @@
 /* Private define ------------------------------------------------------------*/
 #define min_pulse 145
 
-#define LED_Pin GPIO_PIN_13
+#define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_X_DIR_Pin GPIO_PIN_15
+#define MOTOR_X_DIR_Pin LL_GPIO_PIN_15
 #define MOTOR_X_DIR_GPIO_Port GPIOC
-#define MOTOR_X_ENABLE_Pin GPIO_PIN_1
+#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_1
 #define MOTOR_X_ENABLE_GPIO_Port GPIOA
-#define MOTOR_X_STEP_Pin GPIO_PIN_6
+#define MOTOR_X_STEP_Pin LL_GPIO_PIN_6
 #define MOTOR_X_STEP_GPIO_Port GPIOA
-#define MOTOR_Z_DIR_Pin GPIO_PIN_7
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
 #define MOTOR_Z_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_STEP_Pin GPIO_PIN_0
+#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_0
 #define MOTOR_Z_STEP_GPIO_Port GPIOB
-#define MOTOR_Z_ENABLE_Pin GPIO_PIN_1
+#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_1
 #define MOTOR_Z_ENABLE_GPIO_Port GPIOB
-#define BUTTON_1_Pin GPIO_PIN_8
+#define BUTTON_1_Pin LL_GPIO_PIN_8
 #define BUTTON_1_GPIO_Port GPIOA
-#define BUTTON_2_Pin GPIO_PIN_9
+#define BUTTON_2_Pin LL_GPIO_PIN_9
 #define BUTTON_2_GPIO_Port GPIOA
-#define ENC_A_Pin GPIO_PIN_6
+#define ENC_A_Pin LL_GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
-#define ENC_B_Pin GPIO_PIN_7
+#define ENC_B_Pin LL_GPIO_PIN_7
 #define ENC_B_GPIO_Port GPIOB
-#define ENC_ZERO_Pin GPIO_PIN_8
+#define ENC_ZERO_Pin LL_GPIO_PIN_8
 #define ENC_ZERO_GPIO_Port GPIOB
+#ifndef NVIC_PRIORITYGROUP_0
+#define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007) /*!< 0 bit  for pre-emption priority,
+                                                                 4 bits for subpriority */
+#define NVIC_PRIORITYGROUP_1         ((uint32_t)0x00000006) /*!< 1 bit  for pre-emption priority,
+                                                                 3 bits for subpriority */
+#define NVIC_PRIORITYGROUP_2         ((uint32_t)0x00000005) /*!< 2 bits for pre-emption priority,
+                                                                 2 bits for subpriority */
+#define NVIC_PRIORITYGROUP_3         ((uint32_t)0x00000004) /*!< 3 bits for pre-emption priority,
+                                                                 1 bit  for subpriority */
+#define NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003) /*!< 4 bits for pre-emption priority,
+                                                                 0 bit  for subpriority */
+#endif
 
 /* ########################## Assert Selection ############################## */
 /**
@@ -90,7 +114,7 @@
 
 
 #ifndef _SIMU
-#define _SIMU
+//#define _SIMU
 #endif /* __MAIN_H */
 
 #define t4cr1       ((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
@@ -104,7 +128,7 @@
 #define step_divider 2 //stepper driver divider microstep
 
 // main carriage
-#define MOTOR_Z_SetPulse()           __HAL_TIM_ENABLE(&htim3)
+#define MOTOR_Z_SetPulse()           LL_TIM_EnableCounter(TIM3) //__HAL_TIM_ENABLE(&htim3)
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR        = MOTOR_Z_DIR_Pin
 #define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR         = MOTOR_Z_DIR_Pin
@@ -207,7 +231,7 @@ extern uint32_t menu_changed;
 #define MOTOR_X_ENABLE_Pin GPIO_PIN_1
 #define MOTOR_X_ENABLE_GPIO_Port GPIOA
 */
-#define MOTOR_X_SetPulse()           __HAL_TIM_ENABLE(&htim3)
+#define MOTOR_X_SetPulse()           LL_TIM_EnableCounter(TIM3) //__HAL_TIM_ENABLE(&htim3)
 #define MOTOR_X_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_X_Forward()            MOTOR_X_DIR_GPIO_Port->BSRR    = MOTOR_X_DIR_Pin
 #define MOTOR_X_Reverse()            MOTOR_X_DIR_GPIO_Port->BRR     = MOTOR_X_DIR_Pin
@@ -229,7 +253,7 @@ extern uint32_t menu_changed;
 
 #define Enc_Line_Q1648                (uint64_t)((uint64_t)Enc_Line << 48)
 
-#define Enc_Read()                   __HAL_TIM_GetCounter(&htim4)
+#define Enc_Read()                   LL_TIM_GetCounter(TIM4) // __HAL_TIM_GetCounter(&htim4)
 
 #define Spindle_Direction_CW         0                             // прямое вращение
 #define Spindle_Direction_CCW        1                             // обратное вращение

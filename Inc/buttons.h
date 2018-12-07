@@ -6,7 +6,8 @@
 #ifndef BUTTONS_H_
 #define BUTTONS_H_
 
-#include "stm32f1xx_hal.h"
+//#include "stm32f1xx_hal.h"
+#include "main.h"
 
 
 #define BT_TOTAL	1
@@ -61,7 +62,7 @@
 typedef struct
 {
 	GPIO_TypeDef *GPIOx;
-	uint16_t button_pin;
+	uint32_t button_pin;
 	uint32_t downTime;               // time the button was pressed down
 	uint32_t buttons, buttons_mstick, buttons_flag, buttons_mask, clk_mode;
 } BUTTON;

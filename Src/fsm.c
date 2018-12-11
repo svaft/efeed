@@ -295,8 +295,8 @@ void do_fsm_menu(state_t* s)
 				const uint64_t upl = (uint64_t)3600 << 48; //calculate some constants for prolong mode
 				z_axis.prolong_addSteps = upl / (fixedptud)z_axis.Q824set;
 
-				s->function = do_fsm_wait_tacho; // go straight to 24 to wait tacho
-
+				s->function = do_fsm_move_start;//do_fsm_wait_tacho; // go straight to 24 to wait tacho
+//do_fsm_move_start
 			} else { // goto submenu
 				for (int a = 0; a<Menu_size; a++) {
 					if(Thread_Info[a].level == Thread_Info[Menu_Step].submenu) {
@@ -312,6 +312,9 @@ void do_fsm_menu(state_t* s)
 		break;
 	}
 	case long_press_end_Msk: {
+		s->function = do_long_press_end_callback;
+		break;
+/*
 		if(s->function == do_fsm_first_cut_main_part){
 			s->function = do_fsm_first_cut_lpe;
 			break;
@@ -320,6 +323,7 @@ void do_fsm_menu(state_t* s)
 			s->function = do_fsm_main_cut_back;
 			break;
 		}
+*/
 		/*
 		switch(z_axis.mode) {
 		case fsm_first_cut_main_part: {
@@ -595,9 +599,15 @@ void do_fsm_move(state_t* s)
 {
 	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
-	if( z_axis.current_pos < ( z_axis.end_pos - z_axis.ramp_step ) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be mach more lager then current_pos
+	if( z_axis.current_pos <= ( z_axis.end_pos - z_axis.ramp_step ) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 		z_axis_move2(s);
 	} else {
+		if(z_axis_ramp_down2(s)) {
+			if(z_axis.end_pos != z_axis.current_pos) {
+				z_axis.end_pos = z_axis.current_pos;
+			}
+			s->function = do_fsm_move_end;
+		}
 		s->function = do_fsm_ramp_down;
 	}
 }
@@ -607,22 +617,9 @@ void do_long_press_end_callback(state_t* s)          // direct movement: first p
 	// для 1/2 микрошага нужно что бы общее количество шагов в цикле резьбы было кратно 2,(для 1/4 кратно 4 и тп).
 	// это нужно для того что бы в конце шаговый мотор остановился на одном из двухсот устойчивых шагов,
 	// не перескакивая на соседние шаги при потере питания.
-	// поэтому проверяем общее количество на четность(0й бит), если нечетное число делаем еще один шаг,
-	// иначе начинаем замедляться
-	MOTOR_Z_SetPulse();
-	z_axis.current_pos++;
-	uint32_t all_count = z_axis.ramp_step + z_axis.current_pos - 1;
-	uint32_t masked_count = all_count & ~(step_divider - 1);
-	if(masked_count != all_count) {
-		z_axis_move();
-	} else {
-		if(z_axis_ramp_down2(s)) {
-			z_axis.end_pos = z_axis.current_pos;
-			do_fsm_move_end(s);
-		} else {
-			s->function = do_fsm_ramp_down;
-		}
-	}
+	z_axis.end_pos = ( z_axis.ramp_step + z_axis.current_pos ) | (step_divider - 1);
+	s->function = do_fsm_move;
+	do_fsm_move(s);
 }
 
 
@@ -723,7 +720,7 @@ void do_fsm_move_async(state_t* s)
 	z_axis.current_pos++;
 
 	// todo precalculate delta: z_axis.end_pos - z_axis.ramp_step
-	if( z_axis.current_pos < ( z_axis.end_pos - z_axis.ramp_step ) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be mach more lager then current_pos
+	if( z_axis.current_pos < ( z_axis.end_pos - z_axis.ramp_step ) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 		s->z_period = slew_speed_period;
 	} else {
 		s->function = do_fsm_ramp_down_async;

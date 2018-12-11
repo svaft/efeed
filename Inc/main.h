@@ -169,6 +169,7 @@ typedef struct
 {
     uint32_t current_pos;
     uint32_t end_pos;
+    uint32_t end_pos_delta;
 //    fsm_t mode;
 //    fsm_t mode_prev;
     

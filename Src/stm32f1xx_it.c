@@ -244,6 +244,12 @@ void TIM4_IRQHandler(void)
 
   /* USER CODE END TIM4_IRQn 0 */
   /* USER CODE BEGIN TIM4_IRQn 1 */
+  /* Check whether update interrupt is pending */
+  if(LL_TIM_IsActiveFlag_UPDATE(TIM4) == 1)
+  {
+    /* Clear the update interrupt flag*/
+    LL_TIM_ClearFlag_UPDATE(TIM4);
+  }
 
   /* USER CODE END TIM4_IRQn 1 */
 }

@@ -5,6 +5,7 @@
 extern THREAD_INFO Thread_Info[];
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 extern bool feed_direction;
+extern __IO uint8_t  ubTransferComplete;
 
 void init_screen(I2C_TypeDef *hi2c){
 	SSD1306_Init(hi2c);
@@ -25,6 +26,9 @@ char * utoa_builtin_div_1(uint32_t value, char *buffer)
 
 
 void update_screen(void){
+	if(ubTransferComplete == 0) {
+		return;
+	}
 	SSD1306_Fill(SSD1306_COLOR_BLACK);
 // first line
 	SSD1306_GotoXY(0, 16*0);

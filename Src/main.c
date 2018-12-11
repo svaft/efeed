@@ -338,11 +338,12 @@ int main(void)
   /* USER CODE BEGIN 1 */
 //	z_axis.mode = fsm_menu_lps;
 	rs = 11;
-	z_axis.end_pos = 50;
-	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
+//	z_axis.end_pos = 50;
+//	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
 
-	state.main_feed_direction = 1;
-//	do_fsm_move_start(&state);
+//	state.main_feed_direction = 1;
+
+	//	do_fsm_move_start(&state);
 	//	do_fsm_wait_tacho(&state);
 	
 //	TIM4_IRQHandler();
@@ -380,6 +381,7 @@ int main(void)
 //	update_screen();
 //	i2c_device_init(I2C2);
 #endif
+	LL_mDelay(250);
 
 	init_buttons();
 
@@ -418,9 +420,11 @@ int main(void)
   /***********************/
   /* Enable output channel 1 & 2 */
   LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH2);
-
+	LL_TIM_EnableIT_CC1(TIM4);
+	LL_TIM_EnableIT_CC2(TIM4);
   /* Enable counter */
   LL_TIM_EnableCounter(TIM4);
+//	LL_TIM_Ena
 //	HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_1 | TIM_CHANNEL_2 );
 
   LL_TIM_EnableIT_CC3(TIM4);
@@ -433,10 +437,17 @@ int main(void)
 	TIM4->SR = 0; // reset interrup flags
 //	TIM4->CR1 |= TIM_CR1_URS; // to update ARR register immediateley(skip shadow mechanism)
 
+	TIM4->ARR = 1;  // start stepper motor ramp up procedure immediately after tacho event
+	TIM4->EGR |= TIM_EGR_UG;
+	TIM4->CNT = 0;
+	enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
+	LL_TIM_EnableIT_UPDATE(TIM4);
+
+
 	LL_TIM_EnableIT_UPDATE(TIM1);
 	LL_TIM_EnableIT_UPDATE(TIM2);
 	
-	do_fsm_move_start(&state);
+//	do_fsm_move_start(&state);
 
 	
   /* Enable counter */
@@ -449,7 +460,6 @@ int main(void)
 // init buttons
 
 	LED_GPIO_Port->BSRR = LED_Pin; // led off
-
 	while (1) {
   /* USER CODE END WHILE */
 
@@ -471,25 +481,21 @@ int main(void)
 //			}
 //		}
 
-		do_fsm_menu(&state);
-		buttons_flag_set = 0; // reset button flags
-
-//								if(z_axis.current_pos != z_axis.cpv) {
-//										z_axis.cpv = z_axis.current_pos;
-//												menu_changed = 1;
-//								}
+		if(buttons_flag_set) {
+			do_fsm_menu(&state);
+			buttons_flag_set = 0; // reset button flags
+		}
 
 		if(z_axis.ramp_step != rs) {
 			rs = z_axis.ramp_step;
 			menu_changed = 1;
 		}
 
-/*
-		if(z_axis.mode != z_axis.mode_prev) {
-			z_axis.mode_prev = z_axis.mode;
+		if(z_axis.current_pos != rs) {
+			rs = z_axis.current_pos;
 			menu_changed = 1;
 		}
-*/		
+
 // update display info
 		if(menu_changed == 1){ // haltodo && hi2c2.hdmatx->State == HAL_DMA_STATE_READY) {
 			menu_changed = 0;

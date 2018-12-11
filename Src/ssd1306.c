@@ -281,8 +281,8 @@ void ssd1306_I2C_Write(uint8_t address, uint8_t reg, uint8_t data) {
 void SSD1306_UpdateScreen(void) {
 	SSD1306_Buffer_all[0] = 0x40;
 //	HAL_I2C_Master_Transmit(hi2c_screen, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1, 100);
-//	Handle_I2C_MasterDMA_IT_async(hi2c_screen, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1, 100);
-	Handle_I2C_MasterDMA_IT(hi2c_screen, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1, 100);
+	Handle_I2C_MasterDMA_IT_async(SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1);
+//	Handle_I2C_MasterDMA_IT(hi2c_screen, SSD1306_I2C_ADDR, SSD1306_Buffer_all, SSD1306_WIDTH * SSD1306_HEIGHT / 8 + 1, 100);
 //  if(LL_I2C_IsActiveFlag_SB(I2C2)) {
 
 	/* haltodo

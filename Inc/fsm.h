@@ -62,6 +62,9 @@ void do_fsm_move(state_t*);
 void do_fsm_ramp_down(state_t* );
 void do_fsm_move_end(state_t* );
 
+void do_long_press_end_callback(state_t* );
+
+
 _Bool z_axis_ramp_up2(state_t* );
 _Bool z_axis_ramp_down2(state_t* );
 void z_axis_move2(state_t* );

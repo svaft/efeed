@@ -117,6 +117,9 @@
 //#define _SIMU
 #endif /* __MAIN_H */
 
+
+#define t3cr1       ((uint32_t *)((0x42000000  + ((0x40000400)-0x40000000)*32)))
+
 #define t4cr1       ((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
 #define t4sr        ((uint32_t *)((0x42000000  + ((0x40000810)-0x40000000)*32)))
 #define t4dier  ((uint32_t *)((0x42000000  + ((0x4000080C)-0x40000000)*32)))
@@ -128,7 +131,9 @@
 #define step_divider 2 //stepper driver divider microstep
 
 // main carriage
-#define MOTOR_Z_SetPulse()           LL_TIM_EnableCounter(TIM3) //__HAL_TIM_ENABLE(&htim3)
+
+
+#define MOTOR_Z_SetPulse()           t3cr1[TIM_CR1_CEN_Pos] = 1 //bitbang version, or with LL: LL_TIM_EnableCounter(TIM3) 
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR        = MOTOR_Z_DIR_Pin
 #define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR         = MOTOR_Z_DIR_Pin

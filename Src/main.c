@@ -93,8 +93,8 @@ recommendation: mm(tpi) - passes
 // перегенерация есть в excel файле
 THREAD_INFO Thread_Info[] = {
 //	{ 0x12000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
-	{ 0x02400000, 0, "4.00", "mm", 10, "1.26", ".050", 0 },
-//{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
+//	{ 0x02400000, 0, "4.00", "mm", 10, "1.26", ".050", 0 },
+	{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
 	{ 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 1 },
 	{ 0x04800000, 0, "2.00", "mm", 0, "1.26", ".050", 2 },
 	{ 0x06000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
@@ -382,27 +382,7 @@ int main(void)
 //	i2c_device_init(I2C2);
 #endif
 	LL_mDelay(250);
-
 	init_buttons();
-
-/*
-	//72MGz процессор, 1 так = 1/72us, 1 цикл пустого for(для света до 255) равен 14 тактам + 6 тактов,
-	//для больших чисел около 16 тактов на цикл + загрузка
-	//	на первичную загрузку в первом цикле, т.е. 10*14+6=146 тактов, чуть более 2us
-
-	count = 1000;
-					while(1){
-	//	for(int i=0;i<1000;i++){
-									for(int i=0;i<(72*count/14+1);i++); // 2us delay
-					__HAL_TIM_ENABLE(&htim3);
-									count--;
-									if(count < 500) count = 500;
-	//					GPIOC->BRR = GPIO_PIN_13;
-	//					for(unsigned int i=0;i<(72*1000/16);i++); // 1000us delay
-					}
-	*/
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -410,23 +390,13 @@ int main(void)
 
 
 	TIM3->CCER = TIM_CCER_CC1E; /* Enable the Compare output channel 1 */
+//  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1);
 
-	LL_TIM_SetCounter(TIM4,0);
-  /***********************/
-  /* Start input capture */
-  /***********************/
-  /* Enable output channel 1 & 2 */
-  LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH2);
-	LL_TIM_EnableIT_CC1(TIM4);
-	LL_TIM_EnableIT_CC2(TIM4);
-  /* Enable counter */
-  LL_TIM_EnableCounter(TIM4);
-
-  LL_TIM_EnableIT_CC3(TIM4);
-	
-	TIM4->SR = 0; // reset interrup flags
-	enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
-	LL_TIM_EnableIT_UPDATE(TIM4);
+  LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
+  LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
+//	enable_encoder_ticks(); 														// enable interrup for encoder ticks
+	TIM4->SR = 0; 																			// reset interrup flags
 
 	LL_TIM_EnableIT_UPDATE(TIM1);
 	LL_TIM_EnableIT_UPDATE(TIM2);
@@ -439,17 +409,15 @@ int main(void)
   /* Force update generation */
 //  LL_TIM_GenerateEvent_UPDATE(TIM2);
 
-	//	LL_TIM_Bae
-//	HAL_TIM_Base_Start_IT(&htim2);
 // init buttons
-
+	do_fsm_menu(&state);
 	LED_GPIO_Port->BSRR = LED_Pin; // led off
 	while (1) {
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
 #ifndef _SIMU		
-		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
+//		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
 #endif		
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 		process_button();

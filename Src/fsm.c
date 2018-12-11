@@ -45,6 +45,7 @@ uint8_t ramp2[]= {
 
 
 uint32_t ramp[]= {
+	0xFF000000,
 	0x1E000000,
 //      0x00000000, // zero delay to disable ramp up
 	0x15E353F7,
@@ -226,6 +227,7 @@ void do_fsm_wait_tacho(state_t* s)
 void do_fsm_menu(state_t* s)
 {
 	uint8_t level = Thread_Info[Menu_Step].level;
+	buttons_flag_set = long_press_start_Msk;
 	switch(buttons_flag_set) {
 	case single_click_Msk3: {
 		feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
@@ -559,7 +561,7 @@ void do_fsm_main_cut_ramp_up(state_t* s)
 
 //---------------------------------------------------------------------------------------------
 void do_fsm_move_start(state_t* s){
-	if(s->main_feed_direction == feed_direction || s->f_tacho ) { // if tacho event or we going to start back feed to initial position with async clock
+	if(s->main_feed_direction == feed_direction && s->f_tacho ) { // if tacho event or we going to start back feed to initial position with async clock
 		if(s->main_feed_direction == feed_direction) {
 			s->function = do_fsm_ramp_up;
 			s->sync = true;
@@ -569,6 +571,7 @@ void do_fsm_move_start(state_t* s){
 			s->syncbase->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
 			s->syncbase->EGR |= TIM_EGR_UG; // upload ARR value immediately 
 			s->syncbase->CNT = 0;						// reset counter
+//			LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH2);
 			enable_encoder_ticks(); 									// enable thread specific interrupt controlled by Q824set
 		} else {
 
@@ -599,8 +602,10 @@ void do_fsm_ramp_up(state_t* s)
 void do_fsm_move(state_t* s)
 {
 	MOTOR_Z_SetPulse();
-	z_axis.current_pos++;
-	if( z_axis.current_pos <= ( z_axis.end_pos - z_axis.ramp_step ) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
+//	z_axis.current_pos++;
+//	if(s->spindle_dir)	z_axis.current_pos++;
+//	else z_axis.current_pos--;
+	if( ++z_axis.current_pos <= ( z_axis.end_pos - z_axis.ramp_step ) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 		z_axis_move2(s);
 	} else {
 		if(z_axis_ramp_down2(s)) {
@@ -627,7 +632,8 @@ void do_long_press_end_callback(state_t* s)          // direct movement: first p
 void do_fsm_ramp_down(state_t* s)
 {
 	MOTOR_Z_SetPulse();
-	z_axis.current_pos++;
+	if(s->spindle_dir)	z_axis.current_pos++;
+	else z_axis.current_pos--;
 	if(z_axis_ramp_down2(s)) {
 		if(z_axis.end_pos != z_axis.current_pos) {
 			z_axis.end_pos = z_axis.current_pos;
@@ -659,14 +665,14 @@ _Bool z_axis_ramp_up2(state_t* s)
 	const fixedptu  set_with_fract = ramp[z_axis.ramp_step];
 	if(z_axis.Q824set > set_with_fract || z_axis.ramp_step == ramp_map) { 	// reach desired speed or end of ramp map
 		s->syncbase->ARR = fixedpt_toint(z_axis.Q824set) - 1; 			// update register ARR
-		s->syncbase->EGR |= TIM_EGR_UG;
+//		s->syncbase->EGR |= TIM_EGR_UG;
 		z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); 								// save fract part for future use on next step
 //		z_axis.end_minus_ramp_delta =
 		return true;
 	} else {
 		z_axis.ramp_step++;
 		s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1; 			// update register ARR
-		s->syncbase->EGR |= TIM_EGR_UG;
+//		s->syncbase->EGR |= TIM_EGR_UG;
 //		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); 						// save fract part for future use on next step
 	}
 	return false;
@@ -678,7 +684,7 @@ _Bool z_axis_ramp_down2(state_t* s)
 		return true;
 	const fixedptu set_with_fract = ramp[--z_axis.ramp_step];
 	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-	s->syncbase->EGR |= TIM_EGR_UG;
+//	s->syncbase->EGR |= TIM_EGR_UG;
 //	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	if(z_axis.ramp_step == 0)
 		return true;
@@ -689,7 +695,8 @@ void z_axis_move2(state_t* s)
 {
 	const fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
 	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-	s->syncbase->EGR |= TIM_EGR_UG;
+//	s->syncbase->CNT = 0;
+//	s->syncbase->EGR |= TIM_EGR_UG;
 	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 }
 

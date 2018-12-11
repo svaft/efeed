@@ -210,7 +210,7 @@ void TIM2_IRQHandler(void)
     LL_GPIO_TogglePin( LED_GPIO_Port, LED_Pin);
 
 		state.function(&state);
-		
+
 		TIM2->ARR = state.z_period;
 		TIM2->EGR |= TIM_EGR_UG;
 
@@ -235,7 +235,11 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 //	_Bool dir = t4cr1[TIM_CR1_DIR_Pos];
+//	if(t4sr[TIM_SR_CC3IF_Pos]){
+//		do_fsm_wait_tacho(&state);
+//	}
 	if (state.sync == true) {
+		state.spindle_dir = t4cr1[TIM_CR1_DIR_Pos];
 		state.f_encoder = encoder;
 		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
 		state.function(&state);
@@ -245,12 +249,20 @@ void TIM4_IRQHandler(void)
   /* USER CODE END TIM4_IRQn 0 */
   /* USER CODE BEGIN TIM4_IRQn 1 */
   /* Check whether update interrupt is pending */
-  if(LL_TIM_IsActiveFlag_UPDATE(TIM4) == 1)
+//	if(LL_TIM_IsActiveFlag_CC2OVR(TIM4) == 1){
+//		TIM4->SR = 0;
+//	}
+	TIM4->SR = 0;
+/*
+	if(LL_TIM_IsActiveFlag_CC2(TIM4) == 1)
+    LL_TIM_ClearFlag_CC2(TIM4);
+	if(LL_TIM_IsActiveFlag_CC3(TIM4) == 1)
+    LL_TIM_ClearFlag_CC3(TIM4);
+	if(LL_TIM_IsActiveFlag_UPDATE(TIM4) == 1)
   {
-    /* Clear the update interrupt flag*/
-    LL_TIM_ClearFlag_UPDATE(TIM4);
+    LL_TIM_ClearFlag_UPDATE(TIM4); //Clear the update interrupt flag
   }
-
+*/
   /* USER CODE END TIM4_IRQn 1 */
 }
 

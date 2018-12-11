@@ -20,6 +20,7 @@ typedef struct state
 	uint8_t z_period;
 	_Bool f_encoder;
 	_Bool f_tacho;
+	_Bool spindle_dir;
 	_Bool sync;
 	_Bool main_feed_direction;
 	TIM_TypeDef *syncbase;

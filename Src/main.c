@@ -412,9 +412,6 @@ int main(void)
 	TIM3->CCER = TIM_CCER_CC1E; /* Enable the Compare output channel 1 */
 
 	LL_TIM_SetCounter(TIM4,0);
-//	__HAL_TIM_SET_COUNTER(&htim4,0);
-  LL_TIM_EnableIT_CC3(TIM4);
-
   /***********************/
   /* Start input capture */
   /***********************/
@@ -424,25 +421,12 @@ int main(void)
 	LL_TIM_EnableIT_CC2(TIM4);
   /* Enable counter */
   LL_TIM_EnableCounter(TIM4);
-//	LL_TIM_Ena
-//	HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_1 | TIM_CHANNEL_2 );
 
   LL_TIM_EnableIT_CC3(TIM4);
-/*
-	if(HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_3) != HAL_OK) {
-		Error_Handler();
-	}
-*/
 	
 	TIM4->SR = 0; // reset interrup flags
-//	TIM4->CR1 |= TIM_CR1_URS; // to update ARR register immediateley(skip shadow mechanism)
-
-	TIM4->ARR = 1;  // start stepper motor ramp up procedure immediately after tacho event
-	TIM4->EGR |= TIM_EGR_UG;
-	TIM4->CNT = 0;
 	enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
 	LL_TIM_EnableIT_UPDATE(TIM4);
-
 
 	LL_TIM_EnableIT_UPDATE(TIM1);
 	LL_TIM_EnableIT_UPDATE(TIM2);

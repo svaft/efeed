@@ -282,6 +282,7 @@ void do_fsm_menu(state_t* s)
 				disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
 				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
 				s->main_feed_direction = feed_direction; // save main feed direction, where cut is on
+				s->sync = true;
 				if( feed_direction == feed_direction_right )
 					MOTOR_Z_Forward();
 				else
@@ -558,7 +559,7 @@ void do_fsm_main_cut_ramp_up(state_t* s)
 
 //---------------------------------------------------------------------------------------------
 void do_fsm_move_start(state_t* s){
-	if(s->main_feed_direction != feed_direction || s->f_tacho ) { // if tacho event or we going to start back feed to initial position with async clock
+	if(s->main_feed_direction == feed_direction || s->f_tacho ) { // if tacho event or we going to start back feed to initial position with async clock
 		if(s->main_feed_direction == feed_direction) {
 			s->function = do_fsm_ramp_up;
 			s->sync = true;

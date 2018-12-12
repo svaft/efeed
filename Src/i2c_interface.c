@@ -20,13 +20,13 @@ __IO uint8_t  ubTransferComplete = 1;
  * @return
  */
 error_code_t i2c_device_init(I2C_TypeDef *hi2c){
+/*
   hi2c_ref = hi2c;
 	uint8_t  handShake[2];
 	handShake[0]=0xf0;
 	handShake[1]=0x55;
   LL_mDelay(250);
 
-/*
 	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
 		LL_mDelay(250);
 	}
@@ -58,6 +58,7 @@ error_code_t i2c_device_init(I2C_TypeDef *hi2c){
 	device_ready = 1;
 	return ERROR_OK;
 */
+	return ERROR_OK;
 }
 
 error_code_t reqest_sample_i2c_dma(){

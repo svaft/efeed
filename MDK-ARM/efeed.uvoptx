@@ -157,7 +157,7 @@
           <Type>0</Type>
           <LineNumber>392</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134227270</Address>
+          <Address>134227218</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -171,25 +171,9 @@
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>254</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134224954</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>../Src/stm32f1xx_it.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/stm32f1xx_it.c\254</Expression>
-        </Bp>
-        <Bp>
-          <Number>2</Number>
-          <Type>0</Type>
           <LineNumber>741</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134226802</Address>
+          <Address>134226754</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -201,11 +185,11 @@
           <Expression>\\efeed\../Src/fsm.c\741</Expression>
         </Bp>
         <Bp>
-          <Number>3</Number>
+          <Number>2</Number>
           <Type>0</Type>
           <LineNumber>728</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134226414</Address>
+          <Address>134226366</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -217,11 +201,11 @@
           <Expression>\\efeed\../Src/fsm.c\728</Expression>
         </Bp>
         <Bp>
-          <Number>4</Number>
+          <Number>3</Number>
           <Type>0</Type>
           <LineNumber>713</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134226946</Address>
+          <Address>134226894</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -233,11 +217,11 @@
           <Expression>\\efeed\../Src/fsm.c\713</Expression>
         </Bp>
         <Bp>
-          <Number>5</Number>
+          <Number>4</Number>
           <Type>0</Type>
           <LineNumber>740</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134226796</Address>
+          <Address>134226748</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -249,11 +233,11 @@
           <Expression>\\efeed\../Src/fsm.c\740</Expression>
         </Bp>
         <Bp>
-          <Number>6</Number>
+          <Number>5</Number>
           <Type>0</Type>
           <LineNumber>727</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134226408</Address>
+          <Address>134226360</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -265,11 +249,11 @@
           <Expression>\\efeed\../Src/fsm.c\727</Expression>
         </Bp>
         <Bp>
-          <Number>7</Number>
+          <Number>6</Number>
           <Type>0</Type>
           <LineNumber>712</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134226940</Address>
+          <Address>134226888</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -281,11 +265,11 @@
           <Expression>\\efeed\../Src/fsm.c\712</Expression>
         </Bp>
         <Bp>
-          <Number>8</Number>
+          <Number>7</Number>
           <Type>0</Type>
           <LineNumber>244</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134224902</Address>
+          <Address>134224898</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -297,11 +281,11 @@
           <Expression>\\efeed\../Src/stm32f1xx_it.c\244</Expression>
         </Bp>
         <Bp>
-          <Number>9</Number>
+          <Number>8</Number>
           <Type>0</Type>
           <LineNumber>242</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134224878</Address>
+          <Address>134224866</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -313,11 +297,11 @@
           <Expression>\\efeed\../Src/stm32f1xx_it.c\242</Expression>
         </Bp>
         <Bp>
-          <Number>10</Number>
+          <Number>9</Number>
           <Type>0</Type>
           <LineNumber>528</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225510</Address>
+          <Address>134225466</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -329,11 +313,11 @@
           <Expression>\\efeed\../Src/fsm.c\528</Expression>
         </Bp>
         <Bp>
-          <Number>11</Number>
+          <Number>10</Number>
           <Type>0</Type>
           <LineNumber>493</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225302</Address>
+          <Address>134225258</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -345,11 +329,11 @@
           <Expression>\\efeed\../Src/fsm.c\493</Expression>
         </Bp>
         <Bp>
-          <Number>12</Number>
+          <Number>11</Number>
           <Type>0</Type>
           <LineNumber>449</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225460</Address>
+          <Address>134225416</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -361,11 +345,11 @@
           <Expression>\\efeed\../Src/fsm.c\449</Expression>
         </Bp>
         <Bp>
-          <Number>13</Number>
+          <Number>12</Number>
           <Type>0</Type>
           <LineNumber>424</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225142</Address>
+          <Address>134225102</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -377,11 +361,11 @@
           <Expression>\\efeed\../Src/fsm.c\424</Expression>
         </Bp>
         <Bp>
-          <Number>14</Number>
+          <Number>13</Number>
           <Type>0</Type>
           <LineNumber>517</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225194</Address>
+          <Address>134225154</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -393,11 +377,11 @@
           <Expression>\\efeed\../Src/fsm.c\517</Expression>
         </Bp>
         <Bp>
-          <Number>15</Number>
+          <Number>14</Number>
           <Type>0</Type>
           <LineNumber>379</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134227250</Address>
+          <Address>134227198</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -409,11 +393,11 @@
           <Expression>\\efeed\../Src/main.c\379</Expression>
         </Bp>
         <Bp>
-          <Number>16</Number>
+          <Number>15</Number>
           <Type>0</Type>
           <LineNumber>492</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225296</Address>
+          <Address>134225252</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -425,11 +409,11 @@
           <Expression>\\efeed\../Src/fsm.c\492</Expression>
         </Bp>
         <Bp>
-          <Number>17</Number>
+          <Number>16</Number>
           <Type>0</Type>
           <LineNumber>527</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225504</Address>
+          <Address>134225460</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -441,11 +425,11 @@
           <Expression>\\efeed\../Src/fsm.c\527</Expression>
         </Bp>
         <Bp>
-          <Number>18</Number>
+          <Number>17</Number>
           <Type>0</Type>
           <LineNumber>230</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225756</Address>
+          <Address>134225712</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -457,27 +441,11 @@
           <Expression>\\efeed\../Src/fsm.c\230</Expression>
         </Bp>
         <Bp>
-          <Number>19</Number>
-          <Type>0</Type>
-          <LineNumber>253</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134224942</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>../Src/stm32f1xx_it.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/stm32f1xx_it.c\253</Expression>
-        </Bp>
-        <Bp>
-          <Number>20</Number>
+          <Number>18</Number>
           <Type>0</Type>
           <LineNumber>340</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134227188</Address>
+          <Address>134227136</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -489,7 +457,7 @@
           <Expression>\\efeed\../Src/main.c\340</Expression>
         </Bp>
         <Bp>
-          <Number>21</Number>
+          <Number>19</Number>
           <Type>0</Type>
           <LineNumber>709</LineNumber>
           <EnabledFlag>0</EnabledFlag>
@@ -505,7 +473,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>22</Number>
+          <Number>20</Number>
           <Type>0</Type>
           <LineNumber>710</LineNumber>
           <EnabledFlag>0</EnabledFlag>
@@ -521,7 +489,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>23</Number>
+          <Number>21</Number>
           <Type>0</Type>
           <LineNumber>724</LineNumber>
           <EnabledFlag>0</EnabledFlag>
@@ -537,7 +505,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>24</Number>
+          <Number>22</Number>
           <Type>0</Type>
           <LineNumber>725</LineNumber>
           <EnabledFlag>0</EnabledFlag>
@@ -553,7 +521,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>25</Number>
+          <Number>23</Number>
           <Type>0</Type>
           <LineNumber>737</LineNumber>
           <EnabledFlag>0</EnabledFlag>
@@ -569,7 +537,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>26</Number>
+          <Number>24</Number>
           <Type>0</Type>
           <LineNumber>738</LineNumber>
           <EnabledFlag>0</EnabledFlag>
@@ -625,6 +593,16 @@
           <count>7</count>
           <WinNumber>1</WinNumber>
           <ItemText>TIM4</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>&amp;TIM4-&gt;DIER</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>&lt;Enter eTIxpression&gt;</ItemText>
         </Ww>
       </WatchWindow1>
       <MemoryWindow1>

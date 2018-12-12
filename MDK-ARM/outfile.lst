@@ -31,8 +31,8 @@
     Program header entries: 1
     Section header entries: 16
 
-    Program header offset: 820944 (0x000c86d0)
-    Section header offset: 820976 (0x000c86f0)
+    Program header offset: 820732 (0x000c85fc)
+    Section header offset: 820764 (0x000c861c)
 
     Section header string table index: 15
 
@@ -500,7 +500,7 @@
     i.Activate_I2C_Master
     Activate_I2C_Master
 ;;; .\..\Src\i2c_interface.c
-;;;303      LL_I2C_Enable(I2C2);
+;;;304      LL_I2C_Enable(I2C2);
         0x08000264:    bf00        ..      NOP      
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_i2c.h
 ;;;367      SET_BIT(I2Cx->CR1, I2C_CR1_PE);
@@ -512,7 +512,7 @@
 ;;;368    }
         0x08000272:    bf00        ..      NOP      
 ;;; .\..\Src\i2c_interface.c
-;;;309      LL_I2C_EnableIT_EVT(I2C2);
+;;;310      LL_I2C_EnableIT_EVT(I2C2);
         0x08000274:    bf00        ..      NOP      
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_i2c.h
 ;;;1004     SET_BIT(I2Cx->CR2, I2C_CR2_ITEVTEN);
@@ -523,7 +523,7 @@
 ;;;1005   }
         0x08000280:    bf00        ..      NOP      
 ;;; .\..\Src\i2c_interface.c
-;;;310      LL_I2C_EnableIT_ERR(I2C2);
+;;;311      LL_I2C_EnableIT_ERR(I2C2);
         0x08000282:    bf00        ..      NOP      
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_i2c.h
 ;;;1094     SET_BIT(I2Cx->CR2, I2C_CR2_ITERREN);
@@ -534,7 +534,7 @@
 ;;;1095   }
         0x0800028e:    bf00        ..      NOP      
 ;;; .\..\Src\i2c_interface.c
-;;;311    }
+;;;312    }
         0x08000290:    4770        pG      BX       lr
     $d
         0x08000292:    0000        ..      DCW    0
@@ -597,39 +597,39 @@
     i.Handle_I2C_MasterDMA_IT
     Handle_I2C_MasterDMA_IT
 ;;; .\..\Src\i2c_interface.c
-;;;216    {
+;;;217    {
         0x080002d0:    e92d4ff8    -..O    PUSH     {r3-r11,lr}
         0x080002d4:    4604        .F      MOV      r4,r0
         0x080002d6:    468a        .F      MOV      r10,r1
         0x080002d8:    4617        .F      MOV      r7,r2
         0x080002da:    461d        .F      MOV      r5,r3
         0x080002dc:    f8dd8028    ..(.    LDR      r8,[sp,#0x28]
-;;;217    	if(ubTransferComplete == 1){
+;;;218    	if(ubTransferComplete == 1){
         0x080002e0:    4823        #H      LDR      r0,[pc,#140] ; [0x8000370] = 0x20000027
         0x080002e2:    7800        .x      LDRB     r0,[r0,#0]
         0x080002e4:    2801        .(      CMP      r0,#1
         0x080002e6:    d103        ..      BNE      0x80002f0 ; Handle_I2C_MasterDMA_IT + 32
-;;;218    		ubTransferComplete = 0;
+;;;219    		ubTransferComplete = 0;
         0x080002e8:    2000        .       MOVS     r0,#0
         0x080002ea:    4921        !I      LDR      r1,[pc,#132] ; [0x8000370] = 0x20000027
         0x080002ec:    7008        .p      STRB     r0,[r1,#0]
         0x080002ee:    e004        ..      B        0x80002fa ; Handle_I2C_MasterDMA_IT + 42
-;;;219    	} else {
-;;;220      	while(!ubTransferComplete)
+;;;220    	} else {
+;;;221      	while(!ubTransferComplete)
         0x080002f0:    bf00        ..      NOP      
         0x080002f2:    481f        .H      LDR      r0,[pc,#124] ; [0x8000370] = 0x20000027
         0x080002f4:    7800        .x      LDRB     r0,[r0,#0]
         0x080002f6:    2800        .(      CMP      r0,#0
         0x080002f8:    d0fb        ..      BEQ      0x80002f2 ; Handle_I2C_MasterDMA_IT + 34
-;;;221      	{}
-;;;222    //		return 1;
-;;;223    	}
-;;;224      LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, count);
+;;;222      	{}
+;;;223    //		return 1;
+;;;224    	}
+;;;225      LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, count);
         0x080002fa:    462a        *F      MOV      r2,r5
         0x080002fc:    2104        .!      MOVS     r1,#4
         0x080002fe:    481d        .H      LDR      r0,[pc,#116] ; [0x8000374] = 0x40020000
         0x08000300:    f000f906    ....    BL       LL_DMA_SetDataLength ; 0x8000510
-;;;225      LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_4, (uint32_t)data, (uint32_t)LL_I2C_DMA_GetRegAddr(I2Cx), LL_DMA_DIRECTION_MEMORY_TO_PERIPH ); //  LL_DMA_GetDataTransferDirection(DMA1, LL_DMA_CHANNEL_4));
+;;;226      LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_4, (uint32_t)data, (uint32_t)LL_I2C_DMA_GetRegAddr(I2Cx), LL_DMA_DIRECTION_MEMORY_TO_PERIPH ); //  LL_DMA_GetDataTransferDirection(DMA1, LL_DMA_CHANNEL_4));
         0x08000304:    bf00        ..      NOP      
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_i2c.h
 ;;;467      return (uint32_t) & (I2Cx->DR);
@@ -643,46 +643,46 @@
         0x08000316:    4817        .H      LDR      r0,[pc,#92] ; [0x8000374] = 0x40020000
         0x08000318:    f000f8b6    ....    BL       LL_DMA_ConfigAddresses ; 0x8000488
 ;;; .\..\Src\i2c_interface.c
-;;;227      LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_4);
+;;;228      LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_4);
         0x0800031c:    2104        .!      MOVS     r1,#4
         0x0800031e:    4815        .H      LDR      r0,[pc,#84] ; [0x8000374] = 0x40020000
         0x08000320:    f000f8da    ....    BL       LL_DMA_EnableIT_TC ; 0x80004d8
-;;;228      LL_DMA_EnableIT_TE(DMA1, LL_DMA_CHANNEL_4);
+;;;229      LL_DMA_EnableIT_TE(DMA1, LL_DMA_CHANNEL_4);
         0x08000324:    2104        .!      MOVS     r1,#4
         0x08000326:    4813        .H      LDR      r0,[pc,#76] ; [0x8000374] = 0x40020000
         0x08000328:    f000f8e4    ....    BL       LL_DMA_EnableIT_TE ; 0x80004f4
-;;;229    
-;;;230      /* (1) Enable DMA transfer **************************************************/
-;;;231      LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
+;;;230    
+;;;231      /* (1) Enable DMA transfer **************************************************/
+;;;232      LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
         0x0800032c:    2104        .!      MOVS     r1,#4
         0x0800032e:    4811        .H      LDR      r0,[pc,#68] ; [0x8000374] = 0x40020000
         0x08000330:    f000f8c4    ....    BL       LL_DMA_EnableChannel ; 0x80004bc
-;;;232      /* (2) Prepare acknowledge for Master data reception ************************/
-;;;233      LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_ACK);
+;;;233      /* (2) Prepare acknowledge for Master data reception ************************/
+;;;234      LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_ACK);
         0x08000334:    f44f6180    O..a    MOV      r1,#0x400
         0x08000338:    4620         F      MOV      r0,r4
         0x0800033a:    f000f99d    ....    BL       LL_I2C_AcknowledgeNextData ; 0x8000678
-;;;234    
-;;;235      /* (3) Initiate a Start condition to the Slave device ***********************/
-;;;236      /* Master Generate Start condition */
-;;;237      LL_I2C_GenerateStartCondition(I2Cx);
+;;;235    
+;;;236      /* (3) Initiate a Start condition to the Slave device ***********************/
+;;;237      /* Master Generate Start condition */
+;;;238      LL_I2C_GenerateStartCondition(I2Cx);
         0x0800033e:    4620         F      MOV      r0,r4
         0x08000340:    f000f9fe    ....    BL       LL_I2C_GenerateStartCondition ; 0x8000740
-;;;238    
-;;;239      /* (4) Loop until end of transfer completed (DMA TC raised) *****************/
-;;;240    
-;;;241    #if (USE_TIMEOUT == 1)
-;;;242      int Timeout = timeout;
+;;;239    
+;;;240      /* (4) Loop until end of transfer completed (DMA TC raised) *****************/
+;;;241    
+;;;242    #if (USE_TIMEOUT == 1)
+;;;243      int Timeout = timeout;
         0x08000344:    4646        FF      MOV      r6,r8
-;;;243    #endif /* USE_TIMEOUT */
-;;;244    
-;;;245      /* Loop until DMA transfer complete event */
-;;;246      while(!ubTransferComplete)
+;;;244    #endif /* USE_TIMEOUT */
+;;;245    
+;;;246      /* Loop until DMA transfer complete event */
+;;;247      while(!ubTransferComplete)
         0x08000346:    e00d        ..      B        0x8000364 ; Handle_I2C_MasterDMA_IT + 148
-;;;247      {
-;;;248    #if (USE_TIMEOUT == 1)
-;;;249        /* Check Systick counter flag to decrement the time-out value */
-;;;250        if (LL_SYSTICK_IsActiveCounterFlag()) 
+;;;248      {
+;;;249    #if (USE_TIMEOUT == 1)
+;;;250        /* Check Systick counter flag to decrement the time-out value */
+;;;251        if (LL_SYSTICK_IsActiveCounterFlag()) 
         0x08000348:    bf00        ..      NOP      
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_cortex.h
 ;;;249      return ((SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) == (SysTick_CTRL_COUNTFLAG_Msk));
@@ -691,22 +691,22 @@
         0x08000350:    f3c04000    ...@    UBFX     r0,r0,#16,#1
         0x08000354:    b130        0.      CBZ      r0,0x8000364 ; Handle_I2C_MasterDMA_IT + 148
 ;;; .\..\Src\i2c_interface.c
-;;;252          if(Timeout-- == 0)
+;;;253          if(Timeout-- == 0)
         0x08000356:    1e30        0.      SUBS     r0,r6,#0
         0x08000358:    f1a60601    ....    SUB      r6,r6,#1
         0x0800035c:    d102        ..      BNE      0x8000364 ; Handle_I2C_MasterDMA_IT + 148
-;;;253          {
-;;;254            /* Time-out occurred. Set LED to blinking mode */
-;;;255            return -1;
+;;;254          {
+;;;255            /* Time-out occurred. Set LED to blinking mode */
+;;;256            return -1;
         0x0800035e:    1e40        @.      SUBS     r0,r0,#1
-;;;256          }
-;;;257        }
-;;;258    #endif /* USE_TIMEOUT */
-;;;259      }
-;;;260    
-;;;261    	return 0;
-;;;262      /* (5) End of tranfer, Data consistency are checking into Slave process *****/
-;;;263    }
+;;;257          }
+;;;258        }
+;;;259    #endif /* USE_TIMEOUT */
+;;;260      }
+;;;261    
+;;;262    	return 0;
+;;;263      /* (5) End of tranfer, Data consistency are checking into Slave process *****/
+;;;264    }
         0x08000360:    e8bd8ff8    ....    POP      {r3-r11,pc}
         0x08000364:    4802        .H      LDR      r0,[pc,#8] ; [0x8000370] = 0x20000027
         0x08000366:    7800        .x      LDRB     r0,[r0,#0]
@@ -720,34 +720,34 @@
     $t
     i.Handle_I2C_MasterDMA_IT_async
     Handle_I2C_MasterDMA_IT_async
-;;;264    
-;;;265    int Handle_I2C_MasterDMA_IT_async(uint8_t address, uint8_t *data, uint16_t count)
-;;;266    {
+;;;265    
+;;;266    int Handle_I2C_MasterDMA_IT_async(uint8_t address, uint8_t *data, uint16_t count)
+;;;267    {
         0x08000378:    b5f8        ..      PUSH     {r3-r7,lr}
         0x0800037a:    4607        .F      MOV      r7,r0
         0x0800037c:    460c        .F      MOV      r4,r1
         0x0800037e:    4615        .F      MOV      r5,r2
-;;;267    	if(ubTransferComplete == 1){
+;;;268    	if(ubTransferComplete == 1){
         0x08000380:    4818        .H      LDR      r0,[pc,#96] ; [0x80003e4] = 0x20000027
         0x08000382:    7800        .x      LDRB     r0,[r0,#0]
         0x08000384:    2801        .(      CMP      r0,#1
         0x08000386:    d103        ..      BNE      0x8000390 ; Handle_I2C_MasterDMA_IT_async + 24
-;;;268    		ubTransferComplete = 0;
+;;;269    		ubTransferComplete = 0;
         0x08000388:    2000        .       MOVS     r0,#0
         0x0800038a:    4916        .I      LDR      r1,[pc,#88] ; [0x80003e4] = 0x20000027
         0x0800038c:    7008        .p      STRB     r0,[r1,#0]
         0x0800038e:    e001        ..      B        0x8000394 ; Handle_I2C_MasterDMA_IT_async + 28
-;;;269    	} else {
-;;;270    		return 1;
+;;;270    	} else {
+;;;271    		return 1;
         0x08000390:    2001        .       MOVS     r0,#1
         0x08000392:    bdf8        ..      POP      {r3-r7,pc}
-;;;271    	}
-;;;272      LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, count);
+;;;272    	}
+;;;273      LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, count);
         0x08000394:    462a        *F      MOV      r2,r5
         0x08000396:    2104        .!      MOVS     r1,#4
         0x08000398:    4813        .H      LDR      r0,[pc,#76] ; [0x80003e8] = 0x40020000
         0x0800039a:    f000f8b9    ....    BL       LL_DMA_SetDataLength ; 0x8000510
-;;;273      LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_4, (uint32_t)data, (uint32_t)LL_I2C_DMA_GetRegAddr(I2C2), LL_DMA_DIRECTION_MEMORY_TO_PERIPH ); //  LL_DMA_GetDataTransferDirection(DMA1, LL_DMA_CHANNEL_4));
+;;;274      LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_4, (uint32_t)data, (uint32_t)LL_I2C_DMA_GetRegAddr(I2C2), LL_DMA_DIRECTION_MEMORY_TO_PERIPH ); //  LL_DMA_GetDataTransferDirection(DMA1, LL_DMA_CHANNEL_4));
         0x0800039e:    4813        .H      LDR      r0,[pc,#76] ; [0x80003ec] = 0x40005800
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_i2c.h
 ;;;467      return (uint32_t) & (I2Cx->DR);
@@ -761,32 +761,32 @@
         0x080003b0:    480d        .H      LDR      r0,[pc,#52] ; [0x80003e8] = 0x40020000
         0x080003b2:    f000f869    ..i.    BL       LL_DMA_ConfigAddresses ; 0x8000488
 ;;; .\..\Src\i2c_interface.c
-;;;275      LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_4);
+;;;276      LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_4);
         0x080003b6:    2104        .!      MOVS     r1,#4
         0x080003b8:    480b        .H      LDR      r0,[pc,#44] ; [0x80003e8] = 0x40020000
         0x080003ba:    f000f88d    ....    BL       LL_DMA_EnableIT_TC ; 0x80004d8
-;;;276      LL_DMA_EnableIT_TE(DMA1, LL_DMA_CHANNEL_4);
+;;;277      LL_DMA_EnableIT_TE(DMA1, LL_DMA_CHANNEL_4);
         0x080003be:    2104        .!      MOVS     r1,#4
         0x080003c0:    4809        .H      LDR      r0,[pc,#36] ; [0x80003e8] = 0x40020000
         0x080003c2:    f000f897    ....    BL       LL_DMA_EnableIT_TE ; 0x80004f4
-;;;277    
-;;;278      /* (1) Enable DMA transfer **************************************************/
-;;;279      LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
+;;;278    
+;;;279      /* (1) Enable DMA transfer **************************************************/
+;;;280      LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
         0x080003c6:    2104        .!      MOVS     r1,#4
         0x080003c8:    4807        .H      LDR      r0,[pc,#28] ; [0x80003e8] = 0x40020000
         0x080003ca:    f000f877    ..w.    BL       LL_DMA_EnableChannel ; 0x80004bc
-;;;280      /* (2) Prepare acknowledge for Master data reception ************************/
-;;;281      LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_ACK);
+;;;281      /* (2) Prepare acknowledge for Master data reception ************************/
+;;;282      LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_ACK);
         0x080003ce:    f44f6180    O..a    MOV      r1,#0x400
         0x080003d2:    4806        .H      LDR      r0,[pc,#24] ; [0x80003ec] = 0x40005800
         0x080003d4:    f000f950    ..P.    BL       LL_I2C_AcknowledgeNextData ; 0x8000678
-;;;282    
-;;;283      /* (3) Initiate a Start condition to the Slave device ***********************/
-;;;284      /* Master Generate Start condition */
-;;;285      LL_I2C_GenerateStartCondition(I2C2);
+;;;283    
+;;;284      /* (3) Initiate a Start condition to the Slave device ***********************/
+;;;285      /* Master Generate Start condition */
+;;;286      LL_I2C_GenerateStartCondition(I2C2);
         0x080003d8:    4804        .H      LDR      r0,[pc,#16] ; [0x80003ec] = 0x40005800
         0x080003da:    f000f9b1    ....    BL       LL_I2C_GenerateStartCondition ; 0x8000740
-;;;286    	return 0;
+;;;287    	return 0;
         0x080003de:    2000        .       MOVS     r0,#0
         0x080003e0:    e7d7        ..      B        0x8000392 ; Handle_I2C_MasterDMA_IT_async + 26
     $d
@@ -10985,10 +10985,10 @@
     i.Transfer_Complete_Callback
     Transfer_Complete_Callback
 ;;; .\..\Src\i2c_interface.c
-;;;320    {
+;;;321    {
         0x08001c34:    b510        ..      PUSH     {r4,lr}
-;;;321      /* Generate Stop condition */
-;;;322    	while(!LL_I2C_IsActiveFlag_BTF(I2C2))
+;;;322      /* Generate Stop condition */
+;;;323    	while(!LL_I2C_IsActiveFlag_BTF(I2C2))
         0x08001c36:    bf00        ..      NOP      
         0x08001c38:    bf00        ..      NOP      
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_i2c.h
@@ -10999,7 +10999,7 @@
         0x08001c42:    2800        .(      CMP      r0,#0
         0x08001c44:    d0f8        ..      BEQ      0x8001c38 ; Transfer_Complete_Callback + 4
 ;;; .\..\Src\i2c_interface.c
-;;;325      LL_I2C_GenerateStopCondition(I2C2);
+;;;326      LL_I2C_GenerateStopCondition(I2C2);
         0x08001c46:    bf00        ..      NOP      
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_i2c.h
 ;;;1596     SET_BIT(I2Cx->CR1, I2C_CR1_STOP);
@@ -11011,7 +11011,7 @@
 ;;;1597   }
         0x08001c54:    bf00        ..      NOP      
 ;;; .\..\Src\i2c_interface.c
-;;;326      LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+;;;327      LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
         0x08001c56:    4809        .H      LDR      r0,[pc,#36] ; [0x8001c7c] = 0x40020000
         0x08001c58:    2104        .!      MOVS     r1,#4
 ;;; ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_dma.h
@@ -11028,11 +11028,11 @@
 ;;;492    }
         0x08001c6e:    bf00        ..      NOP      
 ;;; .\..\Src\i2c_interface.c
-;;;328      ubTransferComplete = 1;
+;;;329      ubTransferComplete = 1;
         0x08001c70:    2001        .       MOVS     r0,#1
         0x08001c72:    4904        .I      LDR      r1,[pc,#16] ; [0x8001c84] = 0x20000027
         0x08001c74:    7008        .p      STRB     r0,[r1,#0]
-;;;329    }
+;;;330    }
         0x08001c76:    bd10        ..      POP      {r4,pc}
     $d
         0x08001c78:    40005800    .X.@    DCD    1073764352
@@ -11042,17 +11042,17 @@
     $t
     i.Transfer_Error_Callback
     Transfer_Error_Callback
-;;;330    
-;;;331    /**
-;;;332      * @brief  DMA transfer error callback
-;;;333      * @note   This function is executed when the transfer error interrupt
-;;;334      *         is generated during DMA transfer
-;;;335      * @retval None
-;;;336      */
-;;;337    void Transfer_Error_Callback()
-;;;338    {
-;;;339      /* Disable DMA1_Channel4_IRQn */
-;;;340      NVIC_DisableIRQ(DMA1_Channel4_IRQn);
+;;;331    
+;;;332    /**
+;;;333      * @brief  DMA transfer error callback
+;;;334      * @note   This function is executed when the transfer error interrupt
+;;;335      *         is generated during DMA transfer
+;;;336      * @retval None
+;;;337      */
+;;;338    void Transfer_Error_Callback()
+;;;339    {
+;;;340      /* Disable DMA1_Channel4_IRQn */
+;;;341      NVIC_DisableIRQ(DMA1_Channel4_IRQn);
         0x08001c88:    200e        .       MOVS     r0,#0xe
 ;;; ../Drivers/CMSIS/Include/core_cm3.h
 ;;;1465     NVIC->ICER[(((uint32_t)(int32_t)IRQn) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)(int32_t)IRQn) & 0x1FUL));
@@ -11064,9 +11064,9 @@
 ;;;1466   }
         0x08001c96:    bf00        ..      NOP      
 ;;; .\..\Src\i2c_interface.c
-;;;342      while(1){};
+;;;343      while(1){};
         0x08001c98:    bf00        ..      NOP      
-;;; .\..\Src\i2c_interface.c (342)
+;;; .\..\Src\i2c_interface.c (343)
         0x08001c9a:    e7fe        ..      B        0x8001c9a ; Transfer_Error_Callback + 18
     $d
         0x08001c9c:    e000e180    ....    DCD    3758154112
@@ -17349,7 +17349,7 @@
 
 
 ** Section #9 '.debug_macinfo' (SHT_PROGBITS)
-    Size   : 523460 bytes
+    Size   : 523256 bytes
 
 
 ** Section #10 '.debug_pubnames' (SHT_PROGBITS)
@@ -17371,7 +17371,7 @@
 
 
 ** Section #14 '.comment' (SHT_PROGBITS)
-    Size   : 23496 bytes
+    Size   : 23488 bytes
 
 
 ** Section #15 '.shstrtab' (SHT_STRTAB)

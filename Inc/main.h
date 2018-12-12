@@ -118,11 +118,12 @@
 #endif /* __MAIN_H */
 
 
-#define t3cr1       ((uint32_t *)((0x42000000  + ((0x40000400)-0x40000000)*32)))
+#define t3cr1			((uint32_t *)((0x42000000  + ((0x40000400)-0x40000000)*32)))
 
-#define t4cr1       ((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
-#define t4sr        ((uint32_t *)((0x42000000  + ((0x40000810)-0x40000000)*32)))
-#define t4dier  ((uint32_t *)((0x42000000  + ((0x4000080C)-0x40000000)*32)))
+#define t4cr1			((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
+#define t4sr			((uint32_t *)((0x42000000  + ((0x40000810)-0x40000000)*32)))
+#define t4dier		((uint32_t *)((0x42000000  + ((0x4000080C)-0x40000000)*32)))
+
 #define disable_encoder_ticks() t4dier[TIM_DIER_UIE_Pos] = 0    
 #define enable_encoder_ticks()  t4dier[TIM_DIER_UIE_Pos] = 1    
 
@@ -237,7 +238,7 @@ extern uint32_t menu_changed;
 #define MOTOR_X_ENABLE_Pin GPIO_PIN_1
 #define MOTOR_X_ENABLE_GPIO_Port GPIOA
 */
-#define MOTOR_X_SetPulse()           LL_TIM_EnableCounter(TIM3) //__HAL_TIM_ENABLE(&htim3)
+#define MOTOR_X_SetPulse()           t3cr1[TIM_CR1_CEN_Pos] = 1 //LL_TIM_EnableCounter(TIM3) //__HAL_TIM_ENABLE(&htim3)
 #define MOTOR_X_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_X_Forward()            MOTOR_X_DIR_GPIO_Port->BSRR    = MOTOR_X_DIR_Pin
 #define MOTOR_X_Reverse()            MOTOR_X_DIR_GPIO_Port->BRR     = MOTOR_X_DIR_Pin
@@ -249,17 +250,17 @@ extern uint32_t menu_changed;
 
 
 // ***** Taho *****
-#define TahoSetPulse()               
-#define TahoRemovePulse()            
+//#define TahoSetPulse()               
+//#define TahoRemovePulse()            
 
 
 // ***** Encoder *****
-#define Enc_Line_per_Revolution      1800                         // Кол-во линий энкодера
-#define Enc_Line                     Enc_Line_per_Revolution*2    // Рабочее кол-во тиков
+//#define Enc_Line_per_Revolution      1800                         // Кол-во линий энкодера
+//#define Enc_Line                     Enc_Line_per_Revolution*2    // Рабочее кол-во тиков
 
-#define Enc_Line_Q1648                (uint64_t)((uint64_t)Enc_Line << 48)
+//#define Enc_Line_Q1648                (uint64_t)((uint64_t)Enc_Line << 48)
 
-#define Enc_Read()                   LL_TIM_GetCounter(TIM4) // __HAL_TIM_GetCounter(&htim4)
+//#define Enc_Read()                   LL_TIM_GetCounter(TIM4) // __HAL_TIM_GetCounter(&htim4)
 
 #define Spindle_Direction_CW         0                             // прямое вращение
 #define Spindle_Direction_CCW        1                             // обратное вращение

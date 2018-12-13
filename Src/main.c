@@ -93,8 +93,8 @@ recommendation: mm(tpi) - passes
 // перегенерация есть в excel файле
 THREAD_INFO Thread_Info[] = {
 //	{ 0x12000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
-//	{ 0x02400000, 0, "4.00", "mm", 10, "1.26", ".050", 0 },
-	{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
+	{ 0x02400000, 0, "4.00", "mm", 10, "1.26", ".050", 0 },
+//	{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
 	{ 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 1 },
 	{ 0x04800000, 0, "2.00", "mm", 0, "1.26", ".050", 2 },
 	{ 0x06000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
@@ -373,7 +373,7 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-
+	MOTOR_Z_Disable();
 // инициализация дисплея
 #ifndef _SIMU
 	Activate_I2C_Master();
@@ -424,7 +424,7 @@ int main(void)
 //MOTOR_X_AllowPulse();
 //MOTOR_Z_AllowPulse();
 	
-	LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+//	LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
   LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
   LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
 //	enable_encoder_ticks(); 														// enable interrup for encoder ticks
@@ -478,13 +478,12 @@ int main(void)
 
 		if(z_axis.current_pos != rs) {
 			rs = z_axis.current_pos;
-			menu_changed = 1;
+//			menu_changed = 1;
 		}
 
 // update display info
 		if(menu_changed == 1){ // haltodo && hi2c2.hdmatx->State == HAL_DMA_STATE_READY) {
-			menu_changed = 0;
-			update_screen();
+			menu_changed = update_screen();
 		}
 	}
   /* USER CODE END 3 */
@@ -653,7 +652,7 @@ static void MX_TIM1_Init(void)
   NVIC_SetPriority(TIM1_UP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
   NVIC_EnableIRQ(TIM1_UP_IRQn);
 
-  TIM_InitStruct.Prescaler = 720;
+  TIM_InitStruct.Prescaler = 7200;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 0;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
@@ -704,10 +703,10 @@ static void MX_TIM2_Init(void)
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
 
   /* TIM2 interrupt Init */
-  NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
+  NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 0));
   NVIC_EnableIRQ(TIM2_IRQn);
 
-  TIM_InitStruct.Prescaler = 7200;
+  TIM_InitStruct.Prescaler = 720;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 0;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;

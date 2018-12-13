@@ -240,7 +240,7 @@ void TIM4_IRQHandler(void)
 //	}
 	if (state.sync == true) {
 		state.spindle_dir = t4cr1[TIM_CR1_DIR_Pos];
-		state.f_encoder = encoder;
+//		state.f_encoder = encoder;
 		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
 		state.function(&state);
 	}

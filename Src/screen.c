@@ -25,9 +25,9 @@ char * utoa_builtin_div_1(uint32_t value, char *buffer)
 }
 
 
-void update_screen(void){
+int update_screen(void){
 	if(ubTransferComplete == 0) {
-		return;
+		return 1;
 	}
 	SSD1306_Fill(SSD1306_COLOR_BLACK);
 // first line
@@ -83,6 +83,6 @@ void update_screen(void){
 */
 //#if !defined ( _SIMU )
 	SSD1306_UpdateScreen();
-//	return 0;
+	return 0;
 //#endif
 }

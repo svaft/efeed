@@ -15,7 +15,7 @@
 
 
 void init_screen(I2C_TypeDef *hi2c);
-void update_screen(void);
+int update_screen(void);
 
 
 

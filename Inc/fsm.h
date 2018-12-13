@@ -38,6 +38,7 @@ extern state_t state;
 
 void do_fsm_menu(state_t*);										//0 . menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
 void do_fsm_menu_lps(state_t*);							//10. long_press_start: end_pos = current_pos = 0, идем в п. fsm_first_cut_lps
+/*
 void do_fsm_first_cut_lps(state_t*);						//20. init selected mode, init direction, motor on, goto fsm_wait_tacho
 void do_fsm_wait_tacho(state_t*); 						//24. wait tacho pulse, go to 25
 void do_fsm_first_cut_ramp_up(state_t*); 			//25. tacho pulse interrupt: включаем прерывание по тикам энкодера, начинаем разгоняться(ramp up) по таблице пока не выйдем на расчетную скорость,далее в режим 26
@@ -54,7 +55,8 @@ void do_fsm_main_cut_wait_tacho(state_t*);		//50. клик: включаем м�
 void do_fsm_main_cut_ramp_up(state_t*);				//54. тахо пульс обнаружен, включаем прерывание по тикам энкодера, можно шагать, идем в п.55
 void do_fsm_main_cut(state_t*);								//55. если счетчик current_pos = 0 то в зависимости от выбранной стратегии вычисляем infeed и идем в режим резьбы до end_pos: разгон, далее идем в п.56
 void do_fsm_main_cut_infeed(state_t*);				//56. infeed для резьбы: в зависимости от номера прохода сдвигаем каретку на определенное количество шагов для облегчения резания+основной путь, далее в п. 30
-
+*/
+void z_move(uint32_t , uint32_t  , bool, bool);
 
 
 void do_fsm_move_start(state_t* );

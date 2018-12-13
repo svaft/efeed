@@ -227,7 +227,7 @@ void do_fsm_wait_tacho(state_t* s)
 void do_fsm_menu(state_t* s)
 {
 	uint8_t level = Thread_Info[Menu_Step].level;
-	buttons_flag_set = long_press_start_Msk;
+//	buttons_flag_set = long_press_start_Msk;
 	switch(buttons_flag_set) {
 	case single_click_Msk3: {
 		feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
@@ -241,12 +241,17 @@ void do_fsm_menu(state_t* s)
 	}
 	case single_click_Msk: {
 		if(z_axis.end_pos != 0) {
-
 			// first pass of thread cut was complete, so just use single click
 			//	to switch between modes to process all other cuts
 			MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-			for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver
-			s->function = z_axis.current_pos > 0 ? do_fsm_sclick_event : do_fsm_main_cut_wait_tacho;
+			LL_mDelay(17);
+//			for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver
+//			s->function = z_axis.current_pos > 0 ? do_fsm_sclick_event : do_fsm_main_cut_wait_tacho;
+			
+			do_fsm_move_start(s);
+//			s->function = do_fsm_move_start;
+//			LL_TIM_EnableCounter(TIM2);			
+//			LL_TIM_GenerateEvent_UPDATE(TIM2);
 		} else { // controller in initial state, scroll menu
 			s->function = do_fsm_menu_lps;
 			for (int a = Menu_Step+1; a<Menu_size; a++) {
@@ -281,7 +286,11 @@ void do_fsm_menu(state_t* s)
 		if(s->function == do_fsm_menu_lps){
 			if(Thread_Info[Menu_Step].Q824 != 0) { // long press detected, start new thread from current position
 				//mode 20:
-				disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
+//				disable_encoder_ticks(); //reset interrupt for encoder ticks, only tacho
+//				LL_TIM_DisableIT_UPDATE(TIM4);
+//				LL_TIM_GenerateEvent_UPDATE(TIM4); 
+//				TIM4->SR = 0;
+
 				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
 				s->main_feed_direction = feed_direction; // save main feed direction, where cut is on
 				s->sync = true;
@@ -290,7 +299,8 @@ void do_fsm_menu(state_t* s)
 				else
 					MOTOR_Z_Reverse();
 				
-				for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver todo dumb method
+//				for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to wakeup motor driver todo dumb method
+				LL_mDelay(17);
 
 				z_axis.Q824set = Thread_Info[Menu_Step].Q824;
 				z_axis.end_pos = z_axis.current_pos = 0;
@@ -561,38 +571,35 @@ void do_fsm_main_cut_ramp_up(state_t* s)
 
 //---------------------------------------------------------------------------------------------
 void do_fsm_move_start(state_t* s){
-	if(s->main_feed_direction == feed_direction && s->f_tacho ) { // if tacho event or we going to start back feed to initial position with async clock
+	if(s->f_tacho || s->main_feed_direction != feed_direction ) { // if tacho event or we going to start back feed to initial position with async clock
+		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 		if(s->main_feed_direction == feed_direction) {
 			s->function = do_fsm_ramp_up;
 			s->sync = true;
 			s->async_z = 0;
 			s->syncbase = TIM4; 									// sync with spindle
 
-			s->syncbase->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
-			s->syncbase->EGR |= TIM_EGR_UG; // upload ARR value immediately 
-			s->syncbase->CNT = 0;						// reset counter
-//			LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH2);
+			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
 			enable_encoder_ticks(); 									// enable thread specific interrupt controlled by Q824set
 		} else {
-
-			s->async_z = 1;
-//			s->syncbase = &htim2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 			s->function = do_fsm_ramp_up_async;
+			s->async_z = 1;
+			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 
-		/* Enable counter */
-		LL_TIM_EnableCounter(TIM2);
-		/* Force update generation */
-		LL_TIM_GenerateEvent_UPDATE(TIM2);
-
-//			LL_TIM_EnableIT_UPDATE(TIM2);
+			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by TIM2(async mode)
+			LL_TIM_EnableCounter(TIM2); /* Enable counter */
 		}
 
+		MOTOR_Z_AllowPulse();
+		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+		s->syncbase->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
+		LL_TIM_GenerateEvent_UPDATE(s->syncbase); /* Force update generation */
 	}	
 }
 
 void do_fsm_ramp_up(state_t* s)
 {
-	MOTOR_Z_SetPulse();
+//	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
 	if(z_axis_ramp_up2(s)) {
 		s->function = do_fsm_move;
@@ -601,7 +608,7 @@ void do_fsm_ramp_up(state_t* s)
 
 void do_fsm_move(state_t* s)
 {
-	MOTOR_Z_SetPulse();
+//	MOTOR_Z_SetPulse();
 //	z_axis.current_pos++;
 //	if(s->spindle_dir)	z_axis.current_pos++;
 //	else z_axis.current_pos--;
@@ -631,7 +638,7 @@ void do_long_press_end_callback(state_t* s)          // direct movement: first p
 
 void do_fsm_ramp_down(state_t* s)
 {
-	MOTOR_Z_SetPulse();
+//	MOTOR_Z_SetPulse();
 	if(s->spindle_dir)	z_axis.current_pos++;
 	else z_axis.current_pos--;
 	if(z_axis_ramp_down2(s)) {
@@ -644,14 +651,18 @@ void do_fsm_ramp_down(state_t* s)
 
 void do_fsm_move_end(state_t* s){
 	s->async_z = 0;
-	s->syncbase = 0; // reset syncbase to stop calling it from timer interrupt
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+//	MOTOR_Z_BlockPulse();
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
 	} else {
 		LL_TIM_DisableCounter(TIM2); // pause async timer
 //		LL_TIM_DisableIT_UPDATE(TIM2);
 	}
+	s->syncbase = 0; // reset syncbase to stop calling it from timer interrupt
+
   MOTOR_Z_Disable(); 									//disable motor later on next tacho event (or after some ticks count?) to completely process last step
+//	feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
 	feed_direction = !feed_direction; 					//change feed direction
 	menu_changed = 1; 													//update menu
 	s->function = do_fsm_wait_sclick;

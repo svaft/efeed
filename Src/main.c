@@ -389,10 +389,42 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
 
-	TIM3->CCER = TIM_CCER_CC1E; /* Enable the Compare output channel 1 */
-//  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1);
+///// from STM examples:
+//  /**************************/
+//  /* Start pulse generation */
+//  /**************************/
+//  /* Enable channel 1 */
+//  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
+//  
+//  /* Enable TIM3 outputs */
+//  LL_TIM_EnableAllOutputs(TIM3);
+//  
+//  /* Enable auto-reload register preload */
+//  LL_TIM_EnableARRPreload(TIM3);
 
-  LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+//  /* Force update generation */
+//  LL_TIM_GenerateEvent_UPDATE(TIM3);  
+
+
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+//  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by TIM2(async mode)
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+//  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+
+
+	MOTOR_Z_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
+  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
+	
+	LL_TIM_EnableAllOutputs(TIM3);
+//MOTOR_X_AllowPulse();
+//MOTOR_Z_AllowPulse();
+	
+	LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
   LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
   LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
 //	enable_encoder_ticks(); 														// enable interrup for encoder ticks
@@ -400,6 +432,7 @@ int main(void)
 
 	LL_TIM_EnableIT_UPDATE(TIM1);
 	LL_TIM_EnableIT_UPDATE(TIM2);
+	LL_TIM_EnableCounter(TIM2);
 	
 //	do_fsm_move_start(&state);
 
@@ -674,7 +707,7 @@ static void MX_TIM2_Init(void)
   NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
   NVIC_EnableIRQ(TIM2_IRQn);
 
-  TIM_InitStruct.Prescaler = 720;
+  TIM_InitStruct.Prescaler = 7200;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 0;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
@@ -695,9 +728,9 @@ static void MX_TIM2_Init(void)
 
   LL_TIM_OC_DisableFast(TIM2, LL_TIM_CHANNEL_CH1);
 
-  LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_RESET);
+  LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_UPDATE);
 
-  LL_TIM_DisableMasterSlaveMode(TIM2);
+  LL_TIM_EnableMasterSlaveMode(TIM2);
 
 }
 
@@ -721,41 +754,34 @@ static void MX_TIM3_Init(void)
 
   LL_TIM_DisableARRPreload(TIM3);
 
-  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH1);
+  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
 
   TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.CompareValue = 0;
   TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
-  LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
-
-  LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH1);
-
-  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
-
-  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
 
   LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH3);
 
   LL_TIM_SetOnePulseMode(TIM3, LL_TIM_ONEPULSEMODE_SINGLE);
 
+  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3);
+
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+
+  LL_TIM_DisableIT_TRIG(TIM3);
+
+  LL_TIM_DisableDMAReq_TRIG(TIM3);
+
   LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_RESET);
 
   LL_TIM_DisableMasterSlaveMode(TIM3);
 
   /**TIM3 GPIO Configuration  
-  PA6   ------> TIM3_CH1
   PB0   ------> TIM3_CH3 
   */
-  GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  LL_GPIO_Init(MOTOR_X_STEP_GPIO_Port, &GPIO_InitStruct);
-
   GPIO_InitStruct.Pin = MOTOR_Z_STEP_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
@@ -815,9 +841,9 @@ static void MX_TIM4_Init(void)
 
   LL_TIM_IC_SetPolarity(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_IC_POLARITY_RISING);
 
-  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_RESET);
+  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
 
-  LL_TIM_DisableMasterSlaveMode(TIM4);
+  LL_TIM_EnableMasterSlaveMode(TIM4);
 
   LL_TIM_IC_SetActiveInput(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_ACTIVEINPUT_DIRECTTI);
 
@@ -888,8 +914,8 @@ static void MX_GPIO_Init(void)
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_2|LL_GPIO_PIN_3|LL_GPIO_PIN_4 
-                          |LL_GPIO_PIN_5|LL_GPIO_PIN_10|LL_GPIO_PIN_11|LL_GPIO_PIN_12 
-                          |LL_GPIO_PIN_15;
+                          |LL_GPIO_PIN_5|LL_GPIO_PIN_6|LL_GPIO_PIN_10|LL_GPIO_PIN_11 
+                          |LL_GPIO_PIN_12|LL_GPIO_PIN_15;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 

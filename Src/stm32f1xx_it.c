@@ -207,14 +207,14 @@ void TIM2_IRQHandler(void)
 //		LED_GPIO_Port->BSRR = LED_Pin;   // led off
 //		LED_GPIO_Port->BRR = LED_Pin;
 //    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-    LL_GPIO_TogglePin( LED_GPIO_Port, LED_Pin);
+//    LL_GPIO_TogglePin( LED_GPIO_Port, LED_Pin);
 
 		state.function(&state);
 
 		TIM2->ARR = state.z_period;
 		TIM2->EGR |= TIM_EGR_UG;
 
-		text_buffer[tbc++] = TIM2->ARR;
+//		text_buffer[tbc++] = TIM2->ARR;
 	}
 
   /* USER CODE END TIM2_IRQn 0 */

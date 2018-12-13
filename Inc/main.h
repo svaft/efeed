@@ -72,8 +72,6 @@
 #define MOTOR_X_DIR_GPIO_Port GPIOC
 #define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_1
 #define MOTOR_X_ENABLE_GPIO_Port GPIOA
-#define MOTOR_X_STEP_Pin LL_GPIO_PIN_6
-#define MOTOR_X_STEP_GPIO_Port GPIOA
 #define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
 #define MOTOR_Z_DIR_GPIO_Port GPIOA
 #define MOTOR_Z_STEP_Pin LL_GPIO_PIN_0
@@ -144,8 +142,8 @@
 
 #define MOTOR_Z_BlockPulse()         TIM3->CCR3 = 0
 #define MOTOR_X_BlockPulse()         TIM3->CCR1 = 0
-#define MOTOR_Z_AllowPulse()         TIM3->CCR3 = min_pulse
-#define MOTOR_X_AllowPulse()         TIM3->CCR1 = min_pulse
+#define MOTOR_Z_AllowPulse()         TIM3->CCR3 = 1
+#define MOTOR_X_AllowPulse()         TIM3->CCR1 = 1
 
 
 typedef enum {
@@ -188,7 +186,7 @@ typedef struct
 
 
 typedef struct {
-	fixedptu Q824; //Q8.24 fix math format
+	fixedptu Q824; //Q8.24 fixed math format
 	uint8_t submenu;
 	char Text[6];
 	char Unit[6];
@@ -202,7 +200,7 @@ extern THREAD_INFO Thread_Info[];
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 
 typedef struct {
-	fixedptu Q824; //Q8.24 fix math format
+	fixedptu Q824; //Q8.24 fixed math format
 	fixedptu pitch;
 	uint8_t total_pass;
 	uint8_t pass;

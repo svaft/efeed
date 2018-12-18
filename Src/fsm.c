@@ -40,7 +40,7 @@ uint8_t async_ramp_profile[]= {
 };
 
 #define async_ramp_profile_len 32
-#define slew_speed_period 22
+#define slew_speed_period 50 // 22
 
 
 #define sync_ramp_profile_len 5
@@ -59,6 +59,8 @@ uint8_t sync_ramp_profile[]= {
 extern bool feed_direction;
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 extern const uint8_t Menu_size;
+
+bool demo;
 
 void do_fsm_menu(state_t* s)
 {
@@ -80,8 +82,11 @@ void do_fsm_menu(state_t* s)
 			// first pass of thread cut was complete, so just use single click
 			//	to switch between modes to process all other cuts
 
-			z_move(feed_direction, z_axis.end_pos, s->main_feed_direction == feed_direction ? true : false, true);
-//			z_move(feed_direction, z_axis.end_pos, false, true); //test case, always async
+//			z_move(feed_direction, z_axis.end_pos, s->main_feed_direction == feed_direction ? true : false, true);
+			if(demo)
+				z_move(feed_direction, z_axis.end_pos, false, true); //test case, always async
+			else
+				z_move(feed_direction, z_axis.end_pos, s->main_feed_direction == feed_direction ? true : false, true);
 //			z_move(feed_direction, 400*2, false, true);
 		} else { // controller in initial state, scroll menu
 			s->function = do_fsm_menu_lps;
@@ -122,8 +127,10 @@ void do_fsm_menu(state_t* s)
 				z_axis.prolong_addSteps = upl / (fixedptud)z_axis.Q824set;
 				// 200*step_divider*z_feed_screw(mm)*len(mm) = desired length in steps, in my case its 200*2*1*x
 
-				z_move(feed_direction, 0, true, true);
-//				z_move(feed_direction, 400*10, false, true); //test case, move async 10mm
+				if(demo)
+					z_move(feed_direction, 400*3, false, true); //test case, move async 10mm
+				else
+					z_move(feed_direction, 0, true, true);
 
 				//do_fsm_move_start
 			} else { // goto submenu
@@ -176,15 +183,18 @@ void do_fsm_wait_sclick(state_t* s)
 }
 
 void z_move(uint32_t direction, uint32_t length, bool sync, bool autostart){
+	MOTOR_X_Enable();
 	MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
 	LL_mDelay(2);
 
 	if(direction == feed_direction_left) {
 		feed_direction = feed_direction_left;
 		MOTOR_Z_Reverse();
+		MOTOR_X_Reverse();
 	} else {
 		feed_direction = feed_direction_right;
 		MOTOR_Z_Forward();
+		MOTOR_X_Forward();
 	}
 
 	state.sync = sync;
@@ -235,6 +245,7 @@ void do_fsm_move_start(state_t* s){
 		}
 
 		MOTOR_Z_AllowPulse();
+		MOTOR_X_AllowPulse();
 		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 		s->syncbase->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
 		LL_TIM_GenerateEvent_UPDATE(s->syncbase); /* Force update generation */
@@ -306,6 +317,7 @@ void do_fsm_move_end(state_t* s){
 	s->syncbase = 0; // reset syncbase to stop calling it from timer interrupt
 
   MOTOR_Z_Disable(); 									//disable motor later on next tacho event (or after some ticks count?) to completely process last step
+  MOTOR_X_Disable(); 									//disable motor later on next tacho event (or after some ticks count?) to completely process last step
 //	feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
 	feed_direction = !feed_direction; 					//autochange feed direction
 	menu_changed = 1; 													//update menu

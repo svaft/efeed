@@ -72,6 +72,8 @@
 #define MOTOR_X_DIR_GPIO_Port GPIOC
 #define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_1
 #define MOTOR_X_ENABLE_GPIO_Port GPIOA
+#define MOTOR_X_STEP_Pin LL_GPIO_PIN_6
+#define MOTOR_X_STEP_GPIO_Port GPIOA
 #define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
 #define MOTOR_Z_DIR_GPIO_Port GPIOA
 #define MOTOR_Z_STEP_Pin LL_GPIO_PIN_0
@@ -136,6 +138,7 @@
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR        = MOTOR_Z_DIR_Pin
 #define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR         = MOTOR_Z_DIR_Pin
+
 #define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
 #define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BRR  = MOTOR_Z_ENABLE_Pin
 
@@ -240,6 +243,7 @@ extern uint32_t menu_changed;
 #define MOTOR_X_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_X_Forward()            MOTOR_X_DIR_GPIO_Port->BSRR    = MOTOR_X_DIR_Pin
 #define MOTOR_X_Reverse()            MOTOR_X_DIR_GPIO_Port->BRR     = MOTOR_X_DIR_Pin
+
 #define MOTOR_X_Enable()             MOTOR_X_ENABLE_GPIO_Port->BSRR = MOTOR_X_ENABLE_Pin
 #define MOTOR_X_Disable()            MOTOR_X_ENABLE_GPIO_Port->BRR  = MOTOR_X_ENABLE_Pin
 

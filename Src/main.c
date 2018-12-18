@@ -61,6 +61,7 @@ state_t state = { do_fsm_menu_lps };
 
 /* Private variables ---------------------------------------------------------*/
 //int count;
+extern bool demo;
 
 
 //uint32_t current_pos = 0, cpv = 0, end_pos = 0, mode = 10, mode_prev = 10;
@@ -373,7 +374,11 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+	if(LL_GPIO_IsInputPinSet(BUTTON_1_GPIO_Port, BUTTON_1_Pin)){
+		demo = true;
+	}
 	MOTOR_Z_Disable();
+	MOTOR_X_Disable();
 // инициализация дисплея
 #ifndef _SIMU
 	Activate_I2C_Master();
@@ -417,8 +422,10 @@ int main(void)
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 
 
+	MOTOR_X_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
 	MOTOR_Z_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
   LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
+  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1);
 	
 	LL_TIM_EnableAllOutputs(TIM3);
 //MOTOR_X_AllowPulse();
@@ -652,7 +659,7 @@ static void MX_TIM1_Init(void)
   NVIC_SetPriority(TIM1_UP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
   NVIC_EnableIRQ(TIM1_UP_IRQn);
 
-  TIM_InitStruct.Prescaler = 7200;
+  TIM_InitStruct.Prescaler = 720;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 0;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
@@ -703,7 +710,7 @@ static void MX_TIM2_Init(void)
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
 
   /* TIM2 interrupt Init */
-  NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 0));
+  NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(TIM2_IRQn);
 
   TIM_InitStruct.Prescaler = 720;
@@ -753,13 +760,21 @@ static void MX_TIM3_Init(void)
 
   LL_TIM_DisableARRPreload(TIM3);
 
-  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
+  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH1);
 
   TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.CompareValue = 0;
   TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
+  LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
+
+  LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH1);
+
+  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
+
+  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
 
   LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH3);
@@ -779,8 +794,15 @@ static void MX_TIM3_Init(void)
   LL_TIM_DisableMasterSlaveMode(TIM3);
 
   /**TIM3 GPIO Configuration  
+  PA6   ------> TIM3_CH1
   PB0   ------> TIM3_CH3 
   */
+  GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  LL_GPIO_Init(MOTOR_X_STEP_GPIO_Port, &GPIO_InitStruct);
+
   GPIO_InitStruct.Pin = MOTOR_Z_STEP_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
@@ -913,8 +935,8 @@ static void MX_GPIO_Init(void)
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_2|LL_GPIO_PIN_3|LL_GPIO_PIN_4 
-                          |LL_GPIO_PIN_5|LL_GPIO_PIN_6|LL_GPIO_PIN_10|LL_GPIO_PIN_11 
-                          |LL_GPIO_PIN_12|LL_GPIO_PIN_15;
+                          |LL_GPIO_PIN_5|LL_GPIO_PIN_10|LL_GPIO_PIN_11|LL_GPIO_PIN_12 
+                          |LL_GPIO_PIN_15;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 

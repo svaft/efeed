@@ -40,10 +40,13 @@
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
+
 #include "screen.h"
 //#include "ssd1306.h"
 #include "fixedptc.h"
 #include "i2c_interface.h"
+
+
 #include "buttons.h"
 #include "fsm.h"
 #include "stm32f1xx_it.h"
@@ -161,171 +164,6 @@ S_WORK_SETUP work_setup;
 const fixedptud enc_setup = 0x9000000000000;
 
 
-/* todo from refactor branch
-const fixedptu sqrt_map[]={ //precaclulated sqrt map for infeed
-		0,
-		16777216,
-		23726566,
-		29058991,
-		33554432,
-		37514995,
-		41095619,
-		44388341,
-		47453133,
-		50331648,
-		53054215,
-		55643730,
-		58117981,
-		60491113,
-		62774594,
-		64977878,
-		67108864,
-		69174234,
-		71179699,
-		73130189,
-		75029991,
-		76882862,
-		78692118,
-		80460701,
-		82191237,
-		83886080,
-		85547352,
-		87176972,
-		88776682,
-		90348073,
-		91892597,
-		93411585,
-		94906266,
-		96377768,
-		97827139,
-		99255348,
-		100663296,
-		102051821,
-		103421705,
-		104773680,
-		106108431,
-		107426598,
-		108728787,
-		110015563,
-		111287461,
-		112544986,
-		113788615,
-		115018798,
-		116235962,
-		117440512,
-		118632832,
-		119813287,
-		120982225,
-		122139976,
-		123286856,
-		124423164,
-		125549188,
-		126665203,
-		127771470,
-		128868241,
-		129955756,
-		131034246,
-		132103931,
-		133165024,
-		134217728,
-		135262240,
-		136298747,
-		137327431,
-		138348467,
-		139362023,
-		140368260,
-		141367335,
-		142359398,
-		143344596,
-		144323069,
-		145294953,
-		146260378,
-		147219473,
-		148172360,
-		149119158,
-		150059982,
-		150994944,
-		151924152,
-		152847712,
-		153765725,
-		154678289,
-		155585501,
-		156487453,
-		157384237,
-		158275939,
-		159162646,
-		160044440,
-		160921403,
-		161793612,
-		162661144,
-		163524074,
-		164382474,
-		165236415,
-		166085965,
-		166931191,
-		167772160,
-};
-
-void recalculate_setup(){			 //recalculate current setup
-		work_setup.Q824		 = Thread_Info[Menu_Step].Q824;
-		work_setup.pitch		= (fixedptud)enc_setup / (fixedptud)work_setup.Q824;
-		fixedpt_str( work_setup.pitch, (char *)&work_setup.Text, 2 );
-
-		work_setup.thread_depth = ( (fixedptud)work_setup.pitch *(fixedptud)10905190 ) >> FIXEDPT_FBITS;
-//	work_setup.thread_depth = fixedpt_mul( (fixedptud)work_setup.pitch, (fixedptud)10905190 );
-		fixedpt_str( work_setup.thread_depth, (char *)&work_setup.infeed_mm, 2 );
-		fixedpt_str( fixedptu_div( work_setup.thread_depth, Q824inch ), (char *)&work_setup.infeed_inch, 3 );
-
-
-		// predict total_pass: recommended pass calculated by formula x=4y+2,
-		// but it can be increased(modifyed) for small laithe
-		work_setup.total_pass = fixedpt_toint( fixedpt_mul(0x6000000, work_setup.pitch) + 0x2000000 );
-		work_setup.pass = 0;
-
-		work_setup.infeed_mod = 7823344;
-
-		fixedptu sqrt_steps = sqrt_map[work_setup.total_pass - 1]; // fixedptu_fromint( work_setup.total_pass - 1 );
-//	sqrt_steps = fixedpt_sqrt( sqrt_steps );
-
-// first step coefficient = 0.3, sqrt(0.3) = 0,547722558 = fpt9189259
-// step 1 with coeff. 0.3
-		work_setup.deltap_mm[0]		 = fixedptu_div( fixedptu_mul( work_setup.thread_depth, 9189259 ), sqrt_steps );
-		work_setup.deltap_inch[0] = fixedptu_div( work_setup.deltap_mm[0], Q824inch );
-
-		for(int step = 1; step < work_setup.total_pass; step++ ) {
-				work_setup.deltap_mm[step]			= fixedptu_div( fixedptu_mul( work_setup.thread_depth, sqrt_map[step] ), sqrt_steps );
-				work_setup.deltap_inch[step]		= fixedptu_div( work_setup.deltap_mm[step], Q824inch );
-		}
-}
-*/
-
-
-void recalculate_setup()  // todo: not ready yet
-{
-	work_setup.Q824			= Thread_Info[Menu_Step].Q824;
-	work_setup.pitch				= (fixedptud)enc_setup / (fixedptud)work_setup.Q824;
-	fixedpt_str( work_setup.pitch, (char *)&work_setup.Text, 2 );
-
-	work_setup.thread_depth = fixedpt_mul( work_setup.pitch, 10905190 );
-	work_setup.total_pass = 10;
-	work_setup.pass = 0;
-
-	work_setup.infeed_mod = 7823344;
-
-	fixedptu sqrt_steps = fixedptu_fromint( work_setup.total_pass - 1 );
-	sqrt_steps = fixedpt_sqrt( sqrt_steps );
-
-
-// first step coefficient = 0.3, sqrt(0.3) = 0,547722558 = fpt9189259
-// step 1 with coeff. 0.3
-	work_setup.deltap_mm[0]			= fixedptu_div( fixedptu_mul( work_setup.thread_depth, 9189259 ), sqrt_steps );
-	work_setup.deltap_inch[0] = fixedptu_div( work_setup.deltap_mm[0], 426141286 ); // 426141286 = Q824inch
-
-	for(int step = 1; step < work_setup.total_pass; step++ ) {
-		work_setup.deltap_mm[step]					= fixedptu_div( fixedptu_mul( work_setup.thread_depth, fixedpt_sqrt( fixedptu_fromint( step ) ) ), sqrt_steps );
-		work_setup.deltap_inch[step]				= fixedptu_div( work_setup.deltap_mm[step], 426141286 );
-	}
-}
 
 /* USER CODE END 0 */
 
@@ -411,7 +249,10 @@ int main(void)
 //  LL_TIM_GenerateEvent_UPDATE(TIM3);  
 
 
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+
+
+
 
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 //  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by TIM2(async mode)
@@ -422,10 +263,22 @@ int main(void)
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 
 
-	MOTOR_X_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
-	MOTOR_Z_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
-  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
-  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1);
+//	MOTOR_X_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
+//	MOTOR_Z_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
+
+LL_TIM_EnableCounter(TIM3);
+
+
+//TIM3->SR = 0;
+//TIM3->EGR |= TIM_EGR_UG;
+//		LL_TIM_GenerateEvent_UPDATE(TIM3); /* Force update generation */
+
+//  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1);
+	//GPIOB->BSRR
+//	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_0);
+//	LL_mDelay(50);
+//	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_0);
+//	LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
 	
 	LL_TIM_EnableAllOutputs(TIM3);
 //MOTOR_X_AllowPulse();

@@ -65,7 +65,9 @@ bool demo;
 void do_fsm_menu(state_t* s)
 {
 	uint8_t level = Thread_Info[Menu_Step].level;
-//	buttons_flag_set = long_press_start_Msk;
+#ifdef _SIMU
+	buttons_flag_set = long_press_start_Msk;
+#endif	
 	switch(buttons_flag_set) {
 	case single_click_Msk3: {
 		feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
@@ -129,6 +131,7 @@ void do_fsm_menu(state_t* s)
 
 				if(demo)
 					z_move(feed_direction, 400*3, false, true); //test case, move async 10mm
+//					z_move(feed_direction, 31, false, true); //test case, move async 10mm
 				else
 					z_move(feed_direction, 0, true, true);
 
@@ -185,7 +188,6 @@ void do_fsm_wait_sclick(state_t* s)
 void z_move(uint32_t direction, uint32_t length, bool sync, bool autostart){
 	MOTOR_X_Enable();
 	MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-	LL_mDelay(2);
 
 	if(direction == feed_direction_left) {
 		feed_direction = feed_direction_left;
@@ -196,6 +198,7 @@ void z_move(uint32_t direction, uint32_t length, bool sync, bool autostart){
 		MOTOR_Z_Forward();
 		MOTOR_X_Forward();
 	}
+	LL_mDelay(2);
 
 	state.sync = sync;
 	if(sync){
@@ -205,7 +208,8 @@ void z_move(uint32_t direction, uint32_t length, bool sync, bool autostart){
 	z_axis.current_pos = 0;
 	z_axis.end_pos = length;
 	if(z_axis.end_pos > 0){
-		z_axis.end_pos = z_axis.end_pos | (step_divider - 1); // to make sure that we'll not stop between full steps
+		z_axis.end_pos &= 0xFFFFFFFF - step_divider + 1;
+		z_axis.end_pos |= step_divider; // to make sure that we'll not stop between full steps
 	} else {
 		state.sync = true;
 	}
@@ -247,6 +251,7 @@ void do_fsm_move_start(state_t* s){
 		MOTOR_Z_AllowPulse();
 		MOTOR_X_AllowPulse();
 		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
 		s->syncbase->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
 		LL_TIM_GenerateEvent_UPDATE(s->syncbase); /* Force update generation */
 	}	
@@ -306,7 +311,8 @@ void do_fsm_ramp_down(state_t* s)
 void do_fsm_move_end(state_t* s){
 	s->async_z = 0;
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-//	MOTOR_Z_BlockPulse();
+
+	//	MOTOR_Z_BlockPulse();
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
 		LL_TIM_CC_DisableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
@@ -408,8 +414,9 @@ void do_fsm_ramp_down_async(state_t* s)
 	if (--z_axis.ramp_step != 0) {
 		s->z_period = async_ramp_profile[z_axis.ramp_step];
 	} else {
-// for last step there is no need to wail long, motor can be start to desabled after 145 processor ticks, so with prescaler =145 and more ARR = 1 is enought
-		s->z_period = 1; 
+// for last step there is no need to wail long, motor can be start to disabled after 145 processor ticks, so with prescaler =145 and more ARR = 1 is enought
+		s->z_period = 2; 
+		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED); // stop pulse generation on timer
 		if(z_axis.end_pos != z_axis.current_pos) {
 			z_axis.end_pos = z_axis.current_pos;
 		}

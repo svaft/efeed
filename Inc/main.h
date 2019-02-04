@@ -114,8 +114,8 @@
 
 
 #ifndef _SIMU
-//#define _SIMU
-#endif /* __MAIN_H */
+#define _SIMU
+#endif /* _SIMU */
 
 
 #define t3cr1			((uint32_t *)((0x42000000  + ((0x40000400)-0x40000000)*32)))

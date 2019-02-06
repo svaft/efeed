@@ -131,9 +131,15 @@ void do_fsm_menu(state_t* s)
 				z_axis.prolong_addSteps = upl / (fixedptud)z_axis.Q824set;
 				// 200*step_divider*z_feed_screw(mm)*len(mm) = desired length in steps, in my case its 200*2*1*x
 
-				if(demo)
+				
+				MOTOR_X_Enable();
+				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
+				LL_mDelay(2);
+				if(demo){
+					G01(2,20,0);
 					z_move(feed_direction, steps, false, true); //test case, move async 10mm
 //					z_move(feed_direction, 31, false, true); //test case, move async 10mm
+				}
 				else
 					z_move(feed_direction, 0, true, true);
 
@@ -246,6 +252,7 @@ void do_fsm_move_start(state_t* s){
 //			s->async_z = 1;
 			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 
+			s->set_pulse_function(s);
 //			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 			TIM3->ARR = min_pulse*5;
 			LL_TIM_GenerateEvent_UPDATE(TIM3);
@@ -556,8 +563,21 @@ void dz_callback(state_t* s){
 	s->z += s->sz;
 }
 
+void dxdz_callback(state_t* s){
+	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	if (s->e2 > -s->dx)	{ s->err -= s->dz; LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); }
+	if (s->e2 < s->dz)	{ s->err += s->dx; LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); }
+}
 
 void dzdx_init(int dx, int dz, state_t* s) {
+	s->dx = abs(dx); 
+	s->sx = dx > 0 ? 1 : -1;
+  s->dz = abs(dz);
+	s->sz = dz > 0 ? 1 : -1; 
+  s->e2 = s->err = (s->dx > s->dz ? s->dx : -s->dz)/2;
+	s->set_pulse_function = dxdz_callback;
+
+	/*
 	if( dx >= 0 ) {
 		s->sx = 1;
 	} else {
@@ -587,16 +607,13 @@ void dzdx_init(int dx, int dz, state_t* s) {
 		s->x = 0; s->z = s->sz; //s->i=1;
 		s->set_pulse_function = dz_callback;
    } // endif(dz <=dx)
+*/	 
 }
 
 
 
 
 void G01(int dx, int dz, int feed){
-	MOTOR_X_Enable();
-	MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-	LL_mDelay(2);
-
 	dzdx_init(dx, dz, &state);
 
 	if(dz<0) {
@@ -623,7 +640,6 @@ void G01(int dx, int dz, int feed){
 	} else {
 		state.sync = true;
 	}
-
 	do_fsm_move_start(&state);
 }
 

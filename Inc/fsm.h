@@ -34,6 +34,7 @@ typedef struct state
 
 	//	bresenham
 	int dx,dz,sx,sz,d,d1,d2;
+	int err, e2;
   int i, x,z;
   state_func_t set_pulse_function;
 
@@ -89,6 +90,8 @@ _Bool z_axis_ramp_down_async(state_t* );
 void dx_callback(state_t* );
 void dz_callback(state_t* );
 void dzdx_init(int, int, state_t*);
+void dxdz_callback(state_t* );
+void G01(int , int , int );
 
 
 #endif /* FSM_H_ */

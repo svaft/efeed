@@ -236,6 +236,7 @@ void TIM2_IRQHandler(void)
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
 //	if ( async_z == 1) {
 	if(TIM3->SMCR == 0x16) { // TIM3 connected to TIM2 as SLAVE
+			state.set_pulse_function(&state);
 //	if ( state.async_z == 1) {
 //		state.f_encoder = encoder;
 //		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];

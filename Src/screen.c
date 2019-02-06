@@ -1,4 +1,4 @@
-#include "screen.h"
+﻿#include "screen.h"
 #include "ssd1306.h"
 #include "i2c_interface.h"
 
@@ -27,7 +27,6 @@ char * utoa_builtin_div_1(uint32_t value, char *buffer)
 
 int update_screen(void){
 #ifndef _SIMU
-
 	if(ubTransferComplete == 0) {
 		return 1;
 	}
@@ -83,9 +82,6 @@ int update_screen(void){
 //  SSD1306_Putc2big(auto_symbol, &consolas_18ptFontInfo);
 	}
 */
-//#if !defined ( _SIMU )
-	SSD1306_UpdateScreen();
-#endif
+#endif /* _SIMU */
 	return 0;
-//#endif
 }

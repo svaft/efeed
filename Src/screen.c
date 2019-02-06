@@ -26,6 +26,8 @@ char * utoa_builtin_div_1(uint32_t value, char *buffer)
 
 
 int update_screen(void){
+#ifndef _SIMU
+
 	if(ubTransferComplete == 0) {
 		return 1;
 	}
@@ -83,6 +85,7 @@ int update_screen(void){
 */
 //#if !defined ( _SIMU )
 	SSD1306_UpdateScreen();
+#endif
 	return 0;
 //#endif
 }

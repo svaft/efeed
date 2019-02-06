@@ -1403,6 +1403,8 @@ const FONT_INFO microsoftSansSerif_12ptFontInfo = {
 **  Font data for Microsoft Sans Serif 46pt
 */
 
+#ifndef _SIMU
+
 /* Character bitmaps for Microsoft Sans Serif 46pt */
 const unsigned char microsoftSansSerif_46ptBitmaps[] = {
     /* @0 '.' (6 pixels wide) */
@@ -2162,7 +2164,7 @@ const FONT_INFO microsoftSansSerif_46ptFontInfo = {
     microsoftSansSerif_46ptBitmaps, /*  Character bitmap array */
 };
 
-
+#endif
 
 const unsigned char consolas_18ptBitmaps[] = {
     /* @0 'А' (12 pixels wide) */

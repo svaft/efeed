@@ -48,7 +48,7 @@ typedef struct {
     uint16_t Length;      /*!< String length in units of pixels */
     uint16_t Height;      /*!< String height in units of pixels */
 } FONTS_SIZE_t;
-	
+    
     // This structure describes a single character's display information
 typedef struct
 {
@@ -78,11 +78,13 @@ extern const FONT_CHAR_INFO microsoftSansSerif_12ptDescriptors[];
 
 
 
+
+#ifndef _SIMU
 /* Font data for Microsoft Sans Serif 46pt */
 extern const unsigned char microsoftSansSerif_46ptBitmaps[];
 extern const FONT_INFO microsoftSansSerif_46ptFontInfo;
 extern const FONT_CHAR_INFO microsoftSansSerif_46ptDescriptors[];
-
+#endif
 
 
 /* Font data for Consolas 18pt */

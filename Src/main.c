@@ -1,4 +1,4 @@
-
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -10,7 +10,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2018 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -36,9 +36,12 @@
   *
   ******************************************************************************
   */
+/* USER CODE END Header */
+
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
+/* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
 #include "screen.h"
@@ -54,6 +57,21 @@
 //#define ARM_MATH_CM3
 //#include "arm_math.h"
 /* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -142,7 +160,6 @@ uint32_t tbc = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-static void LL_Init(void);
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
@@ -151,12 +168,12 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
-
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 
 /* USER CODE END PFP */
 
+/* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
 S_WORK_SETUP work_setup;
@@ -169,8 +186,7 @@ const fixedptud enc_setup = 0x9000000000000;
 
 /**
   * @brief  The application entry point.
-  *
-  * @retval None
+  * @retval int
   */
 int main(void)
 {
@@ -188,10 +204,21 @@ int main(void)
 //	TIM4_IRQHandler();
   /* USER CODE END 1 */
 
-  /* MCU Configuration----------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  LL_Init();
+  
+
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_AFIO);
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+
+  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+
+  /* System interrupt init*/
+
+  /**NOJTAG: JTAG-DP Disabled and SW-DP Enabled 
+  */
+  LL_GPIO_AF_Remap_SWJ_NOJTAG();
 
   /* USER CODE BEGIN Init */
   /* USER CODE END Init */
@@ -212,19 +239,39 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+	// Timers post init:
+	LL_TIM_GenerateEvent_UPDATE(TIM2);
+//  LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH1); // if we need output on leg
+  LL_TIM_ClearFlag_UPDATE(TIM2);
+	LL_TIM_EnableIT_UPDATE(TIM2);
+
+//	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
+
+
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+//  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
+//	TIM3->SR = 0;
+//	TIM2->SR = 0;
+	TIM3->ARR = 0;
+	LL_TIM_GenerateEvent_UPDATE(TIM3);
+	LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+//	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
+
+
+
 	if(LL_GPIO_IsInputPinSet(BUTTON_1_GPIO_Port, BUTTON_1_Pin)){
 		demo = true;
 	}
-	MOTOR_Z_Disable();
-	MOTOR_X_Disable();
+//	MOTOR_Z_Disable();
+//	MOTOR_X_Disable();
 // инициализация дисплея
 #ifndef _SIMU
 	Activate_I2C_Master();
 	init_screen(I2C2);
 //	update_screen();
 //	i2c_device_init(I2C2);
-#endif
 	LL_mDelay(250);
+#endif
 	init_buttons();
   /* USER CODE END 2 */
 
@@ -266,7 +313,7 @@ int main(void)
 //	MOTOR_X_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
 //	MOTOR_Z_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
 
-LL_TIM_EnableCounter(TIM3);
+//LL_TIM_EnableCounter(TIM3);
 
 
 //TIM3->SR = 0;
@@ -280,19 +327,19 @@ LL_TIM_EnableCounter(TIM3);
 //	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_0);
 //	LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
 	
-	LL_TIM_EnableAllOutputs(TIM3);
+//	LL_TIM_EnableAllOutputs(TIM3);
 //MOTOR_X_AllowPulse();
 //MOTOR_Z_AllowPulse();
-	
+//		LL_mDelay(50);
 //	LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
-  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
   LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
+  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
 //	enable_encoder_ticks(); 														// enable interrup for encoder ticks
 	TIM4->SR = 0; 																			// reset interrup flags
 
-	LL_TIM_EnableIT_UPDATE(TIM1);
-	LL_TIM_EnableIT_UPDATE(TIM2);
-	LL_TIM_EnableCounter(TIM2);
+//	LL_TIM_EnableIT_UPDATE(TIM1);
+//	LL_TIM_EnableIT_UPDATE(TIM2);
+//	LL_TIM_EnableCounter(TIM2);
 	
 //	do_fsm_move_start(&state);
 
@@ -303,12 +350,15 @@ LL_TIM_EnableCounter(TIM3);
 //  LL_TIM_GenerateEvent_UPDATE(TIM2);
 
 // init buttons
+//	LL_mDelay(5);
 	do_fsm_menu(&state);
+//	LL_mDelay(5);
+//	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 	LED_GPIO_Port->BSRR = LED_Pin; // led off
 	while (1) {
-  /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-  /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 #ifndef _SIMU		
 //		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
 #endif		
@@ -347,38 +397,6 @@ LL_TIM_EnableCounter(TIM3);
 		}
 	}
   /* USER CODE END 3 */
-
-}
-
-static void LL_Init(void)
-{
-  
-
-  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_AFIO);
-  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
-
-  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-
-  /* System interrupt init*/
-  /* MemoryManagement_IRQn interrupt configuration */
-  NVIC_SetPriority(MemoryManagement_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  /* BusFault_IRQn interrupt configuration */
-  NVIC_SetPriority(BusFault_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  /* UsageFault_IRQn interrupt configuration */
-  NVIC_SetPriority(UsageFault_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  /* SVCall_IRQn interrupt configuration */
-  NVIC_SetPriority(SVCall_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  /* DebugMonitor_IRQn interrupt configuration */
-  NVIC_SetPriority(DebugMonitor_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  /* PendSV_IRQn interrupt configuration */
-  NVIC_SetPriority(PendSV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  /* SysTick_IRQn interrupt configuration */
-  NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-
-    /**NOJTAG: JTAG-DP Disabled and SW-DP Enabled 
-    */
-  LL_GPIO_AF_Remap_SWJ_NOJTAG();
-
 }
 
 /**
@@ -387,7 +405,6 @@ static void LL_Init(void)
   */
 void SystemClock_Config(void)
 {
-
   LL_FLASH_SetLatency(LL_FLASH_LATENCY_2);
 
    if(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_2)
@@ -402,7 +419,6 @@ void SystemClock_Config(void)
     
   }
   LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE_DIV_1, LL_RCC_PLL_MUL_9);
-
   LL_RCC_PLL_Enable();
 
    /* Wait till PLL is ready */
@@ -411,11 +427,8 @@ void SystemClock_Config(void)
     
   }
   LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
-
   LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_2);
-
   LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
-
   LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
 
    /* Wait till System clock is ready */
@@ -424,23 +437,27 @@ void SystemClock_Config(void)
   
   }
   LL_Init1msTick(72000000);
-
   LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
-
   LL_SetSystemCoreClock(72000000);
-
-  /* SysTick_IRQn interrupt configuration */
-  NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
 }
 
-/* I2C2 init function */
+/**
+  * @brief I2C2 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_I2C2_Init(void)
 {
 
-  LL_I2C_InitTypeDef I2C_InitStruct;
+  /* USER CODE BEGIN I2C2_Init 0 */
 
-  LL_GPIO_InitTypeDef GPIO_InitStruct;
+  /* USER CODE END I2C2_Init 0 */
 
+  LL_I2C_InitTypeDef I2C_InitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
   /**I2C2 GPIO Configuration  
   PB10   ------> I2C2_SCL
   PB11   ------> I2C2_SDA 
@@ -477,14 +494,14 @@ static void MX_I2C2_Init(void)
   NVIC_SetPriority(I2C2_ER_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),2, 0));
   NVIC_EnableIRQ(I2C2_ER_IRQn);
 
-    /**I2C Initialization 
-    */
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  /**I2C Initialization 
+  */
   LL_I2C_DisableOwnAddress2(I2C2);
-
   LL_I2C_DisableGeneralCall(I2C2);
-
   LL_I2C_EnableClockStretching(I2C2);
-
   I2C_InitStruct.PeripheralMode = LL_I2C_MODE_I2C;
   I2C_InitStruct.ClockSpeed = 400000;
   I2C_InitStruct.DutyCycle = LL_I2C_DUTYCYCLE_2;
@@ -492,18 +509,28 @@ static void MX_I2C2_Init(void)
   I2C_InitStruct.TypeAcknowledge = LL_I2C_ACK;
   I2C_InitStruct.OwnAddrSize = LL_I2C_OWNADDRESS1_7BIT;
   LL_I2C_Init(I2C2, &I2C_InitStruct);
-
   LL_I2C_SetOwnAddress2(I2C2, 0);
+  /* USER CODE BEGIN I2C2_Init 2 */
+
+  /* USER CODE END I2C2_Init 2 */
 
 }
 
-/* TIM1 init function */
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_TIM1_Init(void)
 {
 
-  LL_TIM_InitTypeDef TIM_InitStruct;
-  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct;
-  LL_TIM_BDTR_InitTypeDef TIM_BDTRInitStruct;
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
+  LL_TIM_BDTR_InitTypeDef TIM_BDTRInitStruct = {0};
 
   /* Peripheral clock enable */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_TIM1);
@@ -512,19 +539,18 @@ static void MX_TIM1_Init(void)
   NVIC_SetPriority(TIM1_UP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
   NVIC_EnableIRQ(TIM1_UP_IRQn);
 
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
   TIM_InitStruct.Prescaler = 720;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 0;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   TIM_InitStruct.RepetitionCounter = 0;
   LL_TIM_Init(TIM1, &TIM_InitStruct);
-
   LL_TIM_DisableARRPreload(TIM1);
-
   LL_TIM_SetClockSource(TIM1, LL_TIM_CLOCKSOURCE_INTERNAL);
-
   LL_TIM_OC_EnablePreload(TIM1, LL_TIM_CHANNEL_CH1);
-
   TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
@@ -534,13 +560,9 @@ static void MX_TIM1_Init(void)
   TIM_OC_InitStruct.OCIdleState = LL_TIM_OCIDLESTATE_LOW;
   TIM_OC_InitStruct.OCNIdleState = LL_TIM_OCIDLESTATE_LOW;
   LL_TIM_OC_Init(TIM1, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
-
   LL_TIM_OC_DisableFast(TIM1, LL_TIM_CHANNEL_CH1);
-
   LL_TIM_SetTriggerOutput(TIM1, LL_TIM_TRGO_RESET);
-
   LL_TIM_DisableMasterSlaveMode(TIM1);
-
   TIM_BDTRInitStruct.OSSRState = LL_TIM_OSSR_DISABLE;
   TIM_BDTRInitStruct.OSSIState = LL_TIM_OSSI_DISABLE;
   TIM_BDTRInitStruct.LockLevel = LL_TIM_LOCKLEVEL_OFF;
@@ -549,103 +571,115 @@ static void MX_TIM1_Init(void)
   TIM_BDTRInitStruct.BreakPolarity = LL_TIM_BREAK_POLARITY_HIGH;
   TIM_BDTRInitStruct.AutomaticOutput = LL_TIM_AUTOMATICOUTPUT_DISABLE;
   LL_TIM_BDTR_Init(TIM1, &TIM_BDTRInitStruct);
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
 
 }
 
-/* TIM2 init function */
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_TIM2_Init(void)
 {
 
-  LL_TIM_InitTypeDef TIM_InitStruct;
-  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct;
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
 
   /* Peripheral clock enable */
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
 
   /* TIM2 interrupt Init */
-  NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 0));
   NVIC_EnableIRQ(TIM2_IRQn);
 
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
   TIM_InitStruct.Prescaler = 720;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 0;
+  TIM_InitStruct.Autoreload = 50;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM2, &TIM_InitStruct);
-
   LL_TIM_EnableARRPreload(TIM2);
-
   LL_TIM_SetClockSource(TIM2, LL_TIM_CLOCKSOURCE_INTERNAL);
-
   LL_TIM_OC_EnablePreload(TIM2, LL_TIM_CHANNEL_CH1);
-
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
+  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.CompareValue = 0;
+  TIM_OC_InitStruct.CompareValue = 48;
   TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
   LL_TIM_OC_Init(TIM2, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
-
   LL_TIM_OC_DisableFast(TIM2, LL_TIM_CHANNEL_CH1);
-
   LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_UPDATE);
-
   LL_TIM_EnableMasterSlaveMode(TIM2);
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
 
 }
 
-/* TIM3 init function */
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_TIM3_Init(void)
 {
 
-  LL_TIM_InitTypeDef TIM_InitStruct;
-  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct;
+  /* USER CODE BEGIN TIM3_Init 0 */
 
-  LL_GPIO_InitTypeDef GPIO_InitStruct;
+  /* USER CODE END TIM3_Init 0 */
+
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* Peripheral clock enable */
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM3);
 
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
   TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = min_pulse;
+  TIM_InitStruct.Autoreload = min_pulse*5;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM3, &TIM_InitStruct);
-
-  LL_TIM_DisableARRPreload(TIM3);
-
+  LL_TIM_EnableARRPreload(TIM3);
+  LL_TIM_SetClockSource(TIM3, LL_TIM_CLOCKSOURCE_INTERNAL);
   LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH1);
-
   TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.CompareValue = 0;
+  TIM_OC_InitStruct.CompareValue = 1;
   TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
-
   LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH1);
-
   LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
-
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
-
   LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH3);
-
   LL_TIM_SetOnePulseMode(TIM3, LL_TIM_ONEPULSEMODE_SINGLE);
-
-  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3);
-
+  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-
   LL_TIM_DisableIT_TRIG(TIM3);
-
   LL_TIM_DisableDMAReq_TRIG(TIM3);
-
   LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_RESET);
-
   LL_TIM_DisableMasterSlaveMode(TIM3);
+  /* USER CODE BEGIN TIM3_Init 2 */
 
+  /* USER CODE END TIM3_Init 2 */
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
   /**TIM3 GPIO Configuration  
   PA6   ------> TIM3_CH1
   PB0   ------> TIM3_CH3 
@@ -664,17 +698,26 @@ static void MX_TIM3_Init(void)
 
 }
 
-/* TIM4 init function */
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_TIM4_Init(void)
 {
 
-  LL_TIM_InitTypeDef TIM_InitStruct;
+  /* USER CODE BEGIN TIM4_Init 0 */
 
-  LL_GPIO_InitTypeDef GPIO_InitStruct;
+  /* USER CODE END TIM4_Init 0 */
+
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* Peripheral clock enable */
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
   
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
   /**TIM4 GPIO Configuration  
   PB6   ------> TIM4_CH1
   PB7   ------> TIM4_CH2
@@ -689,43 +732,33 @@ static void MX_TIM4_Init(void)
   NVIC_SetPriority(TIM4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(TIM4_IRQn);
 
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
   TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 8;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM4, &TIM_InitStruct);
-
   LL_TIM_DisableARRPreload(TIM4);
-
   LL_TIM_SetEncoderMode(TIM4, LL_TIM_ENCODERMODE_X2_TI1);
-
   LL_TIM_IC_SetActiveInput(TIM4, LL_TIM_CHANNEL_CH1, LL_TIM_ACTIVEINPUT_DIRECTTI);
-
   LL_TIM_IC_SetPrescaler(TIM4, LL_TIM_CHANNEL_CH1, LL_TIM_ICPSC_DIV1);
-
   LL_TIM_IC_SetFilter(TIM4, LL_TIM_CHANNEL_CH1, LL_TIM_IC_FILTER_FDIV32_N8);
-
   LL_TIM_IC_SetPolarity(TIM4, LL_TIM_CHANNEL_CH1, LL_TIM_IC_POLARITY_RISING);
-
   LL_TIM_IC_SetActiveInput(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_ACTIVEINPUT_DIRECTTI);
-
   LL_TIM_IC_SetPrescaler(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_ICPSC_DIV1);
-
   LL_TIM_IC_SetFilter(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_IC_FILTER_FDIV32_N8);
-
   LL_TIM_IC_SetPolarity(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_IC_POLARITY_RISING);
-
   LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
-
   LL_TIM_EnableMasterSlaveMode(TIM4);
-
   LL_TIM_IC_SetActiveInput(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_ACTIVEINPUT_DIRECTTI);
-
   LL_TIM_IC_SetPrescaler(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_ICPSC_DIV1);
-
   LL_TIM_IC_SetFilter(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_IC_FILTER_FDIV32_N8);
-
   LL_TIM_IC_SetPolarity(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_IC_POLARITY_RISING);
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
 
 }
 
@@ -745,19 +778,14 @@ static void MX_DMA_Init(void)
 
 }
 
-/** Configure pins as 
-        * Analog 
-        * Input 
-        * Output
-        * EVENT_OUT
-        * EXTI
-        * Free pins are configured automatically as Analog (this feature is enabled through 
-        * the Code Generation settings)
-*/
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_GPIO_Init(void)
 {
-
-  LL_GPIO_InitTypeDef GPIO_InitStruct;
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
@@ -838,11 +866,9 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*timIC)
 
 /**
   * @brief  This function is executed in case of error occurrence.
-  * @param  file: The file name as string.
-  * @param  line: The line in file as a number.
   * @retval None
   */
-void _Error_Handler(char *file, int line)
+void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
@@ -859,7 +885,7 @@ void _Error_Handler(char *file, int line)
   * @param  line: assert_param error line source number
   * @retval None
   */
-void assert_failed(uint8_t* file, uint32_t line)
+void assert_failed(uint8_t *file, uint32_t line)
 { 
   /* USER CODE BEGIN 6 */
 	/* User can add his own implementation to report the file name and line number,
@@ -867,13 +893,5 @@ void assert_failed(uint8_t* file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

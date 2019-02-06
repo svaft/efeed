@@ -32,6 +32,11 @@ typedef struct state
 	TIM_TypeDef *syncbase_x;
 	uint8_t x_period;
 
+	//	bresenham
+	int dx,dz,sx,sz,d,d1,d2;
+  int i, x,z;
+  state_func_t set_pulse_function;
+
 } state_t;
 
 extern state_t state;
@@ -80,6 +85,10 @@ void do_fsm_ramp_down_async(state_t* );
 _Bool z_axis_ramp_up_async(state_t* );
 _Bool z_axis_ramp_down_async(state_t* );
 
+
+void dx_callback(state_t* );
+void dz_callback(state_t* );
+void dzdx_init(int, int, state_t*);
 
 
 #endif /* FSM_H_ */

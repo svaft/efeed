@@ -76,6 +76,7 @@ void TIM4_IRQHandler(void);
 void I2C2_EV_IRQHandler(void);
 void I2C2_ER_IRQHandler(void);
 /* USER CODE BEGIN EFP */
+void TIM3_IRQHandler(void);
 
 /* USER CODE END EFP */
 

@@ -2,7 +2,8 @@
 #include "buttons.h"
 #include "stdlib.h"
 
-#define steps 24
+#define steps_z 300
+#define steps_x 1
 
 // precalculated ramp for  100 000Hz frequency timer with prescaler of 720, values in TAB is ARR registed value.
 // for details see file rampup.xlsx
@@ -134,10 +135,10 @@ void do_fsm_menu(state_t* s)
 				
 				MOTOR_X_Enable();
 				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-				LL_mDelay(2);
+//				LL_mDelay(2);
 				if(demo){
-					G01(2,20,0);
-					z_move(feed_direction, steps, false, true); //test case, move async 10mm
+					G01(steps_x,steps_z,0);
+//					z_move(feed_direction, steps, false, true); //test case, move async 10mm
 //					z_move(feed_direction, 31, false, true); //test case, move async 10mm
 				}
 				else
@@ -252,7 +253,8 @@ void do_fsm_move_start(state_t* s){
 //			s->async_z = 1;
 			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 
-			s->set_pulse_function(s);
+//			s->set_pulse_function(s);
+//			dxdz_callback(s);
 //			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 			TIM3->ARR = min_pulse*5;
 			LL_TIM_GenerateEvent_UPDATE(TIM3);
@@ -460,8 +462,6 @@ void do_fsm_move_async(state_t* s)
 
 void do_fsm_ramp_down_async(state_t* s)
 {
-//	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin); //debug
-//	MOTOR_Z_SetPulse();
 	z_axis.current_pos++;
 
 	s->z_period = async_ramp_profile[--z_axis.ramp_step];
@@ -478,97 +478,6 @@ void do_fsm_ramp_down_async(state_t* s)
 	}
 }
 
-
-
-/*
-void Line(int x1, int z1, int x2, int z2) {
-	int dx,dz,sx,sz,d,d1,d2;
-  int i, x,z;
-
-  if( x2 >= x1){
-		dx = x2 - x1;
-    sx = 1;
-  } else {
-    dx = x1 - x2;
-    sx = -1;
-  }
-	if( z2 >= z1) {
-		dz = z2 - z1;
-		sz = 1;
-	} else {
-		dz = z1 - z2;
-		sz = -1;
-	}
-
-	if(dz <= dx) {
-		d = (dz << 1) - dx;
-		d1 = dz << 1;
-		d2 = (dz - dx) << 1;
-
-		for(x=x1+sx,z=z1,i=1; i <= dx ; i++,x+=sx) {
-			if(d > 0) {
-				d += d2;
-				z += sz;
-				// enable port X and Z
-			 } else {
-				 d += d1;
-				// enable port X, disable port Z
-			 }
-		}
-	} else {
-		d  = (dx << 1) - dz;
-		d1 = dx << 1;
-		d2 = (dx - dz) << 1;
-
-		for(x=x1,z=z1+sz,i=1;i <= dz ; i++,z += sz) {
-			if(d > 0) {  
-				 d += d2;
-				 x += sx;
-				// enable port X and Z
-			 } else {
-				 d += d1;
-				// enable port Z, disable port X
-			 }
-		}
-   } // endif(dz <=dx)
-}
-
-*/
-
-void dx_callback(state_t* s){
-	if(s->d > 0) {
-		s->d += s->d2;
-		s->z += s->sz;
-	// enable port X and Z
-		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	} else {
-		s->d += s->d1;
-	// enable port X, disable port Z
-		LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH3);
-	}
-	s->x+=s->sx;
-}
-
-void dz_callback(state_t* s){
-	if(s->d > 0) {
-		s->d += s->d2;
-		s->x += s->sx;
-	// enable port X and Z
-		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	} else {
-		s->d += s->d1;
-		// enable port Z, disable port X
-		LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1);
-	}
-	s->z += s->sz;
-}
-
-void dxdz_callback(state_t* s){
-	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	if (s->e2 > -s->dx)	{ s->err -= s->dz; LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); }
-	if (s->e2 < s->dz)	{ s->err += s->dx; LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); }
-}
-
 void dzdx_init(int dx, int dz, state_t* s) {
 	s->dx = abs(dx); 
 	s->sx = dx > 0 ? 1 : -1;
@@ -576,42 +485,7 @@ void dzdx_init(int dx, int dz, state_t* s) {
 	s->sz = dz > 0 ? 1 : -1; 
   s->e2 = s->err = (s->dx > s->dz ? s->dx : -s->dz)/2;
 	s->set_pulse_function = dxdz_callback;
-
-	/*
-	if( dx >= 0 ) {
-		s->sx = 1;
-	} else {
-		dx = abs(dx);
-		s->sx = -1;
-	}
-
-	if( dz >= 0) {
-		s->sz = 1;
-	} else {
-		dz = abs(dz);
-		s->sz = -1;
-	}
-
-	if(dz <= dx) {
-		s->d = (dz << 1) - dx;
-		s->d1 = dz << 1;
-		s->d2 = (dz - dx) << 1;
-
-		s->x = s->sx; s->z=0; //s->i=1;
-		s->set_pulse_function = dx_callback;
-	} else { // dz > dx
-		s->d  = (dx << 1) - dz;
-		s->d1 = dx << 1;
-		s->d2 = (dx - dz) << 1;
-
-		s->x = 0; s->z = s->sz; //s->i=1;
-		s->set_pulse_function = dz_callback;
-   } // endif(dz <=dx)
-*/	 
 }
-
-
-
 
 void G01(int dx, int dz, int feed){
 	dzdx_init(dx, dz, &state);
@@ -619,10 +493,14 @@ void G01(int dx, int dz, int feed){
 	if(dz<0) {
 		feed_direction = feed_direction_left;
 		MOTOR_Z_Reverse();
-		MOTOR_X_Reverse();
 	} else {
 		feed_direction = feed_direction_right;
 		MOTOR_Z_Forward();
+	}
+
+	if(dx<0) {
+		MOTOR_X_Reverse();
+	} else {
 		MOTOR_X_Forward();
 	}
 
@@ -642,74 +520,4 @@ void G01(int dx, int dz, int feed){
 	}
 	do_fsm_move_start(&state);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-void DeltaLine(int dx, int dz) {
-	int sx,sz,d,d1,d2;
-  int i, x,z;
-
-	if( dx >= 0 ) {
-    sx = 1;
-	} else {
-    dx = abs(dx);
-		sx = -1;
-	}
-
-	if( dz >= 0) {
-		sz = 1;
-	} else {
-    dz = abs(dz);
-		sz = -1;
-	}
-
-	if(dz <= dx) {
-		d = (dz << 1) - dx;
-		d1 = dz << 1;
-		d2 = (dz - dx) << 1;
-
-		x=sx;
-		z=0;
-		i=1;
-
-		for(x=sx, z=0, i=1; i <= dx; i++, x+=sx) {
-			if(d > 0) {
-				d += d2;
-				z += sz;
-				// enable port X and Z
-			 } else {
-				 d += d1;
-				// enable port X, disable port Z
-			 }
-		}
-	} else { // dz > dx
-		d  = (dx << 1) - dz;
-		d1 = dx << 1;
-		d2 = (dx - dz) << 1;
-
-		for(x=0, z=sz, i=1; i <= dz; i++, z += sz) {
-			if(d > 0) {
-				 d += d2;
-				 x += sx;
-				// enable port X and Z
-			 } else {
-				 d += d1;
-				// enable port Z, disable port X
-			 }
-		}
-   } //endif(dz <=dx)
-}
-
-*/
-
 

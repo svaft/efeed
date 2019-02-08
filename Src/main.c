@@ -192,6 +192,26 @@ __IO uint32_t     uwBufferReadyIndication;
 uint8_t *pBufferReadyForUser;
 uint8_t *pBufferReadyForReception;
 
+__IO uint8_t ubUART2ReceptionComplete = 0;
+
+/* Buffer used for transmission */
+const uint8_t aTxBuffer[] = "STM32F1xx USART LL API Example : TX/RX in DMA mode\r\nConfiguration UART 115200 bps, 8 data bit/1 stop bit/No parity/No HW flow control\r\nPlease enter 'END' string ...\r\n";
+uint8_t ubNbDataToTransmit = sizeof(aTxBuffer);
+__IO uint8_t ubTransmissionComplete = 0;
+
+
+
+/**
+  * @brief  Function called from DMA1 IRQ Handler when Rx transfer is completed 
+  * @param  None
+  * @retval None
+  */
+void DMA1_ReceiveComplete_Callback(void)
+{
+  /* DMA Rx transfer completed */
+  ubUART2ReceptionComplete = 1;
+}
+
 
 /**
   * @brief  Function called from USART IRQ Handler when RXNE flag is set
@@ -202,25 +222,20 @@ uint8_t *pBufferReadyForReception;
 void USART_CharReception_Callback(void)
 {
 	uint8_t *ptemp;
-
   /* Read Received character. RXNE flag is cleared by reading of DR register */
-  pBufferReadyForReception[uwNbReceivedChars++] = LL_USART_ReceiveData8(USART2);
-
-  /* Checks if Buffer full indication has been set */
-  if (uwNbReceivedChars >= RX_BUFFER_SIZE)
-  {
+	uint8_t symbol = LL_USART_ReceiveData8(USART2);
+	if(symbol == '\n'){
     /* Set Buffer swap indication */
-    uwBufferReadyIndication = 1;
+		ubUART2ReceptionComplete = 1;
 
     /* Swap buffers for next bytes to be received */
     ptemp = pBufferReadyForUser;
     pBufferReadyForUser = pBufferReadyForReception;
     pBufferReadyForReception = ptemp;
     uwNbReceivedChars = 0;
-  }
-
-  /* Echo received character on TX */
-  LL_USART_TransmitData8(USART2, pBufferReadyForReception[uwNbReceivedChars-1]);
+	} else {
+		pBufferReadyForReception[uwNbReceivedChars++] = symbol;
+	}
 }
 
 
@@ -287,7 +302,15 @@ int main(void)
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-	// Timers post init:
+
+  /* Enable DMA TX Interrupt */
+  LL_USART_EnableDMAReq_TX(USART2);
+  /* Enable DMA Channel Tx */
+  LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_7);
+
+
+
+// Timers post init:
 	LL_TIM_GenerateEvent_UPDATE(TIM2);
 //  LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH1); // if we need output on leg
   LL_TIM_ClearFlag_UPDATE(TIM2);
@@ -540,9 +563,9 @@ static void MX_I2C2_Init(void)
   LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_4, LL_DMA_MDATAALIGN_BYTE);
 
   /* I2C2 interrupt Init */
-  NVIC_SetPriority(I2C2_EV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),2, 0));
+  NVIC_SetPriority(I2C2_EV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),3, 0));
   NVIC_EnableIRQ(I2C2_EV_IRQn);
-  NVIC_SetPriority(I2C2_ER_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),2, 0));
+  NVIC_SetPriority(I2C2_ER_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),3, 0));
   NVIC_EnableIRQ(I2C2_ER_IRQn);
 
   /* USER CODE BEGIN I2C2_Init 1 */
@@ -828,7 +851,10 @@ static void MX_USART2_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART2_Init 0 */
-
+  pBufferReadyForReception = aRXBufferA;
+  pBufferReadyForUser      = aRXBufferB;
+  uwNbReceivedChars = 0;
+  ubUART2ReceptionComplete = 0;
   /* USER CODE END USART2_Init 0 */
 
   LL_USART_InitTypeDef USART_InitStruct = {0};
@@ -855,26 +881,33 @@ static void MX_USART2_UART_Init(void)
 
   /* USART2 DMA Init */
   
-  /* USART2_RX Init */
-  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_6, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+  /* USART2_TX Init */
+  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_7, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
 
-  LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PRIORITY_LOW);
+  LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_7, LL_DMA_PRIORITY_LOW);
 
-  LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MODE_NORMAL);
+  LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_7, LL_DMA_MODE_NORMAL);
 
-  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PERIPH_NOINCREMENT);
+  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_7, LL_DMA_PERIPH_NOINCREMENT);
 
-  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MEMORY_INCREMENT);
+  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_7, LL_DMA_MEMORY_INCREMENT);
 
-  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PDATAALIGN_BYTE);
+  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_7, LL_DMA_PDATAALIGN_BYTE);
 
-  LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MDATAALIGN_BYTE);
+  LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_7, LL_DMA_MDATAALIGN_BYTE);
 
   /* USART2 interrupt Init */
-  NVIC_SetPriority(USART2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_SetPriority(USART2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),2, 0));
   NVIC_EnableIRQ(USART2_IRQn);
 
   /* USER CODE BEGIN USART2_Init 1 */
+
+  LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_7,
+                         (uint32_t)aTxBuffer,
+                         LL_USART_DMA_GetRegAddr(USART2),
+                         LL_DMA_GetDataTransferDirection(DMA1, LL_DMA_CHANNEL_7));
+  LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_7, ubNbDataToTransmit);
+
 
   /* USER CODE END USART2_Init 1 */
   USART_InitStruct.BaudRate = 115200;
@@ -905,9 +938,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel4_IRQn interrupt configuration */
   NVIC_SetPriority(DMA1_Channel4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),2, 0));
   NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-  /* DMA1_Channel6_IRQn interrupt configuration */
-  NVIC_SetPriority(DMA1_Channel6_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+  /* DMA1_Channel7_IRQn interrupt configuration */
+  NVIC_SetPriority(DMA1_Channel7_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),2, 0));
+  NVIC_EnableIRQ(DMA1_Channel7_IRQn);
 
 }
 

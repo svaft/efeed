@@ -287,7 +287,11 @@ void TIM2_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
-
+	if(TIM3->SMCR == 0x16) { // TIM3 connected to TIM2 as SLAVE
+		dxdz_callback(&state);
+	}
+	TIM3->SR = 0;
+	
   /* USER CODE END TIM3_IRQn 0 */
   /* USER CODE BEGIN TIM3_IRQn 1 */
 

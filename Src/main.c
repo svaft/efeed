@@ -54,7 +54,7 @@
 #include "fsm.h"
 #include "stm32f1xx_it.h"
 
-#include "gcode.h"
+//#include "gcode.h"
 
 
 //#define ARM_MATH_CM3
@@ -213,6 +213,110 @@ void DMA1_ReceiveComplete_Callback(void)
 }
 
 
+
+int str_f_to_steps(const char *str, uint16_t steps_per_unit, char **endptr)
+{
+	uint8_t ten = 0;
+	fixedpt t824 = 0;
+	uint32_t number = 0;
+	bool negative = false;
+	bool fract = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9')	{
+			if(fract==true){
+				number = number * 10 + (c - '0');
+			} else{
+				if(ten<3){
+					number = number * 10 + (c - '0');
+				}
+				ten++;
+			}
+		} 
+		else if (c == '-')	{
+			negative = true;
+		}
+		else if (c == '.') {
+			t824 = number * steps_per_unit;
+			number = 0;
+//			ten = 0;
+			fract = true;
+		}	
+		str++;
+	}
+	if (endptr != 0) *endptr = (char *)str;
+
+	switch(ten){
+		case 1:{ // if only one fract didgit in g-code
+			number *= 100;
+			break;
+		}
+		case 2:{// if only two fract didgits in g-code
+			number *= 10;
+			break;
+		}
+	}
+
+	t824 += ((number * steps_per_unit * 4914) >> 22); // fast divide by  1000
+	if (negative) return -t824;
+	else return t824;
+}
+
+
+
+fixedpt strto824(const char *str, char **endptr)
+{
+	uint32_t ten = 0;
+	fixedpt t824 = 0;
+	fixedptu number = 0;
+	bool negative = false;
+	bool fract = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9')	{
+			number = number * 10 + (c - '0');
+			ten++;
+		} 
+		else if (c == '-')	{
+			negative = true;
+		}
+		else if (c == '.') {
+			t824 = fixedpt_fromint(number);
+			ten = 0;
+			number = 0;
+			fract = true;
+		}	
+		str++;
+	}
+
+	if (endptr != 0) *endptr = (char *)str;
+	
+//	fixedpt f1 = fixedpt_xdiv(number,ten);
+//((fixedpt)(((fixedptd)(A) << FIXEDPT_FBITS) / (fixedptd)(B)))
+//	fixedpt f2 = fixedpt_xdiv(number,ten);
+	switch(ten){
+		case 1:{
+			number *= 1677721; // div 100
+			break;
+		}
+		case 2:{
+			number *= 167772; // div 100
+			break;
+		}
+		case 3:{
+			number *= 16777; // div 1000
+			break;
+		}
+	}
+	
+	t824 |= number;//fixedpt_xdiv(number,ten);
+	if (negative) return -t824;
+	else return t824;
+}
+
+
+
+
 /**
   * @brief  Function called from USART IRQ Handler when RXNE flag is set
   *         Function is in charge of reading character received on USART RX line.
@@ -224,7 +328,7 @@ void USART_CharReception_Callback(void)
 	uint8_t *ptemp;
   /* Read Received character. RXNE flag is cleared by reading of DR register */
 	uint8_t symbol = LL_USART_ReceiveData8(USART2);
-	if(symbol == '\n'){
+	if(symbol == '\n' || symbol == '\r'){
     /* Set Buffer swap indication */
 		ubUART2ReceptionComplete = 1;
 
@@ -239,8 +343,6 @@ void USART_CharReception_Callback(void)
 }
 
 
-
-
 /* USER CODE END 0 */
 
 /**
@@ -252,9 +354,38 @@ int main(void)
   /* USER CODE BEGIN 1 */
 //	z_axis.mode = fsm_menu_lps;
 	rs = 11;
+/*
+	float af = -5.5;
+	fixedpt af1 = af * (1 << FIXEDPT_FBITS);
+	float af2 = fixedpt_tofloat(af1);
+	char code[] = "G01X.2Z100F10";
+	char codea[] = "-1.223";
+	
+	char *end;
+	af = -1.223;
+	af1 = af * (1 << FIXEDPT_FBITS);
+	fixedpt a = strto824(codea, &end);
+	int rst = str_f_to_steps(codea, 400, &end);	
 
-	char code[] = "G01 X.2 Z100F10";
-	gc_execute_line(code);
+	af2 = fixedpt_tofloat(a);
+
+	a = fixedpt_fromint(-1);
+	char codeb[] = "-5.5";
+	fixedpt b = strto824(codeb, &end);
+	af2 = fixedpt_tofloat(b);
+	b = fixedpt_fromint(-5);
+	fixedpt c = fixedpt_add(a,b);
+	int d = fixedpt_toint(c);
+//	return 0;
+*/
+	
+	
+	
+	
+	
+	
+//	gc_execute_line(code);
+
 //	z_axis.end_pos = 50;
 //	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
 

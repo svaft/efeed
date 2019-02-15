@@ -338,7 +338,7 @@ void do_long_press_end_callback(state_t* s)          // direct movement: first p
 void do_fsm_ramp_down(state_t* s)
 {
 //	if(s->spindle_dir)	
-		z_axis.current_pos++;
+	z_axis.current_pos++;
 //	else 
 //		z_axis.current_pos--;
 	if(z_axis_ramp_down2(s)) {
@@ -394,7 +394,7 @@ _Bool z_axis_ramp_up2(state_t* s)
 	return false;
 }
 
-_Bool z_axis_ramp_down2(state_t* s)
+static inline _Bool z_axis_ramp_down2(state_t* s)
 {
 	if (z_axis.ramp_step == 0)
 		return true;
@@ -450,8 +450,13 @@ void do_fsm_ramp_up_async(state_t* s)
 
 void do_fsm_move_async(state_t* s)
 {
+	
 //	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin); //debug
 	// todo precalculate delta: z_axis.end_pos - z_axis.ramp_step
+//	uint32_t a = z_axis.end_pos;
+//	uint32_t b = z_axis.ramp_step;
+//	uint32_t cp = ++z_axis.current_pos;
+//	uint32_t pre = a - b - 1;
 	uint32_t pre = z_axis.end_pos - z_axis.ramp_step - 1;
 	if( ++z_axis.current_pos < pre ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 		s->z_period = slew_speed_period;
@@ -483,7 +488,7 @@ void dzdx_init(int dx, int dz, state_t* s) {
 	s->sx = dx > 0 ? 1 : -1;
   s->dz = abs(dz);
 	s->sz = dz > 0 ? 1 : -1; 
-  s->e2 = s->err = (s->dx > s->dz ? s->dx : -s->dz)/2;
+  s->e2 = s->err = (s->dx > s->dz ? s->dx : -s->dz) >> 1;
 	s->set_pulse_function = dxdz_callback;
 }
 

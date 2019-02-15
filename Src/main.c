@@ -46,9 +46,12 @@
 
 #include "screen.h"
 //#include "ssd1306.h"
-#include "fixedptc.h"
-#include "i2c_interface.h"
+#include "fixedptc.h" 			// 8_24 format for spindle sync delay calculation
+#include "fixedptc22_10.h" 	// steps per mm, min resolution is screw step / steps per rev / 2^10 = 1/400/1024=0,0000024mm
+#include "fixedptc12_20.h" 	// mm, max 2048mm work field in this case, min resolution is about 0,000001mm
 
+
+#include "i2c_interface.h"
 
 #include "buttons.h"
 #include "fsm.h"
@@ -270,7 +273,6 @@ fixedpt strto824(const char *str, char **endptr)
 	fixedpt t824 = 0;
 	fixedptu number = 0;
 	bool negative = false;
-	bool fract = false;
 	char c;
 	while ((c = *str) != 0) {
 		if (c >= '0' && c <= '9')	{
@@ -284,19 +286,14 @@ fixedpt strto824(const char *str, char **endptr)
 			t824 = fixedpt_fromint(number);
 			ten = 0;
 			number = 0;
-			fract = true;
 		}	
 		str++;
 	}
 
 	if (endptr != 0) *endptr = (char *)str;
-	
-//	fixedpt f1 = fixedpt_xdiv(number,ten);
-//((fixedpt)(((fixedptd)(A) << FIXEDPT_FBITS) / (fixedptd)(B)))
-//	fixedpt f2 = fixedpt_xdiv(number,ten);
 	switch(ten){
 		case 1:{
-			number *= 1677721; // div 100
+			number *= 1677721; // div 10
 			break;
 		}
 		case 2:{
@@ -308,7 +305,7 @@ fixedpt strto824(const char *str, char **endptr)
 			break;
 		}
 	}
-	
+
 	t824 |= number;//fixedpt_xdiv(number,ten);
 	if (negative) return -t824;
 	else return t824;
@@ -343,6 +340,127 @@ void USART_CharReception_Callback(void)
 }
 
 
+typedef struct circular_buffer{
+    void *buffer;     // data buffer
+    void *buffer_end; // end of data buffer
+    size_t capacity;  // maximum number of items in the buffer
+    size_t count;     // number of items in the buffer
+    size_t sz;        // size of each item in the buffer
+    void *head;       // pointer to head
+    void *tail;       // pointer to tail
+} circular_buffer;
+
+void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
+    cb->buffer = malloc(capacity * sz);
+    if(cb->buffer == NULL){
+        // handle error
+		}
+    cb->buffer_end = (char *)cb->buffer + capacity * sz;
+    cb->capacity = capacity;
+    cb->count = 0;
+    cb->sz = sz;
+    cb->head = cb->buffer;
+    cb->tail = cb->buffer;
+}
+
+void cb_free(circular_buffer *cb){
+    free(cb->buffer);
+    // clear out other fields too, just to be safe
+}
+
+void cb_push_back(circular_buffer *cb, const void *item){
+	if(cb->count == cb->capacity){
+		while(1){}
+			// handle error
+	}
+	memcpy(cb->head, item, cb->sz);
+	cb->head = (uint8_t *)cb->head + cb->sz;
+	if(cb->head == cb->buffer_end)
+		cb->head = cb->buffer;
+	cb->count++;
+}
+
+void cb_pop_front(circular_buffer *cb, void *item){
+	if(cb->count == 0){
+		// handle error
+	}
+	memcpy(item, cb->tail, cb->sz);
+	cb->tail = (char*)cb->tail + cb->sz;
+	if(cb->tail == cb->buffer_end)
+		cb->tail = cb->buffer;
+	cb->count--;
+}
+
+void* cb_pop_front_ref(circular_buffer *cb){
+	if(cb->count == 0){
+		// handle error
+	}
+	void *ref = cb->tail;
+//	memcpy(item, cb->tail, cb->sz);
+	cb->tail = (char*)cb->tail + cb->sz;
+	if(cb->tail == cb->buffer_end)
+		cb->tail = cb->buffer;
+	cb->count--;
+	return ref;
+}
+
+
+int str_f_to_steps2210(const char *str, char **endptr){
+#define steps_per_unit_Z_2210	400<<10
+
+	uint8_t ten = 0;
+	fixedpt t2210 = 0;
+	uint32_t number = 0;
+	bool negative = false;
+	bool fract = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9')	{
+			if(fract==false){
+				number = number * 10 + (c - '0');
+			} else{
+				if(ten<3){
+					number = number * 10 + (c - '0');
+				}
+				ten++;
+			}
+		} 
+		else if (c == '-')	{
+			negative = true;
+		}
+		else if (c == '.') {
+//			t824 = fixedpt_xmul2210( fixedpt_fromint2210(number), steps_per_unit );
+//			t824 = number * steps_per_unit;
+			t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
+			number = 0;
+//			ten = 0;
+			fract = true;
+		}	
+		str++;
+	}
+	if (endptr != 0) *endptr = (char *)str;
+
+	switch(ten){
+		case 1:{ // if only one fract didgit in g-code
+			number *= 100;
+			break;
+		}
+		case 2:{// if only two fract didgits in g-code
+			number *= 10;
+			break;
+		}
+	}
+
+//	t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
+	t2210 += ((number << 10) * 400 / 1000);
+	
+//	t2210 += (( number * steps_per_unit_Z_fract_2210 ) / 10 );
+	if (negative) return -t2210;
+	else return t2210;
+}
+
+
+fixedpt f1;
 /* USER CODE END 0 */
 
 /**
@@ -353,12 +471,31 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 //	z_axis.mode = fsm_menu_lps;
+
+
+//	char code[] = "G01X.2Z100F10";
 	rs = 11;
+//	f1 = fixedpt_fromint2210(400);
+	char codea[] = "2000.999";
+	char *end;
+
+	f1 = str_f_to_steps2210(codea, &end);
+
+
+	/*	
+	circular_buffer cb;
+	cb_init(&cb, 10, sizeof(cb));
+	cb_push_back(&cb, &cb);
+
+
+	circular_buffer cb2;
+	cb_pop_front(&cb, &cb2);
+*/	
 /*
 	float af = -5.5;
 	fixedpt af1 = af * (1 << FIXEDPT_FBITS);
 	float af2 = fixedpt_tofloat(af1);
-	char code[] = "G01X.2Z100F10";
+
 	char codea[] = "-1.223";
 	
 	char *end;
@@ -438,6 +575,10 @@ int main(void)
   LL_USART_EnableDMAReq_TX(USART2);
   /* Enable DMA Channel Tx */
   LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_7);
+
+/* Enable RXNE and Error interrupts */
+  LL_USART_EnableIT_RXNE(USART2);
+  LL_USART_EnableIT_ERROR(USART2);
 
 
 
@@ -655,7 +796,9 @@ static void MX_I2C2_Init(void)
 {
 
   /* USER CODE BEGIN I2C2_Init 0 */
-
+#ifdef _SIMU
+	return;
+#endif	
   /* USER CODE END I2C2_Init 0 */
 
   LL_I2C_InitTypeDef I2C_InitStruct = {0};

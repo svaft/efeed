@@ -70,6 +70,11 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
 #include <stdint.h>
+#include "stddef.h"
+#include "stdlib.h"
+#include "string.h"
+
+
 #include "fixedptc.h"
 #define TRUE true
 #define FALSE false
@@ -138,9 +143,9 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 
 
-#ifndef _SIMU
-#define _SIMU
-#endif /* _SIMU */
+//#ifndef _SIMU
+//#define _SIMU
+//#endif /* _SIMU */
 
 
 #define t3cr1			((uint32_t *)((0x42000000  + ((0x40000400)-0x40000000)*32)))

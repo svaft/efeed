@@ -215,6 +215,10 @@ void sampling_task(void const * argument)
 //void Handle_I2C_MasterDMA_IT(void)
 int Handle_I2C_MasterDMA_IT(I2C_TypeDef *I2Cx, uint8_t address, uint8_t *data, uint16_t count, uint8_t timeout)
 {
+	#ifdef _SIMU
+		return 0;
+	#endif	
+
 	if(ubTransferComplete == 1){
 		ubTransferComplete = 0;
 	} else {
@@ -265,6 +269,10 @@ int Handle_I2C_MasterDMA_IT(I2C_TypeDef *I2Cx, uint8_t address, uint8_t *data, u
 
 int Handle_I2C_MasterDMA_IT_async(uint8_t address, uint8_t *data, uint16_t count)
 {
+	#ifdef _SIMU
+	return 0;
+	#endif	
+
 	if(ubTransferComplete == 1){
 		ubTransferComplete = 0;
 	} else {

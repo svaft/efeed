@@ -91,16 +91,18 @@ void dx_callback(state_t* );
 void dz_callback(state_t* );
 void dzdx_init(int, int, state_t*);
 
+// TIM3->CCER register bitbang access:
+#define t3ccer			((uint32_t *)((0x42000000  + ((0x40000420)-0x40000000)*32)))
 __STATIC_INLINE void dxdz_callback(state_t* s){
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	s->e2 = s->err;
 	if (s->e2 > -s->dx)	{ 
 		s->err -= s->dz; 
-		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 	}
 	if (s->e2 < s->dz)	{ 
-		s->err += s->dx; 
-		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		s->err += s->dx;
+		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 	}
 }
 

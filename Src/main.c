@@ -405,8 +405,80 @@ void* cb_pop_front_ref(circular_buffer *cb){
 }
 
 
+int str_f_inch_to_steps2210(const char *str, char **endptr){
+// minimum processed value is 0.0001inch
+	#define steps_per_inch_Z_2210	254*40*1024 //
+
+	uint8_t ten = 0;
+	fixedpt t2210 = 0;
+	uint32_t number = 0;
+	bool negative = false;
+	bool fract = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9')	{
+			if(fract==false){
+				number = number * 10 + (c - '0');
+			} else{
+				if(ten<4){
+					number = number * 10 + (c - '0');
+				}
+				ten++;
+			}
+		} 
+		else if (c == '-')	{
+			negative = true;
+		}
+		else if (c == '.') {
+			t2210 = number * steps_per_inch_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
+			number = 0;
+			fract = true;
+		}	
+		str++;
+	}
+	if (endptr != 0) *endptr = (char *)str;
+
+	switch(ten){
+		case 1:{ // if only one fract didgit in g-code
+			number *= 1000;
+			break;
+		}
+		case 2:{// if only two fract didgits in g-code
+			number *= 100;
+			break;
+		}
+		case 3:{// if only three fract didgits in g-code
+			number *= 10;
+			break;
+		}
+	}
+
+	/* some explanations:
+	number contains fract part*10000, ie when 0.9999inch = 9999.
+	translate in to 25.4*10, = 9999*254
+	next mul to steps per mm(400) and pack it into 2210 by multiplying to 1024.
+	and divide to 100000 to get aling fract and fixed parts
+	so we have 9999*254*400*1024/100000
+	we cannot just calculate this because of long (9999*254*400*1024 = 10402799616 is greater then 2^32= 4294967296)
+	but 254*400*1024/100000 equal 127*400*1024/50000 and equal 127*4*512/250 and equal 127*1024/125
+	in this case 9999*127*1024 = 1300349952, this value is fitted to uint32 without loosing speed 
+	
+	For other cases(steps per mm) it should be done the same way.
+	Also its possible to find some fraction with smaller numerator to get result with little more error
+	in my case 1024*127/125=1040,384
+	8323/8=1040,375. That's add acceptable 0.0002mm error and its possible to avoid devision at all
+	*/
+//	t2210 += ((number<<10)*127/125);
+	t2210 += ((number*8323)>>3);
+	if (negative) return -t2210;
+	else return t2210;
+}
+
+
+
 int str_f_to_steps2210(const char *str, char **endptr){
-#define steps_per_unit_Z_2210	400<<10
+// minimum processed value is 0.001mm
+	#define steps_per_unit_Z_2210	400<<10
 
 	uint8_t ten = 0;
 	fixedpt t2210 = 0;
@@ -429,11 +501,8 @@ int str_f_to_steps2210(const char *str, char **endptr){
 			negative = true;
 		}
 		else if (c == '.') {
-//			t824 = fixedpt_xmul2210( fixedpt_fromint2210(number), steps_per_unit );
-//			t824 = number * steps_per_unit;
 			t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
 			number = 0;
-//			ten = 0;
 			fract = true;
 		}	
 		str++;
@@ -459,7 +528,7 @@ int str_f_to_steps2210(const char *str, char **endptr){
 	else return t2210;
 }
 
-
+uint64_t tst = 20318984;
 fixedpt f1;
 /* USER CODE END 0 */
 
@@ -472,7 +541,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 //	z_axis.mode = fsm_menu_lps;
 
-
+	tst = tst * 1024 / 1000;
 //	char code[] = "G01X.2Z100F10";
 	rs = 11;
 //	f1 = fixedpt_fromint2210(400);
@@ -480,6 +549,9 @@ int main(void)
 	char *end;
 
 	f1 = str_f_to_steps2210(codea, &end);
+
+	char codei[] = "1.9999";
+	f1 = str_f_inch_to_steps2210(codei, &end);
 
 
 	/*	

@@ -8,6 +8,8 @@
 
 #include "main.h"
 
+#define debug()	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin)
+
 struct state;
 typedef void (*state_func_t)( struct state* );
 
@@ -33,11 +35,11 @@ typedef struct state
 	uint8_t x_period;
 
 	//	bresenham
-	int dx,dz,sx,sz,d,d1,d2;
-	int err, e2;
+	int dx,dz;//,d,d1,d2;
+//	int sx,sz;
+	int err;
   int i, x,z;
-  state_func_t set_pulse_function;
-
+//  state_func_t set_pulse_function;
 } state_t;
 
 extern state_t state;
@@ -86,28 +88,102 @@ void do_fsm_ramp_down_async(state_t* );
 _Bool z_axis_ramp_up_async(state_t* );
 _Bool z_axis_ramp_down_async(state_t* );
 
-
-void dx_callback(state_t* );
-void dz_callback(state_t* );
-void dzdx_init(int, int, state_t*);
+void dzdx_init(int dx, int dz, state_t* s);
 
 // TIM3->CCER register bitbang access:
 #define t3ccer			((uint32_t *)((0x42000000  + ((0x40000420)-0x40000000)*32)))
+
+
 __STATIC_INLINE void dxdz_callback(state_t* s){
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	s->e2 = s->err;
-	if (s->e2 > -s->dx)	{ 
+	int e2 = s->err;
+	if (e2 > -s->dx)	{ // step X axis
 		s->err -= s->dz; 
 		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 	}
-	if (s->e2 < s->dz)	{ 
+	if (e2 < s->dz)	{ // step Z axis
 		s->err += s->dx;
 		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 	}
 }
 
 //void dxdz_callback(state_t* );
-void G01(int , int , int );
+void G01(int dx, int dz, int feed);
 
+
+typedef struct G_pipeline{
+	int X,Z,feed;
+	bool sync;
+	uint8_t code;
+} G_pipeline;
+
+
+typedef struct circular_buffer{
+    void *buffer;     // data buffer
+    void *buffer_end; // end of data buffer
+    size_t capacity;  // maximum number of items in the buffer
+    size_t count;     // number of items in the buffer
+    size_t sz;        // size of each item in the buffer
+    void *head;       // pointer to head
+    void *tail;       // pointer to tail
+} circular_buffer;
+extern circular_buffer cb;
+
+__STATIC_INLINE void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
+    cb->buffer = malloc(capacity * sz);
+    if(cb->buffer == NULL){
+        // handle error
+		}
+    cb->buffer_end = (char *)cb->buffer + capacity * sz;
+    cb->capacity = capacity;
+    cb->count = 0;
+    cb->sz = sz;
+    cb->head = cb->buffer;
+    cb->tail = cb->buffer;
+}
+
+__STATIC_INLINE void cb_free(circular_buffer *cb){
+    free(cb->buffer);
+    // clear out other fields too, just to be safe
+}
+
+__STATIC_INLINE void cb_push_back(circular_buffer *cb, const void *item){
+	if(cb->count == cb->capacity){
+		while(1){}
+			// handle error
+	}
+	memcpy(cb->head, item, cb->sz);
+	cb->head = (uint8_t *)cb->head + cb->sz;
+	if(cb->head == cb->buffer_end)
+		cb->head = cb->buffer;
+	cb->count++;
+}
+
+__STATIC_INLINE void cb_pop_front(circular_buffer *cb, void *item){
+	if(cb->count == 0){
+		return;
+		// handle error
+	}
+	memcpy(item, cb->tail, cb->sz);
+	cb->tail = (char*)cb->tail + cb->sz;
+	if(cb->tail == cb->buffer_end)
+		cb->tail = cb->buffer;
+	cb->count--;
+}
+
+__STATIC_INLINE void* cb_pop_front_ref(circular_buffer *cb){
+	if(cb->count == 0){
+		return 0;
+		// handle error
+	}
+	void *ref = cb->tail;
+//	memcpy(item, cb->tail, cb->sz);
+	cb->tail = (char*)cb->tail + cb->sz;
+	if(cb->tail == cb->buffer_end)
+		cb->tail = cb->buffer;
+	cb->count--;
+	return ref;
+}
+void process_G_pipeline(void);
 
 #endif /* FSM_H_ */

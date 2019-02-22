@@ -2,7 +2,7 @@
 #include "buttons.h"
 #include "stdlib.h"
 
-#define steps_z 300
+#define steps_z 30
 #define steps_x 1
 
 circular_buffer cb;
@@ -127,7 +127,7 @@ extern bool feed_direction;
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 extern const uint8_t Menu_size;
 
-bool demo;
+bool demo = true;
 
 void do_fsm_menu(state_t* s){
 	uint8_t level = Thread_Info[Menu_Step].level;
@@ -286,8 +286,9 @@ void z_move(uint32_t direction, uint32_t length, bool sync, bool autostart){
 
 __STATIC_INLINE 
 void set_ARR(state_t* s, uint16_t value){
-	s->syncbase->ARR = value;
-	s->syncbase->EGR |= TIM_EGR_UG;
+	s->z_period = value;
+//	s->syncbase->ARR = value;
+//	s->syncbase->EGR |= TIM_EGR_UG;
 }
 
 //---------------------------------------------------------------------------------------------
@@ -312,7 +313,8 @@ void do_fsm_move_start(state_t* s){
 			LL_TIM_CC_DisableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
 			enable_encoder_ticks(); 									// enable thread specific interrupt controlled by Q824set
 		} else {
-			s->function = do_fsm_ramp_up_async;
+//			s->function = do_fsm_ramp_up_async;
+			s->function = do_fsm_ramp_up;
 //			s->async_z = 1;
 			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 
@@ -365,21 +367,24 @@ void do_fsm_move_start(state_t* s){
 
 void do_fsm_ramp_up(state_t* s){
 	z_axis.current_pos++;
-	fixedptu  set_with_fract = fixedpt_add(ramp_profile[z_axis.ramp_step++], z_axis.fract_part); // calculate new step delay with fract from previous step
+	fixedptu  set_with_fract = fixedpt_add(ramp_profile[z_axis.ramp_step], z_axis.fract_part); // calculate new step delay with fract from previous step
 	uint16_t rs2 = z_axis.ramp_step << 1;
 	if(z_axis.Q824set > set_with_fract || rs2 >= z_axis.end_pos) { 	// reach desired speed (or end of ramp map? || z_axis.ramp_step == sync_ramp_profile_len)
 		if(rs2 >= z_axis.end_pos){ 
-			while(1){}//todo
-//			s->z_period = z_arr;
+			s->z_period +=20;
+//			while(1){}//todo
+			z_axis.ramp_step -=2;
+			set_with_fract = ramp_profile[z_axis.ramp_step];
+			set_ARR(s,fixedpt_toint(set_with_fract) - 1);
+			z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 			s->function = do_fsm_ramp_down;
-			z_axis.ramp_step--;
 		} else {
 			set_ARR(s,fixedpt_toint(z_axis.Q824set) - 1);
 			z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); 								// save fract part for future use on next step
 			s->function = do_fsm_move;
 		}
 	} else {
-		s->z_period = fixedpt_toint(set_with_fract) - 1;
+		z_axis.ramp_step++;
 		set_ARR(s,fixedpt_toint(set_with_fract) - 1);
 		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	}
@@ -399,13 +404,10 @@ void do_fsm_ramp_up(state_t* s){
 }
 
 void do_fsm_move(state_t* s){
-	uint32_t pre = z_axis.end_pos - z_axis.ramp_step - 1;
-	if( ++z_axis.current_pos < pre ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
-		fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
-		s->z_period = fixedpt_toint(set_with_fract) - 1;
-		set_ARR(s,fixedpt_toint(set_with_fract) - 1);
-		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-	} else {
+	fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
+	set_ARR(s,fixedpt_toint(set_with_fract) - 1);
+	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+  if( ++z_axis.current_pos == (z_axis.end_pos - z_axis.ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 		s->function = do_fsm_ramp_down;
 	}
 	
@@ -432,13 +434,18 @@ void do_fsm_move(state_t* s){
   * @param  state structure
   */
 void do_fsm_ramp_down(state_t* s){
+//	debug();
 	z_axis.current_pos++;
-	s->z_period = sync_ramp_profile[--z_axis.ramp_step];	
+//	s->z_period = sync_ramp_profile[--z_axis.ramp_step];	
+	fixedptu  set_with_fract = fixedpt_add(ramp_profile[--z_axis.ramp_step], z_axis.fract_part); // calculate new step delay with fract from previous step
+	set_ARR(s,fixedpt_toint(set_with_fract) - 1);
+	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	if (z_axis.ramp_step == 0) {
 		if(z_axis.end_pos != z_axis.current_pos) {
 			z_axis.end_pos = z_axis.current_pos;
 		}
 		s->function = do_fsm_move_end;
+//		debug();
 	}	
 
 /* old code	
@@ -464,17 +471,18 @@ _Bool z_axis_ramp_down2(state_t* s){
 
 
 void do_fsm_move_end(state_t* s){
+//	debug();
 	s->async_z = 0;
-  LL_TIM_SetSlaveMode(s->syncbase, LL_TIM_SLAVEMODE_DISABLED);
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
-		LL_TIM_CC_DisableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
 	} else {
-		LL_TIM_DisableCounter(TIM2); // pause async timer
+		LL_TIM_DisableCounter(s->syncbase); // pause async timer
 	}
 	s->syncbase = 0; // reset syncbase to stop calling it from timer interrupt
-
+	s->z_period = 0;
 //	debug();
 	LL_mDelay(2);
   MOTOR_Z_Disable();
@@ -485,6 +493,7 @@ void do_fsm_move_end(state_t* s){
 }
 
 //------------------------------------ ASYNC block -----------------------------------
+
 void do_fsm_ramp_up_async(state_t* s) {
 	z_axis.current_pos++;
 	const uint8_t z_arr = async_ramp_profile[z_axis.ramp_step++];
@@ -527,6 +536,8 @@ void do_fsm_ramp_down_async(state_t* s){
 		s->function = do_fsm_move_end;
 	}
 }
+
+
 
 
 // init bresenham algorithm variables for generate stepper motors pulses

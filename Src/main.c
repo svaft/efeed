@@ -120,7 +120,8 @@ recommendation: mm(tpi) - passes
 // Enc_Line/(Step_Per_Revolution/Feed_Screw*Thread_mm)
 // перегенерация есть в excel файле
 THREAD_INFO Thread_Info[] = {
-//	{ 0x12000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
+//	{ 0x18000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
+	{ 0x06000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
 	{ 0x02400000, 0, "4.00", "mm", 10, "1.26", ".050", 0 },
 //	{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
 	{ 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 1 },
@@ -479,6 +480,8 @@ int main(void)
 //	z_axis.mode = fsm_menu_lps;
 	memset(&z_axis,0,sizeof(z_axis));
 	state.function = do_fsm_menu_lps;
+
+	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
 	
 	tst = tst * 1024 / 1000;
 //	char code[] = "G01X.2Z100F10";

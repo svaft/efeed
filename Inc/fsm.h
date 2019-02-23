@@ -28,6 +28,7 @@ typedef struct state
 	TIM_TypeDef *syncbase;
   // other stateful data
 
+	fixedpt state_X, state_Z; // absolute position
   // X axis
   state_func_t function_x;
 	_Bool sync_x;
@@ -127,7 +128,7 @@ typedef struct circular_buffer{
     void *head;       // pointer to head
     void *tail;       // pointer to tail
 } circular_buffer;
-extern circular_buffer cb;
+extern circular_buffer gp_cb;
 
 __STATIC_INLINE void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
     cb->buffer = malloc(capacity * sz);

@@ -5,8 +5,8 @@
 #define steps_z 30
 #define steps_x 1
 
-circular_buffer cb;
-
+circular_buffer gp_cb;
+bool g_lock = false;
 
 /**
 * @brief  precalculated ramp for  30 000Hz frequency timer in 8.24 format.
@@ -132,7 +132,7 @@ bool demo = true;
 void do_fsm_menu(state_t* s){
 	uint8_t level = Thread_Info[Menu_Step].level;
 #ifdef _SIMU
-	buttons_flag_set = long_press_start_Msk;
+//	buttons_flag_set = long_press_start_Msk;
 #endif	
 	switch(buttons_flag_set) {
 	case single_click_Msk3: {
@@ -195,11 +195,12 @@ void do_fsm_menu(state_t* s){
 				z_axis.prolong_addSteps = upl / (fixedptud)z_axis.Q824set;
 				// 200*step_divider*z_feed_screw(mm)*len(mm) = desired length in steps, in my case its 200*2*1*x
 
-				MOTOR_X_Enable();
-				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-//				LL_mDelay(2);
+//				MOTOR_X_Enable();
+//				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
+
+				//				LL_mDelay(2);
 				if(demo){
-					G01(steps_x,steps_z,0);
+//					G01(steps_x,steps_z,0);
 //					z_move(feed_direction, steps, false, true); //test case, move async 10mm
 //					z_move(feed_direction, 31, false, true); //test case, move async 10mm
 				}
@@ -338,7 +339,7 @@ void do_fsm_move_start(state_t* s){
 //			LL_TIM_GenerateEvent_UPDATE(TIM2); /* Force update generation */
 
 		}
-
+		LL_TIM_EnableUpdateEvent(s->syncbase);
 //		LL_mDelay(20);
 	}	
 }
@@ -416,9 +417,14 @@ void do_fsm_ramp_down(state_t* s){
 //	debug();
 	z_axis.current_pos++;
 //	s->z_period = sync_ramp_profile[--z_axis.ramp_step];	
-	fixedptu  set_with_fract = fixedpt_add(ramp_profile[--z_axis.ramp_step], z_axis.fract_part); // calculate new step delay with fract from previous step
+	fixedptu set_with_fract;
+	if(z_axis.ramp_step == 0){
+		set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
+	} else {
+		set_with_fract = fixedpt_add(ramp_profile[--z_axis.ramp_step], z_axis.fract_part); // calculate new step delay with fract from previous step
+		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	}
 	set_ARR(s,fixedpt_toint(set_with_fract) - 1);
-	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	if (z_axis.ramp_step == 0) {
 		if(z_axis.end_pos != z_axis.current_pos) {
 			z_axis.end_pos = z_axis.current_pos;
@@ -426,6 +432,7 @@ void do_fsm_ramp_down(state_t* s){
 		s->function = do_fsm_move_end;
 //		debug();
 	}	
+	
 
 /* old code	
 	z_axis.current_pos++;
@@ -460,15 +467,25 @@ void do_fsm_move_end(state_t* s){
 	} else {
 		LL_TIM_DisableCounter(s->syncbase); // pause async timer
 	}
-	s->syncbase = 0; // reset syncbase to stop calling it from timer interrupt
+//	s->syncbase = 0; // reset syncbase to stop calling it from timer interrupt
+	LL_TIM_DisableUpdateEvent(s->syncbase);
+
+	//	TIM3->ARR = 0;
+//	LL_TIM_GenerateEvent_UPDATE(TIM3);
+//	LL_TIM_DisableCounter(TIM3); // pause async timer
+
+	//	LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+//	TIM3->SR = 0;
+	
 	s->z_period = 0;
 //	debug();
 	LL_mDelay(2);
   MOTOR_Z_Disable();
   MOTOR_X_Disable();
-	feed_direction = !feed_direction; 					//autochange feed direction
+//	feed_direction = !feed_direction; 					//autochange feed direction
 	menu_changed = 1; 													//update menu
 	s->function = do_fsm_wait_sclick;
+	g_lock = false;
 }
 
 
@@ -487,6 +504,7 @@ __STATIC_INLINE void dzdx_init(int dx, int dz, state_t* s) {
   * @retval void.
   */
 void G00(int dx, int dz){
+	g_lock = true;
 // move to position with max speed	
 }
 
@@ -520,18 +538,9 @@ and can immediately begin cutting a good thread.
 * @retval void.
   */
 void G33(int dx, int dz, int K){
-	
+	g_lock = true;
 	// move to position with spindle sync. Used for threading.
 	// command is the same(?) as the G95 with followed G01 and sync start by tacho pulse from spindle
-}
-
-
-/**
-* @brief  G01: Coordinated Straight Motion Feed Rate
-  * @retval void.
-  */
-void G01(int dx, int dz, int feed){
-	// linear interpolated move to position with defined feed
 	dzdx_init(dx, dz, &state);
 
 	if(dz<0) {
@@ -550,9 +559,9 @@ void G01(int dx, int dz, int feed){
 
 //	state.sync = false; 
 	state.sync = true;
-	if(state.sync){
-		state.main_feed_direction = feed_direction;
-	}
+//	if(state.sync){
+	state.main_feed_direction = feed_direction;
+//	}
 
 	z_axis.current_pos = 0;
 	z_axis.end_pos = dz>=0?dz:-dz; //abs(dz);
@@ -560,15 +569,111 @@ void G01(int dx, int dz, int feed){
 		z_axis.end_pos &= 0xFFFFFFFF - step_divider + 1;
 //		z_axis.end_pos |= step_divider; // to make sure that we'll not stop between full steps
 
-	} else {
-		state.sync = true;
+//	} else {
+//		state.sync = true;
 	}
 	do_fsm_move_start(&state);
 }
 
+
+/**
+* @brief  G01: Coordinated Straight Motion Feed Rate
+  * @retval void.
+  */
+void G01(int dx, int dz, int feed){
+	g_lock = true;
+	// linear interpolated move to position with defined feed
+	dzdx_init(dx, dz, &state);
+
+	if(dz<0) {
+		feed_direction = feed_direction_left;
+		MOTOR_Z_Reverse();
+	} else {
+		feed_direction = feed_direction_right;
+		MOTOR_Z_Forward();
+	}
+
+	if(dx<0) {
+		MOTOR_X_Reverse();
+	} else {
+		MOTOR_X_Forward();
+	}
+
+//	state.sync = false; 
+	state.sync = false;
+//	if(state.sync){
+//		state.main_feed_direction = feed_direction;
+//	}
+
+	z_axis.current_pos = 0;
+	z_axis.end_pos = dz>=0?dz:-dz; //abs(dz);
+	if(z_axis.end_pos > 0){
+		z_axis.end_pos &= 0xFFFFFFFF - step_divider + 1;
+//		z_axis.end_pos |= step_divider; // to make sure that we'll not stop between full steps
+
+//	} else {
+//		state.sync = true;
+	}
+	do_fsm_move_start(&state);
+}
+fixedptu f;
 G_pipeline current_code;
 void process_G_pipeline(void){
-	cb_pop_front(&cb, &current_code);
+	if(g_lock || gp_cb.count == 0)
+		return;
+	cb_pop_front(&gp_cb, &current_code);
+
+	int x,z;
+	if(current_code.Z > state.state_Z){ // go forward
+		z = current_code.Z - state.state_Z;
+		feed_direction = feed_direction_right;
+		MOTOR_Z_Forward();
+	} else { // go back
+		z = state.state_Z - current_code.Z;
+		feed_direction = feed_direction_left;
+		MOTOR_Z_Reverse();
+	}
+	if(current_code.X > state.state_X){ // go forward
+		x = current_code.X - state.state_X;
+//		feed_direction = feed_direction_right;
+		MOTOR_X_Forward();
+	} else { // go back
+		x = state.state_X - current_code.X;
+//		feed_direction = feed_direction_left;
+		MOTOR_X_Reverse();
+	}
+	state.state_Z = current_code.Z;
+	state.state_X = current_code.X;
+	z = fixedpt_toint2210(z);
+	x = fixedpt_toint2210(x);
+	// calculate feed:
+	/*
+	ARR = feed * hz_min2210 / pspr2210
+
+	*/
+#define pspr2210 400 << 10
+#define hz_min2210 1800000 << 10 // 500 = 30000hz*60sec
+#define hzminps 4500<<10 // 30000hz*60sec/400ps
+	f = fixedpt_xdiv2210(hzminps, current_code.feed);
+	f = f << 14; // translate to 8.24 format used for delays
+	z_axis.Q824set = f;
+	
+	debug();
+	switch(current_code.code){
+		case 0:
+			G00(x,z);
+			break;
+		case 1:
+			LL_mDelay(10);
+//			MOTOR_X_Enable();
+//			MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
+			G01(x,z,current_code.feed);
+			break;
+		case 33:
+			LL_mDelay(10);
+			G33(x,z,current_code.feed);
+			break;
+	}
 }
 
 

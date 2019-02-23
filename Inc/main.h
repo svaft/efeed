@@ -74,8 +74,10 @@ extern "C" {
 #include "stdlib.h"
 #include "string.h"
 
+#include "fixedptc.h" 			// 8_24 format for spindle sync delay calculation
+#include "fixedptc22_10.h" 	// steps per mm, min resolution is screw step / steps per rev / 2^10 = 1/400/1024=0,0000024mm
+#include "fixedptc12_20.h" 	// mm, max 2048mm work field in this case, min resolution is about 0,000001mm
 
-#include "fixedptc.h"
 #define TRUE true
 #define FALSE false
 /* USER CODE END Includes */

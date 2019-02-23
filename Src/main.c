@@ -46,9 +46,6 @@
 
 #include "screen.h"
 //#include "ssd1306.h"
-#include "fixedptc.h" 			// 8_24 format for spindle sync delay calculation
-#include "fixedptc22_10.h" 	// steps per mm, min resolution is screw step / steps per rev / 2^10 = 1/400/1024=0,0000024mm
-#include "fixedptc12_20.h" 	// mm, max 2048mm work field in this case, min resolution is about 0,000001mm
 
 
 #include "i2c_interface.h"
@@ -313,6 +310,50 @@ fixedpt strto824(const char *str, char **endptr)
 }
 
 
+fixedpt strto2210(const char *str, char **endptr)
+{
+	uint32_t ten = 0;
+	fixedpt t2210 = 0;
+	fixedptu number = 0;
+	bool negative = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9')	{
+			number = number * 10 + (c - '0');
+			ten++;
+		} 
+		else if (c == '-')	{
+			negative = true;
+		}
+		else if (c == '.') {
+			t2210 = fixedpt_fromint2210(number);
+			ten = 0;
+			number = 0;
+		}	
+		str++;
+	}
+
+	if (endptr != 0) *endptr = (char *)str;
+	switch(ten){
+		case 1:{
+			number *= 1677721; // div 10
+			break;
+		}
+		case 2:{
+			number *= 167772; // div 100
+			break;
+		}
+		case 3:{
+			number *= 16777; // div 1000
+			break;
+		}
+	}
+
+	t2210 |= number;//fixedpt_xdiv(number,ten);
+	if (negative) return -t2210;
+	else return t2210;
+}
+
 
 
 /**
@@ -483,7 +524,7 @@ int main(void)
 
 	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
 	
-	tst = tst * 1024 / 1000;
+//	tst = tst * 1024 / 1000;
 //	char code[] = "G01X.2Z100F10";
 	rs = 11;
 //	f1 = fixedpt_fromint2210(400);
@@ -495,12 +536,31 @@ int main(void)
 	char codei[] = "1.9999";
 	f1 = str_f_inch_to_steps2210(codei, &end);
 
-	int size = 1000;
-	cb_init(&cb, size, sizeof(G_pipeline));
-	
+	int size = 10;
+	cb_init(&gp_cb, size, sizeof(G_pipeline));
+	G_pipeline init_gp;
+	init_gp.code 	= 1; //G01
+	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
+	init_gp.X 		= str_f_to_steps2210("1.0",&end);
+	init_gp.Z 		= str_f_to_steps2210("10.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+//	init_gp.code = 33; //G01
+	init_gp.feed 	= 60*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
+	init_gp.Z = str_f_to_steps2210("9.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+	init_gp.feed 	= 30*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
+	init_gp.Z = str_f_to_steps2210("8.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
 
 	/*	
-	circular_buffer cb;
+typedef struct G_pipeline{
+	int X,Z,feed;
+	bool sync;
+	uint8_t code;
+} G_pipeline;
+
+
+circular_buffer cb;
 	cb_init(&cb, 10, sizeof(cb));
 	cb_push_back(&cb, &cb);
 
@@ -636,6 +696,8 @@ int main(void)
 	LL_mDelay(250);
 #endif
 	init_buttons();
+	
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -968,7 +1030,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
-  TIM_InitStruct.Prescaler = 720;
+  TIM_InitStruct.Prescaler = 2400; //for 30kHz  //720 //;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 50;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;

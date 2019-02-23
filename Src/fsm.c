@@ -151,10 +151,10 @@ void do_fsm_menu(state_t* s){
 			//	to switch between modes to process all other cuts
 
 //			z_move(feed_direction, z_axis.end_pos, s->main_feed_direction == feed_direction ? true : false, true);
-			if(demo)
-				z_move(feed_direction, z_axis.end_pos, false, true); //test case, always async
-			else
-				z_move(feed_direction, z_axis.end_pos, s->main_feed_direction == feed_direction ? true : false, true);
+//			if(demo)
+//				z_move(feed_direction, z_axis.end_pos, false, true); //test case, always async
+//			else
+//				z_move(feed_direction, z_axis.end_pos, s->main_feed_direction == feed_direction ? true : false, true);
 //			z_move(feed_direction, 400*2, false, true);
 		} else { // controller in initial state, scroll menu
 			s->function = do_fsm_menu_lps;
@@ -203,8 +203,8 @@ void do_fsm_menu(state_t* s){
 //					z_move(feed_direction, steps, false, true); //test case, move async 10mm
 //					z_move(feed_direction, 31, false, true); //test case, move async 10mm
 				}
-				else
-					z_move(feed_direction, 0, true, true);
+//				else
+//					z_move(feed_direction, 0, true, true);
 
 				//do_fsm_move_start
 			} else { // goto submenu
@@ -250,77 +250,56 @@ void do_fsm_menu_lps(state_t* s){
 void do_fsm_wait_sclick(state_t* s){
 }
 
-void z_move(uint32_t direction, uint32_t length, bool sync, bool autostart){
-	MOTOR_X_Enable();
-	MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-
-	if(direction == feed_direction_left) {
-		feed_direction = feed_direction_left;
-		MOTOR_Z_Reverse();
-		MOTOR_X_Reverse();
-	} else {
-		feed_direction = feed_direction_right;
-		MOTOR_Z_Forward();
-		MOTOR_X_Forward();
-	}
-	LL_mDelay(2);
-
-	state.sync = sync;
-	if(sync){
-		state.main_feed_direction = feed_direction;
-	}
-
-	z_axis.current_pos = 0;
-	z_axis.end_pos = length;
-	if(z_axis.end_pos > 0){
-		z_axis.end_pos &= 0xFFFFFFFF - step_divider + 1;
-//		z_axis.end_pos |= step_divider; // to make sure that we'll not stop between full steps
-
-	} else {
-		state.sync = true;
-	}
-
-	do_fsm_move_start(&state);
-}
-
-
 __STATIC_INLINE 
 void set_ARR(state_t* s, uint16_t value){
-	s->z_period = value;
-//	s->syncbase->ARR = value;
+//	s->z_period = value;
+	s->syncbase->ARR = value;
 //	s->syncbase->EGR |= TIM_EGR_UG;
 }
 
 //---------------------------------------------------------------------------------------------
 void do_fsm_move_start(state_t* s){
-	if(s->sync && !s->f_tacho){
+	bool f_tacho = t4sr[TIM_SR_CC3IF_Pos];
+	if(s->sync && !f_tacho){
+		s->syncbase = TIM4;
 		s->function = do_fsm_move_start;// return here from interrupt when TACHO event
 		// enable and wait tacho event on spindle encoder
 		LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+		//		LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
+//		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 		return;
 	}
 
-	if(s->f_tacho || !s->sync) { // if tacho event or we going to start back feed to initial position with async clock
-//		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-		if(s->sync && s->f_tacho) {
-			s->function = do_fsm_ramp_up;
-			s->async_z = 0;
-			s->syncbase = TIM4; 									// sync with spindle
+	if((f_tacho && t4sr[TIM_SR_UIF_Pos] ) || !s->sync) { // if tacho event or we going to start back feed to initial position with async clock
+		s->function = do_fsm_ramp_up;
+		if(s->sync && f_tacho) {
+
+//			LL_TIM_DisableCounter(s->syncbase);
+			LL_TIM_DisableIT_CC3(s->syncbase);
+			LL_TIM_CC_DisableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// disable TACHO events on channel 3
+//			s->syncbase = TIM4; 									// sync with spindle
 
 			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
+			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+			TIM3->ARR = min_pulse;
+			LL_TIM_GenerateEvent_UPDATE(TIM3);
+//			debug();
+			// disable TACHO events, we dont need'em until next start:
+//LL_TIM_SetUpdateSource
+//			s->syncbase->CNT = 0;
+			set_ARR(s,255);
 
-// disable TACHO events, we dont need'em until next start			
-			LL_TIM_CC_DisableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
-			enable_encoder_ticks(); 									// enable thread specific interrupt controlled by Q824set
+			// enable update inerrupt:
+			LL_TIM_EnableIT_UPDATE(s->syncbase); //enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
+//			LL_TIM_EnableCounter(s->syncbase);
+//			*/
+//			LL_TIM_DisableUpdateEvent(TIM4);
+			LL_TIM_GenerateEvent_UPDATE(s->syncbase); /* Force update generation */
 		} else {
-//			s->function = do_fsm_ramp_up_async;
-			s->function = do_fsm_ramp_up;
-//			s->async_z = 1;
 			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 
-//			s->set_pulse_function(s);
-//			dxdz_callback(s);
-//			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by spindle encoder timer TIM4(sync mode)
+			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 			TIM3->ARR = min_pulse;
 			LL_TIM_GenerateEvent_UPDATE(TIM3);
 //			LL_TIM_EnableCounter(TIM3);
@@ -339,9 +318,10 @@ void do_fsm_move_start(state_t* s){
 //			MOTOR_X_AllowPulse();
 //			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 
-			TIM2->ARR = 10;
+			s->syncbase->CNT = 0;
+			set_ARR(s,10);
 //			LL_TIM_GenerateEvent_UPDATE(TIM2); // start first step on motor
-			LL_TIM_EnableCounter(TIM2);
+			LL_TIM_EnableCounter(s->syncbase);
 
 
 //			TIM2->ARR = 1;
@@ -353,7 +333,7 @@ void do_fsm_move_start(state_t* s){
 //			LL_TIM_GenerateEvent_TRIG(TIM2); // start first step on motor
 	//		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
 //			s->syncbase->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
-			s->async_z = 1;
+//			s->async_z = 1;
 //			TIM2->CNT = 0;
 //			LL_TIM_GenerateEvent_UPDATE(TIM2); /* Force update generation */
 
@@ -366,13 +346,12 @@ void do_fsm_move_start(state_t* s){
 
 
 void do_fsm_ramp_up(state_t* s){
+//	debug();
 	z_axis.current_pos++;
 	fixedptu  set_with_fract = fixedpt_add(ramp_profile[z_axis.ramp_step], z_axis.fract_part); // calculate new step delay with fract from previous step
 	uint16_t rs2 = z_axis.ramp_step << 1;
 	if(z_axis.Q824set > set_with_fract || rs2 >= z_axis.end_pos) { 	// reach desired speed (or end of ramp map? || z_axis.ramp_step == sync_ramp_profile_len)
 		if(rs2 >= z_axis.end_pos){ 
-			s->z_period +=20;
-//			while(1){}//todo
 			z_axis.ramp_step -=2;
 			set_with_fract = ramp_profile[z_axis.ramp_step];
 			set_ARR(s,fixedpt_toint(set_with_fract) - 1);
@@ -472,7 +451,7 @@ _Bool z_axis_ramp_down2(state_t* s){
 
 void do_fsm_move_end(state_t* s){
 //	debug();
-	s->async_z = 0;
+//	s->async_z = 0;
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	if (s->sync) {
@@ -491,52 +470,6 @@ void do_fsm_move_end(state_t* s){
 	menu_changed = 1; 													//update menu
 	s->function = do_fsm_wait_sclick;
 }
-
-//------------------------------------ ASYNC block -----------------------------------
-
-void do_fsm_ramp_up_async(state_t* s) {
-	z_axis.current_pos++;
-	const uint8_t z_arr = async_ramp_profile[z_axis.ramp_step++];
-//get variable of accel+deccel path(steps*2) to check if path is too short to go with main move we directly 
-//	go into ramp_down part
-	const uint16_t rs2 = z_axis.ramp_step << 1;
-	if(z_arr < slew_speed_period || rs2 >= z_axis.end_pos  ) { 	// reach desired speed
-		if( rs2 < z_axis.end_pos) {
-			s->z_period = slew_speed_period;
-			s->function = do_fsm_move_async;
-		}
-		else {
-			s->z_period = z_arr;
-			s->function = do_fsm_ramp_down_async;
-			z_axis.ramp_step--;
-		}
-	} else {
-//		z_axis.ramp_step++;
-		s->z_period = z_arr;
-	}
-}
-
-void do_fsm_move_async(state_t* s) {
-	uint32_t pre = z_axis.end_pos - z_axis.ramp_step - 1;
-	if( ++z_axis.current_pos < pre ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
-		s->z_period = slew_speed_period;
-	} else {
-		s->function = do_fsm_ramp_down_async;
-	}
-}
-
-void do_fsm_ramp_down_async(state_t* s){
-	z_axis.current_pos++;
-
-	s->z_period = async_ramp_profile[--z_axis.ramp_step];
-	if (z_axis.ramp_step == 0) {
-		if(z_axis.end_pos != z_axis.current_pos) {
-			z_axis.end_pos = z_axis.current_pos;
-		}
-		s->function = do_fsm_move_end;
-	}
-}
-
 
 
 
@@ -615,7 +548,8 @@ void G01(int dx, int dz, int feed){
 		MOTOR_X_Forward();
 	}
 
-	state.sync = false;
+//	state.sync = false; 
+	state.sync = true;
 	if(state.sync){
 		state.main_feed_direction = feed_direction;
 	}
@@ -696,4 +630,83 @@ void do_fsm_main_cut_back_prolong(state_t* s)   // reverse movement: main part w
 	}
 }
 
+*/
+/*
+void z_move(uint32_t direction, uint32_t length, bool sync, bool autostart){
+	MOTOR_X_Enable();
+	MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
+
+	if(direction == feed_direction_left) {
+		feed_direction = feed_direction_left;
+		MOTOR_Z_Reverse();
+		MOTOR_X_Reverse();
+	} else {
+		feed_direction = feed_direction_right;
+		MOTOR_Z_Forward();
+		MOTOR_X_Forward();
+	}
+	LL_mDelay(2);
+
+	state.sync = sync;
+	if(sync){
+		state.main_feed_direction = feed_direction;
+	}
+
+	z_axis.current_pos = 0;
+	z_axis.end_pos = length;
+	if(z_axis.end_pos > 0){
+		z_axis.end_pos &= 0xFFFFFFFF - step_divider + 1;
+//		z_axis.end_pos |= step_divider; // to make sure that we'll not stop between full steps
+
+	} else {
+		state.sync = true;
+	}
+
+	do_fsm_move_start(&state);
+}
+*/
+//------------------------------------ ASYNC block -----------------------------------
+/*
+void do_fsm_ramp_up_async(state_t* s) {
+	z_axis.current_pos++;
+	const uint8_t z_arr = async_ramp_profile[z_axis.ramp_step++];
+//get variable of accel+deccel path(steps*2) to check if path is too short to go with main move we directly 
+//	go into ramp_down part
+	const uint16_t rs2 = z_axis.ramp_step << 1;
+	if(z_arr < slew_speed_period || rs2 >= z_axis.end_pos  ) { 	// reach desired speed
+		if( rs2 < z_axis.end_pos) {
+			s->z_period = slew_speed_period;
+			s->function = do_fsm_move_async;
+		}
+		else {
+			s->z_period = z_arr;
+			s->function = do_fsm_ramp_down_async;
+			z_axis.ramp_step--;
+		}
+	} else {
+//		z_axis.ramp_step++;
+		s->z_period = z_arr;
+	}
+}
+
+void do_fsm_move_async(state_t* s) {
+	uint32_t pre = z_axis.end_pos - z_axis.ramp_step - 1;
+	if( ++z_axis.current_pos < pre ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
+		s->z_period = slew_speed_period;
+	} else {
+		s->function = do_fsm_ramp_down_async;
+	}
+}
+
+void do_fsm_ramp_down_async(state_t* s){
+	z_axis.current_pos++;
+
+	s->z_period = async_ramp_profile[--z_axis.ramp_step];
+	if (z_axis.ramp_step == 0) {
+		if(z_axis.end_pos != z_axis.current_pos) {
+			z_axis.end_pos = z_axis.current_pos;
+		}
+		s->function = do_fsm_move_end;
+	}
+}
 */

@@ -20,9 +20,9 @@ typedef struct state
 	uint32_t async_z;
 	uint32_t current_pos;
 	uint8_t z_period;
-	_Bool f_encoder;
-	_Bool f_tacho;
-	_Bool spindle_dir;
+	bool f_encoder;
+	bool f_tacho;
+	bool spindle_dir;
 	_Bool sync;
 	_Bool main_feed_direction;
 	TIM_TypeDef *syncbase;

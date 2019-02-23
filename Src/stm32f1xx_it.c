@@ -251,33 +251,22 @@ void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
-//	if ( async_z == 1) {
 	if(TIM3->SMCR == 0x16) { // TIM3 connected to TIM2 as SLAVE
-//	if ( state.async_z == 1) {
-//		state.f_encoder = encoder;
-//		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
-//		LED_GPIO_Port->BSRR = LED_Pin;   // led off
-//		LED_GPIO_Port->BRR = LED_Pin;
-//    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-//    LL_GPIO_TogglePin( LED_GPIO_Port, LED_Pin);
-
 		state.function(&state);
-
-		TIM2->ARR = state.z_period;
-		TIM2->EGR |= TIM_EGR_UG;
-
-//		state.set_pulse_function(&state);
-//		text_buffer[tbc++] = TIM2->ARR;
+//		state.syncbase->ARR = state.z_period;
+		state.syncbase->EGR |= TIM_EGR_UG;
 	}
 
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
   /* Check whether update interrupt is pending */
-  if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == 1)
-  {
+	state.syncbase->SR = 0;
+
+//  if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == 1)
+//  {
     /* Clear the update interrupt flag*/
-    LL_TIM_ClearFlag_UPDATE(TIM2);
-  }
+//    LL_TIM_ClearFlag_UPDATE(TIM2);
+//  }
   /* USER CODE END TIM2_IRQn 1 */
 }
 
@@ -308,11 +297,16 @@ void TIM4_IRQHandler(void)
 //	if(t4sr[TIM_SR_CC3IF_Pos]){
 //		do_fsm_wait_tacho(&state);
 //	}
+//	if(TIM3->SMCR == 0x36) { // TIM3 connected to TIM4 as SLAVE
 	if (state.sync == true) {
-		state.spindle_dir = t4cr1[TIM_CR1_DIR_Pos];
+//		state.spindle_dir = t4cr1[TIM_CR1_DIR_Pos];
 //		state.f_encoder = encoder;
-		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
+//		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
 		state.function(&state);
+//		state.syncbase->ARR = state.z_period;
+//		TIM4->ARR = state.z_period;
+//		state.syncbase->EGR |= TIM_EGR_UG;
+		
 	}
 //	TIM4->SR &= ~TIM_SR_UIF; //Сбрасываем бит вызова прерывания. 
 
@@ -322,7 +316,7 @@ void TIM4_IRQHandler(void)
 //	if(LL_TIM_IsActiveFlag_CC2OVR(TIM4) == 1){
 //		TIM4->SR = 0;
 //	}
-	TIM4->SR = 0;
+	state.syncbase->SR = 0;
 /*
 	if(LL_TIM_IsActiveFlag_CC2(TIM4) == 1)
     LL_TIM_ClearFlag_CC2(TIM4);

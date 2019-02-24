@@ -263,15 +263,17 @@ void do_fsm_move_start(state_t* s){
 	bool f_tacho = t4sr[TIM_SR_CC3IF_Pos];
 	if(s->sync && !f_tacho){
 		s->syncbase = TIM4;
+		LL_TIM_EnableIT_CC3(s->syncbase);
+		LL_TIM_EnableUpdateEvent(s->syncbase);
 		s->function = do_fsm_move_start;// return here from interrupt when TACHO event
 		// enable and wait tacho event on spindle encoder
-		LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
 		//		LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
 //		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 		return;
 	}
 
-	if((f_tacho && t4sr[TIM_SR_UIF_Pos] ) || !s->sync) { // if tacho event or we going to start back feed to initial position with async clock
+	if(f_tacho || !s->sync) { // if tacho event or we going to start back feed to initial position with async clock
 		s->function = do_fsm_ramp_up;
 		if(s->sync && f_tacho) {
 
@@ -505,6 +507,7 @@ __STATIC_INLINE void dzdx_init(int dx, int dz, state_t* s) {
   */
 void G00(int dx, int dz){
 	g_lock = true;
+//	G01(dx,dz);
 // move to position with max speed	
 }
 
@@ -542,7 +545,7 @@ void G33(int dx, int dz, int K){
 	// move to position with spindle sync. Used for threading.
 	// command is the same(?) as the G95 with followed G01 and sync start by tacho pulse from spindle
 	dzdx_init(dx, dz, &state);
-
+/*
 	if(dz<0) {
 		feed_direction = feed_direction_left;
 		MOTOR_Z_Reverse();
@@ -556,7 +559,7 @@ void G33(int dx, int dz, int K){
 	} else {
 		MOTOR_X_Forward();
 	}
-
+*/
 //	state.sync = false; 
 	state.sync = true;
 //	if(state.sync){
@@ -584,7 +587,7 @@ void G01(int dx, int dz, int feed){
 	g_lock = true;
 	// linear interpolated move to position with defined feed
 	dzdx_init(dx, dz, &state);
-
+/*
 	if(dz<0) {
 		feed_direction = feed_direction_left;
 		MOTOR_Z_Reverse();
@@ -598,7 +601,7 @@ void G01(int dx, int dz, int feed){
 	} else {
 		MOTOR_X_Forward();
 	}
-
+*/
 //	state.sync = false; 
 	state.sync = false;
 //	if(state.sync){
@@ -624,11 +627,11 @@ void process_G_pipeline(void){
 	cb_pop_front(&gp_cb, &current_code);
 
 	int x,z;
-	if(current_code.Z > state.state_Z){ // go forward
+	if(current_code.Z > state.state_Z){ // go from left to right
 		z = current_code.Z - state.state_Z;
 		feed_direction = feed_direction_right;
 		MOTOR_Z_Forward();
-	} else { // go back
+	} else { // go back from right to left
 		z = state.state_Z - current_code.Z;
 		feed_direction = feed_direction_left;
 		MOTOR_Z_Reverse();
@@ -651,26 +654,30 @@ void process_G_pipeline(void){
 	ARR = feed * hz_min2210 / pspr2210
 
 	*/
-#define pspr2210 400 << 10
-#define hz_min2210 1800000 << 10 // 500 = 30000hz*60sec
-#define hzminps 4500<<10 // 30000hz*60sec/400ps
-	f = fixedpt_xdiv2210(hzminps, current_code.feed);
-	f = f << 14; // translate to 8.24 format used for delays
-	z_axis.Q824set = f;
+//#define pspr2210 400 << 10
+//#define hz_min2210 1800000 << 10 // 500 = 30000hz*60sec
+#define hzminps 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
+	if(current_code.code == 33){ 	// unit(mm) per rev
+		z_axis.Q824set = current_code.feed;
+	} else { 											// unit(mm) per min
+		f = fixedpt_xdiv2210(hzminps, current_code.feed);
+		f = f << 14; // translate to 8.24 format used for delays
+		z_axis.Q824set = f;
+	}
 	
 	debug();
 	switch(current_code.code){
 		case 0:
-			G00(x,z);
+			z_axis.Q824set = 0x048E9E1B; //todo max feedrate here
+			G01(x,z,current_code.feed);
 			break;
 		case 1:
-			LL_mDelay(10);
+//			LL_mDelay(10);
 //			MOTOR_X_Enable();
 //			MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
 			G01(x,z,current_code.feed);
 			break;
 		case 33:
-			LL_mDelay(10);
 			G33(x,z,current_code.feed);
 			break;
 	}

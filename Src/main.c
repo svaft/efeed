@@ -541,16 +541,37 @@ int main(void)
 	G_pipeline init_gp;
 	init_gp.code 	= 1; //G01
 	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.X 		= str_f_to_steps2210("1.0",&end);
-	init_gp.Z 		= str_f_to_steps2210("10.0",&end);
+	init_gp.X 		= str_f_to_steps2210("0.1",&end);
+	init_gp.Z 		= str_f_to_steps2210("1.0",&end);
 	cb_push_back(&gp_cb, &init_gp);
-//	init_gp.code = 33; //G01
-	init_gp.feed 	= 60*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.Z = str_f_to_steps2210("9.0",&end);
+
+// thread 8mm pitch 1.5mm
+//	init_gp.code 	= 33; //G01
+//	init_gp.feed = 0x06000000; // 1,5mm pitch in 8.24 format, TODO
+	init_gp.Z = str_f_to_steps2210("0.0",&end);
 	cb_push_back(&gp_cb, &init_gp);
-	init_gp.feed 	= 30*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.Z = str_f_to_steps2210("8.0",&end);
+
+// back to 1mm
+//	init_gp.code 	= 1; //G01
+//	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
+	init_gp.Z = str_f_to_steps2210("1.0",&end);
 	cb_push_back(&gp_cb, &init_gp);
+
+// thread again 1mm pitch 1.5mm 
+//	init_gp.code 	= 33; //G01
+//	init_gp.feed = 0x06000000; // 1,5mm pitch in 8.24 format, TODO
+	init_gp.Z = str_f_to_steps2210("0.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
+// back to 1mm
+//	init_gp.code 	= 1; //G01
+//	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
+	init_gp.Z = str_f_to_steps2210("1.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
+	init_gp.Z = str_f_to_steps2210("0.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
 
 	/*	
 typedef struct G_pipeline{

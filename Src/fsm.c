@@ -2,6 +2,11 @@
 #include "buttons.h"
 #include "stdlib.h"
 
+#include "gcode.h"
+#include "nuts_bolts.h"
+
+
+
 #define steps_z 30
 #define steps_x 1
 
@@ -432,6 +437,7 @@ void G33(int dx, int dz, int K){
 	}
 	do_fsm_move_start(&state);
 }
+
 
 
 /**

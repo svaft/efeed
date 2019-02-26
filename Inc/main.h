@@ -231,7 +231,7 @@ typedef struct {
 	uint8_t infeed_strategy;
 } THREAD_INFO;
 
-extern THREAD_INFO Thread_Info[];
+extern const THREAD_INFO Thread_Info[];
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 
 typedef struct {

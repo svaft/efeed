@@ -116,9 +116,10 @@ recommendation: mm(tpi) - passes
 // основное меню. Считаем по формуле:
 // Enc_Line/(Step_Per_Revolution/Feed_Screw*Thread_mm)
 // перегенерация есть в excel файле
-THREAD_INFO Thread_Info[] = {
+const THREAD_INFO Thread_Info[] = {
 //	{ 0x18000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
 	{ 0x06000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
+#ifndef _SIMU
 	{ 0x02400000, 0, "4.00", "mm", 10, "1.26", ".050", 0 },
 //	{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
 	{ 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 1 },
@@ -153,13 +154,14 @@ THREAD_INFO Thread_Info[] = {
 	{ 0x04F5EBD7, 0, "14", "tpi", 30, "", "", 0 },
 	{ 0x04408102, 0, "12", "tpi", 30, "", "", 0 },
 	{ 0x00000000, 0, "..", "up", 30, "", "", 0 },
+#endif
 };
 
 
 uint8_t Menu_Step = 0;																					// выборка из массива по умолчанию (1.5mm)
 const uint8_t Menu_size = sizeof(Thread_Info)/sizeof(Thread_Info[0]);
-uint16_t text_buffer[100];
-uint32_t tbc = 0;
+//uint16_t text_buffer[100];
+//uint32_t tbc = 0;
 
 /* USER CODE END PV */
 
@@ -196,7 +198,7 @@ uint8_t *pBufferReadyForReception;
 __IO uint8_t ubUART2ReceptionComplete = 0;
 
 /* Buffer used for transmission */
-const uint8_t aTxBuffer[] = "STM32F1xx USART LL API Example : TX/RX in DMA mode\r\nConfiguration UART 115200 bps, 8 data bit/1 stop bit/No parity/No HW flow control\r\nPlease enter 'END' string ...\r\n";
+const uint8_t aTxBuffer[] = "test\r\n";
 uint8_t ubNbDataToTransmit = sizeof(aTxBuffer);
 __IO uint8_t ubTransmissionComplete = 0;
 
@@ -509,6 +511,98 @@ int str_f_to_steps2210(const char *str, char **endptr){
 
 uint64_t tst = 20318984;
 fixedpt f1;
+
+
+uint32_t rr = 174240000; //33mm*33*400*400
+uint32_t y1 = 5800;
+uint32_t y2 = 12480;
+uint32_t x1 = 0;
+
+/**
+ * \brief    Fast Square root algorithm
+ *
+ * Fractional parts of the answer are discarded. That is:
+ *      - SquareRoot(3) --> 1
+ *      - SquareRoot(4) --> 2
+ *      - SquareRoot(5) --> 2
+ *      - SquareRoot(8) --> 2
+ *      - SquareRoot(9) --> 3
+ *
+ * \param[in] a_nInput - unsigned integer for which to find the square root
+ *
+ * \return Integer square root of the input value.
+ */
+//__STATIC_INLINE 
+uint32_t SquareRoot(uint32_t a_nInput){
+	uint32_t op  = a_nInput;
+	uint32_t res = 0;
+	uint32_t one = 1uL << 30; // The second-to-top bit is set: use 1u << 14 for uint16_t type; use 1uL<<30 for uint32_t type
+
+  // "one" starts at the highest power of four <= than the argument.
+  one >>= __clz(op) & ~0x3;
+//    while (one > op) {
+//		one >>= 2;
+//	}
+
+	while (one != 0){
+		if (op >= res + one){
+			op = op - (res + one);
+			res = res +  2 * one;
+		}
+		res >>= 1;
+		one >>= 2;
+	}
+	return res;
+}
+
+
+/**
+ * \brief    Fast Square root algorithm, with rounding
+ *
+ * This does arithmetic rounding of the result. That is, if the real answer
+ * would have a fractional part of 0.5 or greater, the result is rounded up to
+ * the next integer.
+ *      - SquareRootRounded(2) --> 1
+ *      - SquareRootRounded(3) --> 2
+ *      - SquareRootRounded(4) --> 2
+ *      - SquareRootRounded(6) --> 2
+ *      - SquareRootRounded(7) --> 3
+ *      - SquareRootRounded(8) --> 3
+ *      - SquareRootRounded(9) --> 3
+ *
+ * \param[in] a_nInput - unsigned integer for which to find the square root
+ *
+ * \return Integer square root of the input value.
+ */
+uint32_t SquareRootRounded(uint32_t a_nInput)
+{
+	uint32_t op  = a_nInput;
+	uint32_t res = 0;
+	uint32_t one = 1uL << 30; // The second-to-top bit is set: use 1u << 14 for uint16_t type; use 1uL<<30 for uint32_t type
+
+
+	// "one" starts at the highest power of four <= than the argument.
+//	while (one > op){
+//		one >>= 2;
+//	}
+	one >>= __clz(op) & ~0x3;
+	while (one != 0){
+			if (op >= res + one){
+					op = op - (res + one);
+					res = res +  2 * one;
+			}
+			res >>= 1;
+			one >>= 2;
+	}
+
+	/* Do arithmetic rounding to nearest integer */
+	if (op > res){
+			res++;
+	}
+
+	return res;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -518,118 +612,8 @@ fixedpt f1;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-//	z_axis.mode = fsm_menu_lps;
 	memset(&z_axis,0,sizeof(z_axis));
 	state.function = do_fsm_menu_lps;
-
-	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
-	
-//	tst = tst * 1024 / 1000;
-//	char code[] = "G01X.2Z100F10";
-	rs = 11;
-//	f1 = fixedpt_fromint2210(400);
-	char codea[] = "2000.999";
-	char *end;
-
-	f1 = str_f_to_steps2210(codea, &end);
-
-	char codei[] = "1.9999";
-	f1 = str_f_inch_to_steps2210(codei, &end);
-
-	int size = 10;
-	cb_init(&gp_cb, size, sizeof(G_pipeline));
-	G_pipeline init_gp;
-	init_gp.code 	= 1; //G01
-	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.X 		= str_f_to_steps2210("0.1",&end);
-	init_gp.Z 		= str_f_to_steps2210("1.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-// thread 8mm pitch 1.5mm
-//	init_gp.code 	= 33; //G01
-//	init_gp.feed = 0x06000000; // 1,5mm pitch in 8.24 format, TODO
-	init_gp.Z = str_f_to_steps2210("0.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-// back to 1mm
-//	init_gp.code 	= 1; //G01
-//	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.Z = str_f_to_steps2210("1.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-// thread again 1mm pitch 1.5mm 
-//	init_gp.code 	= 33; //G01
-//	init_gp.feed = 0x06000000; // 1,5mm pitch in 8.24 format, TODO
-	init_gp.Z = str_f_to_steps2210("0.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-// back to 1mm
-//	init_gp.code 	= 1; //G01
-//	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.Z = str_f_to_steps2210("1.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-	init_gp.Z = str_f_to_steps2210("0.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-
-	/*	
-typedef struct G_pipeline{
-	int X,Z,feed;
-	bool sync;
-	uint8_t code;
-} G_pipeline;
-
-
-circular_buffer cb;
-	cb_init(&cb, 10, sizeof(cb));
-	cb_push_back(&cb, &cb);
-
-
-	circular_buffer cb2;
-	cb_pop_front(&cb, &cb2);
-*/	
-/*
-	float af = -5.5;
-	fixedpt af1 = af * (1 << FIXEDPT_FBITS);
-	float af2 = fixedpt_tofloat(af1);
-
-	char codea[] = "-1.223";
-	
-	char *end;
-	af = -1.223;
-	af1 = af * (1 << FIXEDPT_FBITS);
-	fixedpt a = strto824(codea, &end);
-	int rst = str_f_to_steps(codea, 400, &end);	
-
-	af2 = fixedpt_tofloat(a);
-
-	a = fixedpt_fromint(-1);
-	char codeb[] = "-5.5";
-	fixedpt b = strto824(codeb, &end);
-	af2 = fixedpt_tofloat(b);
-	b = fixedpt_fromint(-5);
-	fixedpt c = fixedpt_add(a,b);
-	int d = fixedpt_toint(c);
-//	return 0;
-*/
-	
-	
-	
-	
-	
-	
-//	gc_execute_line(code);
-
-//	z_axis.end_pos = 50;
-//	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
-
-//	state.main_feed_direction = 1;
-
-	//	do_fsm_move_start(&state);
-	//	do_fsm_wait_tacho(&state);
-	
-//	TIM4_IRQHandler();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -660,7 +644,8 @@ circular_buffer cb;
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
+/*
+	MX_DMA_Init();
   MX_I2C2_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
@@ -668,6 +653,77 @@ circular_buffer cb;
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+
+
+//X67.081 Z-39.204
+//G3 X65.081 Z-43.514 I-33.94 K5.604
+
+	debug();
+	for (int a = 0; a<6680;a++){
+		y1+=a;
+//		x1 = sqrt(rr - y1*y1); //37us
+		x1 = SquareRoot(rr - y1*y1); //3,22us
+	}
+
+	debug();
+	return 0;
+	
+	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
+	
+//	tst = tst * 1024 / 1000;
+//	char code[] = "G01X.2Z100F10";
+	rs = 11;
+//	f1 = fixedpt_fromint2210(400);
+	char codea[] = "2000.999";
+	char *end;
+
+	f1 = str_f_to_steps2210(codea, &end);
+
+	char codei[] = "1.9999";
+	f1 = str_f_inch_to_steps2210(codei, &end);
+
+	int size = 10;
+	cb_init(&gp_cb, size, sizeof(G_pipeline));
+	G_pipeline init_gp;
+	init_gp.code 	= 1; //G01
+	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
+	init_gp.X 		= str_f_to_steps2210("1.0",&end);
+	init_gp.Z 		= str_f_to_steps2210("0.1",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
+// thread 8mm pitch 1.5mm
+//	init_gp.code 	= 33; //G01
+//	init_gp.feed = 0x06000000; // 1,5mm pitch in 8.24 format, TODO
+	init_gp.Z = str_f_to_steps2210("0.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
+// back to 1mm
+//	init_gp.code 	= 1; //G01
+//	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
+	init_gp.Z = str_f_to_steps2210("1.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
+// thread again 1mm pitch 1.5mm 
+//	init_gp.code 	= 33; //G01
+//	init_gp.feed = 0x06000000; // 1,5mm pitch in 8.24 format, TODO
+	init_gp.Z = str_f_to_steps2210("0.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
+// back to 1mm
+//	init_gp.code 	= 1; //G01
+//	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
+	init_gp.Z = str_f_to_steps2210("1.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
+	init_gp.Z = str_f_to_steps2210("0.0",&end);
+	cb_push_back(&gp_cb, &init_gp);
+
+
+
+
+
+
 
   /* Enable DMA TX Interrupt */
   LL_USART_EnableDMAReq_TX(USART2);

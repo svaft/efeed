@@ -1,8 +1,8 @@
-﻿#include "screen.h"
+#include "screen.h"
 #include "ssd1306.h"
 #include "i2c_interface.h"
 
-extern THREAD_INFO Thread_Info[];
+extern const THREAD_INFO Thread_Info[];
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 extern bool feed_direction;
 extern __IO uint8_t  ubTransferComplete;

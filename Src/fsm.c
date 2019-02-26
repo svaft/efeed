@@ -14,7 +14,7 @@ bool g_lock = false;
 * ramp map calculated for accel = 460000ppsps with base speed of 400pps.
 	* @note	for details see file rampup.xlsx
   */
-uint32_t ramp_profile[]={ //for 30khz timer precalculated
+static const uint32_t ramp_profile[]={ //for 30khz timer precalculated
 0x4B000000,
 0x4137A6F4,
 0x2D745D17,
@@ -68,60 +68,6 @@ uint32_t ramp_profile[]={ //for 30khz timer precalculated
 0x048E9E1B,
 0x04826E91,
 };
-/**
-  * @brief  precalculated ramp for  100 000Hz frequency timer with prescaler of 720, values in TAB is ARR registed value.
-	* @note	for details see file rampup.xlsx
-  */
-uint8_t async_ramp_profile[]= {
-	250,
-	217,
-	152,
-	94,
-	79,
-	66,
-	57,
-	50,
-	46,
-	42,
-	39,
-	36,
-	34,
-	33,
-	31,
-	30,
-	29,
-	28,
-	27,
-	26,
-	25,
-	24,
-	24,
-	23,
-	23,
-	22,
-	22,
-	21,
-	21,
-	20,
-	20,
-	20,
-};
-
-#define async_ramp_profile_len 30
-#define slew_speed_period 50 // 22
-#define sync_ramp_profile_len 30
-uint8_t sync_ramp_profile[]= {
-	0xFF,
-	0x1E,
-	0x15,
-	0x11,
-	0x0E,
-	0x0C,
-	0x0B,
-	0x0A,
-	0x09,
-};
-
 
 extern bool feed_direction;
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
@@ -305,44 +251,11 @@ void do_fsm_move_start(state_t* s){
 			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 			TIM3->ARR = min_pulse;
 			LL_TIM_GenerateEvent_UPDATE(TIM3);
-//			LL_TIM_EnableCounter(TIM3);
-//			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-//			LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
-
-//			TIM3->SR = 0;
-//			LL_TIM_EnableCounter(TIM3);
-//			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-//			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by TIM2(async mode)
-
-			
-//			LL_TIM_EnableCounter(TIM2); /* Enable counter */
-
-//			MOTOR_Z_AllowPulse();
-//			MOTOR_X_AllowPulse();
-//			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-
 			s->syncbase->CNT = 0;
 			set_ARR(s,10);
-//			LL_TIM_GenerateEvent_UPDATE(TIM2); // start first step on motor
 			LL_TIM_EnableCounter(s->syncbase);
-
-
-//			TIM2->ARR = 1;
-//			LL_TIM_EnableCounter(TIM2);
-
-//		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-//			TIM3->SR = 0;
-//			LL_TIM_EnableCounter(TIM3);
-//			LL_TIM_GenerateEvent_TRIG(TIM2); // start first step on motor
-	//		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
-//			s->syncbase->ARR = 1; 					// start stepper motor ramp up procedure immediately after tacho event
-//			s->async_z = 1;
-//			TIM2->CNT = 0;
-//			LL_TIM_GenerateEvent_UPDATE(TIM2); /* Force update generation */
-
 		}
 		LL_TIM_EnableUpdateEvent(s->syncbase);
-//		LL_mDelay(20);
 	}	
 }
 
@@ -370,19 +283,6 @@ void do_fsm_ramp_up(state_t* s){
 		set_ARR(s,fixedpt_toint(set_with_fract) - 1);
 		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	}
-
-	/* old code
-	z_axis.current_pos++;
-	fixedptu  set_with_fract = sync_ramp_profile[z_axis.ramp_step] << FIXEDPT_FBITS;
-	if(z_axis.Q824set > set_with_fract || z_axis.ramp_step == sync_ramp_profile_len) { 	// reach desired speed or end of ramp map
-		set_ARR(s,fixedpt_toint(z_axis.Q824set) - 1);
-		z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); 								// save fract part for future use on next step
-		s->function = do_fsm_move;
-	} else {
-		z_axis.ramp_step++;
-		set_ARR(s,fixedpt_toint(set_with_fract) - 1);
-	}
-*/	
 }
 
 void do_fsm_move(state_t* s){
@@ -392,24 +292,6 @@ void do_fsm_move(state_t* s){
   if( ++z_axis.current_pos == (z_axis.end_pos - z_axis.ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 		s->function = do_fsm_ramp_down;
 	}
-	
-/* old realisation	
-	if( ++z_axis.current_pos <= ( z_axis.end_pos - z_axis.ramp_step ) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
-		fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
-		s->syncbase->CNT = 0;
-		set_ARR(s,fixedpt_toint(set_with_fract) - 1);
-		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-	} else {
-		if(z_axis_ramp_down2(s)) {
-			if(z_axis.end_pos != z_axis.current_pos) {
-				z_axis.end_pos = z_axis.current_pos;
-			}
-			s->function = do_fsm_move_end;
-		}
-		s->function = do_fsm_ramp_down;
-	}
-*/
-	
 }
 /**
   * @brief  ramp down stepper
@@ -418,7 +300,6 @@ void do_fsm_move(state_t* s){
 void do_fsm_ramp_down(state_t* s){
 //	debug();
 	z_axis.current_pos++;
-//	s->z_period = sync_ramp_profile[--z_axis.ramp_step];	
 	fixedptu set_with_fract;
 	if(z_axis.ramp_step == 0){
 		set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
@@ -432,31 +313,8 @@ void do_fsm_ramp_down(state_t* s){
 			z_axis.end_pos = z_axis.current_pos;
 		}
 		s->function = do_fsm_move_end;
-//		debug();
 	}	
-	
-
-/* old code	
-	z_axis.current_pos++;
-	if(z_axis_ramp_down2(s)) {
-		if(z_axis.end_pos != z_axis.current_pos) {
-			z_axis.end_pos = z_axis.current_pos;
-		}
-		s->function = do_fsm_move_end;
-	}
-*/	
 }
-
-//__STATIC_INLINE
-_Bool z_axis_ramp_down2(state_t* s){
-	if (z_axis.ramp_step == 0)
-		return true;
-	set_ARR(s,sync_ramp_profile[--z_axis.ramp_step]);
-	if(z_axis.ramp_step == 0)
-		return true;
-	return false;
-}
-
 
 void do_fsm_move_end(state_t* s){
 //	debug();
@@ -494,10 +352,8 @@ void do_fsm_move_end(state_t* s){
 
 // init bresenham algorithm variables for generate stepper motors pulses
 __STATIC_INLINE void dzdx_init(int dx, int dz, state_t* s) {
-	s->dx = dx>0?dx:-dx; //	s->dx = abs(dx); 
-//	s->sx = dx>0?1:-1;
-	s->dz = dz>0?dz:-dz;//  s->dz = abs(dz);
-//	s->sz = dz>0?1:-1; 
+	s->dx = dx; //dx>0?dx:-dx; //	s->dx = abs(dx); 
+	s->dz = dz; //dz>0?dz:-dz;//  s->dz = abs(dz);
   s->err = (s->dx > s->dz ? s->dx : -s->dz) >> 1;
 }
 
@@ -519,7 +375,6 @@ P- - The thread pitch in distance per revolution.
 Z- - The final position of threads. At the end of the cycle the tool will be at this Z position.
   */
 void G76(int p, int z){
-	
 	// move to position with spindle sync. Used for threading.
 	// command is the same(?) as the G95 with followed G01 and sync start by tacho pulse from spindle
 }
@@ -619,6 +474,8 @@ void G01(int dx, int dz, int feed){
 	}
 	do_fsm_move_start(&state);
 }
+
+
 fixedptu f;
 G_pipeline current_code;
 void process_G_pipeline(void){
@@ -702,32 +559,6 @@ void process_G_pipeline(void){
 
 
 /* unused
-__STATIC_INLINE bool z_axis_ramp_up2(state_t* s)
-{
-	const fixedptu  set_with_fract = sync_ramp_profile[z_axis.ramp_step] << 24;
-	if(z_axis.Q824set > set_with_fract || z_axis.ramp_step == sync_ramp_profile_len) { 	// reach desired speed or end of ramp map
-		s->syncbase->ARR = fixedpt_toint(z_axis.Q824set) - 1; 			// update register ARR
-//		s->syncbase->EGR |= TIM_EGR_UG;
-		z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); 								// save fract part for future use on next step
-//		z_axis.end_minus_ramp_delta =
-		return true;
-	} else {
-		z_axis.ramp_step++;
-		s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1; 			// update register ARR
-//		s->syncbase->EGR |= TIM_EGR_UG;
-//		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); 						// save fract part for future use on next step
-	}
-	return false;
-}
-
-__STATIC_INLINE void z_axis_move2(state_t* s){
-	const fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
-	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-	s->syncbase->CNT = 0;
-	s->syncbase->EGR |= TIM_EGR_UG;
-	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-}
-
 void do_fsm_main_cut_back_prolong(state_t* s)   // reverse movement: main part with prolong activated. todo split it with 46 mode?
 {
 	MOTOR_Z_SetPulse();
@@ -739,86 +570,6 @@ void do_fsm_main_cut_back_prolong(state_t* s)   // reverse movement: main part w
 		z_axis.end_pos += prolong_fixpart;
 		z_axis.prolong_fract &= FIXEDPT_FMASK; // leave fract part to accumulate with next dividing cycle
 		// when long_press end, get back to 46 mode to proceed
-	}
-}
-
-*/
-/*
-void z_move(uint32_t direction, uint32_t length, bool sync, bool autostart){
-	MOTOR_X_Enable();
-	MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-
-	if(direction == feed_direction_left) {
-		feed_direction = feed_direction_left;
-		MOTOR_Z_Reverse();
-		MOTOR_X_Reverse();
-	} else {
-		feed_direction = feed_direction_right;
-		MOTOR_Z_Forward();
-		MOTOR_X_Forward();
-	}
-	LL_mDelay(2);
-
-	state.sync = sync;
-	if(sync){
-		state.main_feed_direction = feed_direction;
-	}
-
-	z_axis.current_pos = 0;
-	z_axis.end_pos = length;
-	if(z_axis.end_pos > 0){
-		z_axis.end_pos &= 0xFFFFFFFF - step_divider + 1;
-//		z_axis.end_pos |= step_divider; // to make sure that we'll not stop between full steps
-
-	} else {
-		state.sync = true;
-	}
-
-	do_fsm_move_start(&state);
-}
-*/
-//------------------------------------ ASYNC block -----------------------------------
-/*
-void do_fsm_ramp_up_async(state_t* s) {
-	z_axis.current_pos++;
-	const uint8_t z_arr = async_ramp_profile[z_axis.ramp_step++];
-//get variable of accel+deccel path(steps*2) to check if path is too short to go with main move we directly 
-//	go into ramp_down part
-	const uint16_t rs2 = z_axis.ramp_step << 1;
-	if(z_arr < slew_speed_period || rs2 >= z_axis.end_pos  ) { 	// reach desired speed
-		if( rs2 < z_axis.end_pos) {
-			s->z_period = slew_speed_period;
-			s->function = do_fsm_move_async;
-		}
-		else {
-			s->z_period = z_arr;
-			s->function = do_fsm_ramp_down_async;
-			z_axis.ramp_step--;
-		}
-	} else {
-//		z_axis.ramp_step++;
-		s->z_period = z_arr;
-	}
-}
-
-void do_fsm_move_async(state_t* s) {
-	uint32_t pre = z_axis.end_pos - z_axis.ramp_step - 1;
-	if( ++z_axis.current_pos < pre ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
-		s->z_period = slew_speed_period;
-	} else {
-		s->function = do_fsm_ramp_down_async;
-	}
-}
-
-void do_fsm_ramp_down_async(state_t* s){
-	z_axis.current_pos++;
-
-	s->z_period = async_ramp_profile[--z_axis.ramp_step];
-	if (z_axis.ramp_step == 0) {
-		if(z_axis.end_pos != z_axis.current_pos) {
-			z_axis.end_pos = z_axis.current_pos;
-		}
-		s->function = do_fsm_move_end;
 	}
 }
 */

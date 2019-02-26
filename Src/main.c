@@ -362,7 +362,9 @@ int main(void)
 */
 	G01parse("X0. Z-2.5 F1.");
 	G01parse("X10.");
-	G03parse("X14. Z-4.5 K-2.");
+//	G03parse("X14. Z-4.5 K-2.");
+	G03parse("X12. Z-4.5 I-1.99 K-2.245");
+	
 	return 0;
 
 

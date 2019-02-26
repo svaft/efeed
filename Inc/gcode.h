@@ -8,14 +8,15 @@
 
 #include "main.h"
 
-void G01parse(const char *str);
-void G03parse(const char *str);
-void G33parse(const char *str);
-void G00parse(const char *str);
+void G01parse(char *line);
+void G03parse(char *line);
+void G33parse(char *line);
+void G00parse(char *line);
 
 
 typedef struct G_pipeline{
-	int X,Z,feed;
+	int X,Z,feed; //general variables
+	int I,K,R; //for arc
 	bool sync;
 	uint8_t code;
 } G_pipeline;

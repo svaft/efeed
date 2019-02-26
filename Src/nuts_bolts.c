@@ -212,56 +212,57 @@ int str_f_inch_to_steps2210(const char *str, char **endptr){
 
 
 
-int str_f_to_steps2210(const char *str, char **endptr){
-// minimum processed value is 0.001mm
+int str_f_to_steps2210(char *line, uint8_t *char_counter){
+  char *str = line + *char_counter;
+
+	// minimum processed value is 0.001mm
     #define steps_per_unit_Z_2210   400<<10
 
-    uint8_t ten = 0;
-    fixedpt t2210 = 0;
-    uint32_t number = 0;
-    bool negative = false;
-    bool fract = false;
-    char c;
-    while ((c = *str) != 0) {
-        if (c >= '0' && c <= '9')   {
-            if(fract==false){
-                number = number * 10 + (c - '0');
-            } else{
-                if(ten<3){
-                    number = number * 10 + (c - '0');
-                }
-                ten++;
-            }
-        } 
-        else if (c == '-')  {
-            negative = true;
-        }
-        else if (c == '.') {
-            t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
-            number = 0;
-            fract = true;
-        }   
-        str++;
-    }
-    if (endptr != 0) *endptr = (char *)str;
+	uint8_t ten = 0;
+	fixedpt t2210 = 0;
+	uint32_t number = 0;
+	bool negative = false;
+	bool fract = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9')   {
+				if(fract==false){
+						number = number * 10 + (c - '0');
+				} else{
+						if(ten<3){
+								number = number * 10 + (c - '0');
+						}
+						ten++;
+				}
+		}	else if (c == '-')  {
+				negative = true;
+		}	else if (c == '.') {
+				t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
+				number = 0;
+				fract = true;
+		} else break;   
+		str++;
+	}
+//    if (endptr != 0) *endptr = (char *)str;
+	*char_counter = str - line - 1; // Set char_counter to next statement
 
-    switch(ten){
-        case 1:{ // if only one fract didgit in g-code
-            number *= 100;
-            break;
-        }
-        case 2:{// if only two fract didgits in g-code
-            number *= 10;
-            break;
-        }
-    }
+	switch(ten){
+			case 1:{ // if only one fract didgit in g-code
+					number *= 100;
+					break;
+			}
+			case 2:{// if only two fract didgits in g-code
+					number *= 10;
+					break;
+			}
+	}
 
 //  t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
-    t2210 += ((number << 10) * 400 / 1000);
-    
+	t2210 += ((number << 10) * 400 / 1000);
+	
 //  t2210 += (( number * steps_per_unit_Z_fract_2210 ) / 10 );
-    if (negative) return -t2210;
-    else return t2210;
+	if (negative) return -t2210;
+	else return t2210;
 }
 
 

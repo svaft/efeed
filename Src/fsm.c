@@ -203,9 +203,38 @@ void do_fsm_wait_sclick(state_t* s){
 }
 
 __STATIC_INLINE 
-void set_ARR(state_t* s, uint16_t value){
-//	s->z_period = value;
-	s->syncbase->ARR = value;
+void set_ARR(state_t* s, fixedptu value){
+//TODO
+/*
+	добавить здесь корректировку времени шага в зависимости от того, шагнул один мотор или оба сразу.
+	При шаге одним мотором по одной оси подача(feed) у нас линейная и устанавливается в соответствии с Q824
+	при шаге двумя моторами пройденное расстояние будет по диагонали, соответственно будет больше в зависимости
+	от шага винтов на осях и настроек шаговиков.
+	пройденное расстояние вычисляется как корень кв((шаг винта X в квадрате + шаг винта Z в квадрате)
+	= sqrt(screwX*screwX + screwZ*screwZ)
+	for 1mm pitch leadscrew on Z and 1,27mm pitch on X we have
+	sqrt(1+1,613)=1,61644672 coefficient for delay correction for Z and X axis step 
+	and 1,002198971 coefficient if we step by X only(can be ignored in this case).
+	for Z axis only coefficient is 1.
+	1,61644672 = 27119476 in Q824
+	so when we have both axis step we need to multiply passed value to this function by this 27119476 value.
+	both direction step flag can be catched in TIM3 interrupt.
+	
+	warning: Also as we have 30khz precalculated ramp profile highest delay now is 75ARR,
+	so if we multiply it by 1,61644672 we'll be in 8bit limit(<255) so it's ok. for greated delays(157 and up) different package format 
+	should be used(923, 1022...)
+	*/	
+	//	s->z_period = value;
+	
+	uint32_t arr;
+	
+	if(TIM3->CCER > 256){ //both steppers pulse
+		arr = fixedpt_toint(value) - 1;	
+// todo check it later		arr = fixedpt_toint(fixedpt_mul(value,27119476)) - 1;
+	} else {
+		arr = fixedpt_toint(value) - 1;	
+	}
+	s->syncbase->ARR = arr;
 //	s->syncbase->EGR |= TIM_EGR_UG;
 }
 
@@ -241,7 +270,7 @@ void do_fsm_move_start(state_t* s){
 			// disable TACHO events, we dont need'em until next start:
 //LL_TIM_SetUpdateSource
 //			s->syncbase->CNT = 0;
-			set_ARR(s,255);
+			set_ARR(s,255<<24);
 
 			// enable update inerrupt:
 			LL_TIM_EnableIT_UPDATE(s->syncbase); //enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
@@ -257,7 +286,7 @@ void do_fsm_move_start(state_t* s){
 			TIM3->ARR = min_pulse;
 			LL_TIM_GenerateEvent_UPDATE(TIM3);
 			s->syncbase->CNT = 0;
-			set_ARR(s,10);
+			set_ARR(s,10<<24);
 			LL_TIM_EnableCounter(s->syncbase);
 		}
 		LL_TIM_EnableUpdateEvent(s->syncbase);
@@ -275,24 +304,24 @@ void do_fsm_ramp_up(state_t* s){
 		if(rs2 >= z_axis.end_pos){ 
 			z_axis.ramp_step -=2;
 			set_with_fract = ramp_profile[z_axis.ramp_step];
-			set_ARR(s,fixedpt_toint(set_with_fract) - 1);
+			set_ARR(s,set_with_fract);
 			z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 			s->function = do_fsm_ramp_down;
 		} else {
-			set_ARR(s,fixedpt_toint(z_axis.Q824set) - 1);
+			set_ARR(s,set_with_fract);
 			z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); 								// save fract part for future use on next step
 			s->function = do_fsm_move;
 		}
 	} else {
 		z_axis.ramp_step++;
-		set_ARR(s,fixedpt_toint(set_with_fract) - 1);
+		set_ARR(s,set_with_fract);
 		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	}
 }
 
 void do_fsm_move(state_t* s){
 	fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
-	set_ARR(s,fixedpt_toint(set_with_fract) - 1);
+	set_ARR(s,set_with_fract);
 	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
   if( ++z_axis.current_pos == (z_axis.end_pos - z_axis.ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 		s->function = do_fsm_ramp_down;
@@ -312,7 +341,7 @@ void do_fsm_ramp_down(state_t* s){
 		set_with_fract = fixedpt_add(ramp_profile[--z_axis.ramp_step], z_axis.fract_part); // calculate new step delay with fract from previous step
 		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	}
-	set_ARR(s,fixedpt_toint(set_with_fract) - 1);
+	set_ARR(s,set_with_fract);
 	if (z_axis.ramp_step == 0) {
 		if(z_axis.end_pos != z_axis.current_pos) {
 			z_axis.end_pos = z_axis.current_pos;
@@ -469,6 +498,14 @@ void G01(int dx, int dz, int feed){
 //		state.main_feed_direction = feed_direction;
 //	}
 
+/*
+TODO
+нужно переделать/переосмыслить механизм определения и использования
+позиций шаговика, а то какая-то каша получается.
+в данном случае баг если по оси Х шагов больше и шагать мы должны по ней (основная ось для интерполяции)\
+то их количество обрезается здесь z_axis.end_pos = dz>=0?dz:-dz;
+поправить то не сложно но не хочется ставить очередной костыль
+*/
 	z_axis.current_pos = 0;
 	z_axis.end_pos = dz>=0?dz:-dz; //abs(dz);
 	if(z_axis.end_pos > 0){

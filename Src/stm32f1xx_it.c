@@ -276,6 +276,11 @@ void TIM2_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
+/*
+TODO
+	dxdz_callback вызывается для линий, для дуг будет свой алгоритм интерполяции и соответственно свой callback
+	так же вот здесь баг TIM3->SMCR == 0x16 т.к. привязаны мжем быть и к TIM4(sync with spindle)
+	*/	
 	if(TIM3->SMCR == 0x16) { // TIM3 connected to TIM2 as SLAVE
 		dxdz_callback(&state);
 	}

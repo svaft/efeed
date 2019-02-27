@@ -16,7 +16,7 @@ void G00parse(char *line);
 
 typedef struct G_pipeline{
 	int X,Z,feed; //general variables
-	int I,K,R; //for arc
+	int X0,Z0,XC,ZC,I,K,R; //for arc
 	bool sync;
 	uint8_t code;
 } G_pipeline;

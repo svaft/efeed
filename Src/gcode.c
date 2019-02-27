@@ -47,6 +47,9 @@ void G01parse(char *line){
 
 int xc,zc,r;
 void G03parse(char *line){
+	G_pipeline *gref_prev = gp_cb.top;
+	int x0 = gref_prev->X;
+	int z0 = gref_prev->Z;
 	G_pipeline *gref = G_parse(line);
 	gref->code = 3;
 	int ii = gref->I >> 10,
@@ -54,8 +57,24 @@ void G03parse(char *line){
 	gref->R = SquareRoot(ii*ii + kk*kk);
 	gref->R *= gref->R; // pow2
 	int octant = SquareRoot(gref->R >>1);
-	int x0,z0, octant_x_abs, octant_z_abs;
-	octant_x_abs = x0+gref->I+octant;
+	int octant_x_abs, octant_z_abs;
+//	octant_x_abs = x0+gref->I+octant;
+//	octant_x_abs = x0+gref->I+octant;
+
+	int abs_z0 	= abs(gref->Z0);
+	int oct_top = abs(gref->ZC) - octant;
+	if(abs_z0 < oct_top){// Q1
+	}
+
+	
+	int pos_count = octant - abs(gref->I); // 1st octant count by X
+	if(abs(gref->Z0) < abs(gref->Z)){
+		pos_count += octant;
+		// 7th octant
+	} else{ // arc end in 0 octant
+		pos_count += gref->Z - gref->ZC - octant;
+	}
+	
 /*
   общее число шагов для дуги равно сумме шагов по осям в соответствии с текущей октантой
 	для октант 1,2,5 и 6 основной осью является ось Х, сдвиг по оси Z вычисляется как корень(R*R-dx*dx)

@@ -302,69 +302,37 @@ int main(void)
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
-
-
-//X67.081 Z-39.204
-//G3 X65.081 Z-43.514 I-33.94 K5.604
-
+/*
+// perfomance measurement block
 	debug();
 	for (int a = 0; a<6680;a++){
 		y1+=a;
 //		x1 = sqrt(rr - y1*y1); //37us
 		x1 = SquareRoot(rr - y1*y1); //3,22us
 	}
-
 	debug();
-//	return 0;
+*/
+	//	return 0;
 	
-	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
+//	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
 
-	char *end;
+//	char *end;
 
 	int size = 10;
 	cb_init(&gp_cb, size, sizeof(G_pipeline));
-/*
-	G_pipeline init_gp;
-	init_gp.code 	= 1; //G01
-	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.X 		= str_f_to_steps2210("1.0",&end);
-	init_gp.Z 		= str_f_to_steps2210("0.1",&end);
-	cb_push_back(&gp_cb, &init_gp);
+//	G01parse("X0. Z-2.5 F1.");
+//	G01parse("X10.");
+//	G03parse("X12. Z-4.5 I-1.99 K-2.245");
 
-// thread 8mm pitch 1.5mm
-//	init_gp.code 	= 33; //G01
-//	init_gp.feed = 0x06000000; // 1,5mm pitch in 8.24 format, TODO
-	init_gp.Z = str_f_to_steps2210("0.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
+	static const char * const garray[] = { 
+		"G1 X0. Z-2.5 F1.",
+		"G1 X10.", 
+		"G3 X12. Z-4.5 I-1.99 K-2.245" 
+	};
 
-// back to 1mm
-//	init_gp.code 	= 1; //G01
-//	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.Z = str_f_to_steps2210("1.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
+	for(int a = 0; a < sizeof(garray); a++ )
+		command_parser((char *)garray[a]);
 
-// thread again 1mm pitch 1.5mm 
-//	init_gp.code 	= 33; //G01
-//	init_gp.feed = 0x06000000; // 1,5mm pitch in 8.24 format, TODO
-	init_gp.Z = str_f_to_steps2210("0.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-// back to 1mm
-//	init_gp.code 	= 1; //G01
-//	init_gp.feed 	= 240*1024; // todo feed from text str_f_to_steps2210("60.0",&end); 
-	init_gp.Z = str_f_to_steps2210("1.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-	init_gp.Z = str_f_to_steps2210("0.0",&end);
-	cb_push_back(&gp_cb, &init_gp);
-
-*/
-	G01parse("X0. Z-2.5 F1.");
-	G01parse("X10.");
-//	G03parse("X14. Z-4.5 K-2.");
-	G03parse("X12. Z-4.5 I-1.99 K-2.245");
-	
 	return 0;
 
 

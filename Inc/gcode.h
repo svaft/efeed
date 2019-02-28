@@ -8,6 +8,8 @@
 
 #include "main.h"
 
+void command_parser(char *line);
+
 void G01parse(char *line);
 void G03parse(char *line);
 void G33parse(char *line);

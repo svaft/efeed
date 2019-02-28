@@ -3,6 +3,7 @@
 
 #include "main.h"
 
+uint64_t SquareRoot64(uint64_t a_nInput);
 uint32_t SquareRoot(uint32_t a_nInput);
 uint32_t SquareRootRounded(uint32_t a_nInput);
 int str_f_to_steps2210(char *str, uint8_t *char_counter);

@@ -69,7 +69,7 @@ fixedpt strto824(const char *str, char **endptr)
             t824 = fixedpt_fromint(number);
             ten = 0;
             number = 0;
-        }   
+        } else break;
         str++;
     }
 
@@ -114,7 +114,7 @@ fixedpt strto2210(const char *str, char **endptr)
             t2210 = fixedpt_fromint2210(number);
             ten = 0;
             number = 0;
-        }   
+        } else break;   
         str++;
     }
 
@@ -202,7 +202,7 @@ int str_f_inch_to_steps2210(const char *str, char **endptr){
     For other cases(steps per mm) it should be done the same way.
     Also its possible to find some fraction with smaller numerator to get result with little more error
     in my case 1024*127/125=1040,384
-    8323/8=1040,375. That's add acceptable 0.0002mm error and its possible to avoid devision at all
+    8323/8=1040,375. That's add acceptable 0.0002mm error and its possible to avoid division at all
     */
 //  t2210 += ((number<<10)*127/125);
     t2210 += ((number*8323)>>3);
@@ -240,26 +240,29 @@ int str_f_to_steps2210(char *line, uint8_t *char_counter){
 				t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
 				number = 0;
 				fract = true;
+		} else if (c == ' '){ //skip blanks
 		} else break;   
 		str++;
 	}
 //    if (endptr != 0) *endptr = (char *)str;
 	*char_counter = str - line - 1; // Set char_counter to next statement
-
-	switch(ten){
+	if (fract == true){
+		switch(ten){
 			case 1:{ // if only one fract didgit in g-code
-					number *= 100;
-					break;
+				number *= 100;
+				break;
 			}
 			case 2:{// if only two fract didgits in g-code
-					number *= 10;
-					break;
+				number *= 10;
+				break;
 			}
-	}
+		}
 
-//  t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
-	t2210 += ((number << 10) * 400 / 1000);
-	
+//		t2210 += ((number << 10) * 400 / 1000);
+		t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
+	} else {
+		t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
+	}
 //  t2210 += (( number * steps_per_unit_Z_fract_2210 ) / 10 );
 	if (negative) return -t2210;
 	else return t2210;
@@ -293,6 +296,31 @@ uint32_t SquareRoot(uint32_t a_nInput){
 //    while (one > op) {
 //		one >>= 2;
 //	}
+
+	while (one != 0){
+		if (op >= res + one){
+			op = op - (res + one);
+			res = res +  2 * one;
+		}
+		res >>= 1;
+		one >>= 2;
+	}
+	return res;
+}
+
+
+
+uint64_t SquareRoot64(uint64_t a_nInput){
+	uint64_t op  = a_nInput;
+	uint64_t res = 0;
+	uint64_t one = 1uLL << 62; // The second-to-top bit is set: use 1u << 14 for uint16_t type; use 1uL<<30 for uint32_t type
+
+	op = a_nInput;
+  // "one" starts at the highest power of four <= than the argument.
+//  one >>= __clz(op) & ~0x3;
+	while (one > op) {
+		one >>= 2;
+	}
 
 	while (one != 0){
 		if (op >= res + one){

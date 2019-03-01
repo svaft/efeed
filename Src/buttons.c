@@ -91,9 +91,6 @@ inline void process_button()
 		}
 //	#endif
 
-//		if(z_axis.current_pos < 20)
-//			tmp_buttons = 0;
-		
 		if( tmp_buttons != bt[a].buttons ) { // start debounce
 			bt[a].buttons = tmp_buttons;
 			// reset debounce counter and start count every one ms

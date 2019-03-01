@@ -81,7 +81,7 @@
 
 /* USER CODE BEGIN PV */
 
-axis z_axis;
+//axis z_axis;
 state_t state;
 
 /* Private variables ---------------------------------------------------------*/
@@ -261,7 +261,8 @@ uint32_t x1 = 0;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	memset(&z_axis,0,sizeof(z_axis));
+	memset(&state,0,sizeof(state));
+//	memset(&z_axis,0,sizeof(z_axis));
 	state.function = do_fsm_menu_lps;
   /* USER CODE END 1 */
 
@@ -293,7 +294,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-/*
+
 	MX_DMA_Init();
   MX_I2C2_Init();
   MX_TIM1_Init();
@@ -302,6 +303,7 @@ int main(void)
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+	debug();
 /*
 // perfomance measurement block
 	debug();
@@ -320,9 +322,10 @@ int main(void)
 
 	int size = 10;
 	cb_init(&gp_cb, size, sizeof(G_pipeline));
-//	G01parse("X0. Z-2.5 F1.");
+	G01parse("X1. Z-2.5 F1.");
 //	G01parse("X10.");
 //	G03parse("X12. Z-4.5 I-1.99 K-2.245");
+	debug();
 
 	static const char * const garray[] = { 
 		"G1 X0. Z-2.5 F1.",
@@ -389,10 +392,10 @@ int main(void)
 "G1 X50.828 Z-99.659",
 "X55.068"
 	};
-	for(int a = 0; a < sizeof(garray); a++ )
-		command_parser((char *)garray[a]);
+//	for(int a = 0; a < sizeof(garray); a++ )
+//		command_parser((char *)garray[a]);
 
-	return 0;
+//	return 0;
 
 
   /* Enable DMA TX Interrupt */
@@ -554,15 +557,15 @@ int main(void)
 			buttons_flag_set = 0; // reset button flags
 		}
 
-		if(z_axis.ramp_step != rs) {
-			rs = z_axis.ramp_step;
-			menu_changed = 1;
-		}
-
-		if(z_axis.current_pos != rs) {
-			rs = z_axis.current_pos;
+//		if(z_axis.ramp_step != rs) {
+//			rs = z_axis.ramp_step;
 //			menu_changed = 1;
-		}
+//		}
+
+//		if(z_axis.current_pos != rs) {
+//			rs = z_axis.current_pos;
+//			menu_changed = 1;
+//		}
 
 // update display info
 		if(menu_changed == 1){ // haltodo && hi2c2.hdmatx->State == HAL_DMA_STATE_READY) {

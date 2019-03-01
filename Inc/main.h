@@ -203,7 +203,7 @@ typedef enum {
 	fsm_main_cut_infeed,				//56. infeed для резьбы: в зависимости от номера прохода сдвигаем каретку на определенное количество шагов для облегчения резания+основной путь, далее в п. 30
 } fsm_t;
 
-
+/*
 typedef struct
 {
     uint32_t current_pos;
@@ -218,7 +218,8 @@ typedef struct
     uint64_t prolong_fract;
     uint8_t ramp_step;
 } axis;
-
+extern axis z_axis;
+*/
 
 typedef struct {
 	fixedptu Q824; //Q8.24 fixed math format
@@ -255,8 +256,6 @@ typedef struct {
 	char infeed_inch[6];
 	uint8_t infeed_strategy;
 } S_WORK_SETUP;
-
-extern axis z_axis;
 
 extern uint32_t menu_changed;
 

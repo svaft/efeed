@@ -43,7 +43,7 @@ int update_screen(void){
 //	SSD1306_Puts2(utoa_builtin_div_1(z_axis.mode, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
 
 	SSD1306_GotoXY(SSD1306_WIDTH - 60, 16);
-	SSD1306_Puts2(utoa_builtin_div_1(z_axis.current_pos, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
+//	SSD1306_Puts2(utoa_builtin_div_1(z_axis.current_pos, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode
 
 //	SSD1306_GotoXY(SSD1306_WIDTH - 60, 32);
 //	SSD1306_Puts2(utoa_builtin_div_1(z_axis.ramp_step, text_buffer), &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // DKA mode

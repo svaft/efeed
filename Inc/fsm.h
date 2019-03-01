@@ -15,10 +15,16 @@ typedef void (*state_func_t)( struct state* );
 
 typedef struct state
 {
-// Z axis
+	uint32_t current_pos;
+	uint32_t end_pos;
+	uint8_t ramp_step;
+	uint32_t Q824set; // feed rate
+	uint32_t fract_part; // Q8.24 format fract part
+	
+	
+	
   state_func_t function;
 	uint32_t async_z;
-	uint32_t current_pos;
 	uint8_t z_period;
 	bool f_encoder;
 	bool f_tacho;
@@ -30,10 +36,10 @@ typedef struct state
 
 	fixedpt state_X, state_Z; // absolute position
   // X axis
-  state_func_t function_x;
-	_Bool sync_x;
-	TIM_TypeDef *syncbase_x;
-	uint8_t x_period;
+//  state_func_t function_x;
+//	_Bool sync_x;
+//	TIM_TypeDef *syncbase_x;
+//	uint8_t x_period;
 
 	//	bresenham
 	int dx,dz;//,d,d1,d2;

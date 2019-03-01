@@ -97,15 +97,15 @@ void do_fsm_menu(state_t* s){
 		break;
 	}
 	case single_click_Msk: {
-		if(z_axis.end_pos != 0) {
+		if(s->end_pos != 0) {
 			// first pass of thread cut was complete, so just use single click
 			//	to switch between modes to process all other cuts
 
-//			z_move(feed_direction, z_axis.end_pos, s->main_feed_direction == feed_direction ? true : false, true);
+//			z_move(feed_direction, s->end_pos, s->main_feed_direction == feed_direction ? true : false, true);
 //			if(demo)
-//				z_move(feed_direction, z_axis.end_pos, false, true); //test case, always async
+//				z_move(feed_direction, s->end_pos, false, true); //test case, always async
 //			else
-//				z_move(feed_direction, z_axis.end_pos, s->main_feed_direction == feed_direction ? true : false, true);
+//				z_move(feed_direction, s->end_pos, s->main_feed_direction == feed_direction ? true : false, true);
 //			z_move(feed_direction, 400*2, false, true);
 		} else { // controller in initial state, scroll menu
 			s->function = do_fsm_menu_lps;
@@ -141,9 +141,9 @@ void do_fsm_menu(state_t* s){
 		if(s->function == do_fsm_menu_lps){
 			if(Thread_Info[Menu_Step].Q824 != 0) { // long press detected, start new thread from current position
 
-				z_axis.Q824set = Thread_Info[Menu_Step].Q824;
-				const uint64_t upl = (uint64_t)3600 << 48; //calculate some constants for prolong mode
-				z_axis.prolong_addSteps = upl / (fixedptud)z_axis.Q824set;
+				s->Q824set = Thread_Info[Menu_Step].Q824;
+//				const uint64_t upl = (uint64_t)3600 << 48; //calculate some constants for prolong mode
+//				s->prolong_addSteps = upl / (fixedptud)s->Q824set; // todo prolong
 				// 200*step_divider*z_feed_screw(mm)*len(mm) = desired length in steps, in my case its 200*2*1*x
 
 //				MOTOR_X_Enable();
@@ -188,8 +188,8 @@ void do_long_press_end_callback(state_t* s){          // direct movement: first 
 	// для 1/2 микрошага нужно что бы общее количество шагов в цикле резьбы было кратно 2,(для 1/4 кратно 4 и тп).
 	// это нужно для того что бы в конце шаговый мотор остановился на одном из двухсот устойчивых шагов,
 	// не перескакивая на соседние шаги при потере питания.
-	if(z_axis.end_pos == 0) //s->sync?
-		z_axis.end_pos = ( z_axis.ramp_step + z_axis.current_pos ) | (step_divider - 1);
+	if(s->end_pos == 0) //s->sync?
+		s->end_pos = ( s->ramp_step + s->current_pos ) | (step_divider - 1);
 	s->function = do_fsm_move;
 	do_fsm_move(s);
 }
@@ -270,7 +270,7 @@ void do_fsm_move_start(state_t* s){
 			// disable TACHO events, we dont need'em until next start:
 //LL_TIM_SetUpdateSource
 //			s->syncbase->CNT = 0;
-			set_ARR(s,255<<24);
+			set_ARR(s,(uint32_t)255<<24);
 
 			// enable update inerrupt:
 			LL_TIM_EnableIT_UPDATE(s->syncbase); //enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
@@ -297,33 +297,33 @@ void do_fsm_move_start(state_t* s){
 
 void do_fsm_ramp_up(state_t* s){
 //	debug();
-	z_axis.current_pos++;
-	fixedptu  set_with_fract = fixedpt_add(ramp_profile[z_axis.ramp_step], z_axis.fract_part); // calculate new step delay with fract from previous step
-	uint16_t rs2 = z_axis.ramp_step << 1;
-	if(z_axis.Q824set > set_with_fract || rs2 >= z_axis.end_pos) { 	// reach desired speed (or end of ramp map? || z_axis.ramp_step == sync_ramp_profile_len)
-		if(rs2 >= z_axis.end_pos){ 
-			z_axis.ramp_step -=2;
-			set_with_fract = ramp_profile[z_axis.ramp_step];
+	s->current_pos++;
+	fixedptu  set_with_fract = fixedpt_add(ramp_profile[s->ramp_step], s->fract_part); // calculate new step delay with fract from previous step
+	uint16_t rs2 = s->ramp_step << 1;
+	if(s->Q824set > set_with_fract || rs2 >= s->end_pos) { 	// reach desired speed (or end of ramp map? || s->ramp_step == sync_ramp_profile_len)
+		if(rs2 >= s->end_pos){ 
+			s->ramp_step -=2;
+			set_with_fract = ramp_profile[s->ramp_step];
 			set_ARR(s,set_with_fract);
-			z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+			s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 			s->function = do_fsm_ramp_down;
 		} else {
 			set_ARR(s,set_with_fract);
-			z_axis.fract_part = fixedpt_fracpart(z_axis.Q824set); 								// save fract part for future use on next step
+			s->fract_part = fixedpt_fracpart(s->Q824set); 								// save fract part for future use on next step
 			s->function = do_fsm_move;
 		}
 	} else {
-		z_axis.ramp_step++;
+		s->ramp_step++;
 		set_ARR(s,set_with_fract);
-		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+		s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	}
 }
 
 void do_fsm_move(state_t* s){
-	fixedptu set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
+	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	set_ARR(s,set_with_fract);
-	z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-  if( ++z_axis.current_pos == (z_axis.end_pos - z_axis.ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
+	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+  if( ++s->current_pos == (s->end_pos - s->ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 		s->function = do_fsm_ramp_down;
 	}
 }
@@ -333,18 +333,18 @@ void do_fsm_move(state_t* s){
   */
 void do_fsm_ramp_down(state_t* s){
 //	debug();
-	z_axis.current_pos++;
+	s->current_pos++;
 	fixedptu set_with_fract;
-	if(z_axis.ramp_step == 0){
-		set_with_fract = fixedpt_add(z_axis.Q824set, z_axis.fract_part); // calculate new step delay with fract from previous step
+	if(s->ramp_step == 0){
+		set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	} else {
-		set_with_fract = fixedpt_add(ramp_profile[--z_axis.ramp_step], z_axis.fract_part); // calculate new step delay with fract from previous step
-		z_axis.fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+		set_with_fract = fixedpt_add(ramp_profile[--s->ramp_step], s->fract_part); // calculate new step delay with fract from previous step
+		s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 	}
 	set_ARR(s,set_with_fract);
-	if (z_axis.ramp_step == 0) {
-		if(z_axis.end_pos != z_axis.current_pos) {
-			z_axis.end_pos = z_axis.current_pos;
+	if (s->ramp_step == 0) {
+		if(s->end_pos != s->current_pos) {
+			s->end_pos = s->current_pos;
 		}
 		s->function = do_fsm_move_end;
 	}	
@@ -403,14 +403,49 @@ void G00(int dx, int dz){
 
 
 /**
-* @brief  G76: Threading cycle
+* @brief  G01: Coordinated Straight Motion Feed Rate
   * @retval void.
-P- - The thread pitch in distance per revolution.
-Z- - The final position of threads. At the end of the cycle the tool will be at this Z position.
   */
-void G76(int p, int z){
-	// move to position with spindle sync. Used for threading.
-	// command is the same(?) as the G95 with followed G01 and sync start by tacho pulse from spindle
+void G01(int dx, int dz, int feed){
+	g_lock = true;
+	// linear interpolated move to position with defined feed
+	dzdx_init(dx, dz, &state);
+/*
+	if(dz<0) {
+		feed_direction = feed_direction_left;
+		MOTOR_Z_Reverse();
+	} else {
+		feed_direction = feed_direction_right;
+		MOTOR_Z_Forward();
+	}
+
+	if(dx<0) {
+		MOTOR_X_Reverse();
+	} else {
+		MOTOR_X_Forward();
+	}
+*/
+	state.sync = false;
+
+/*
+TODO
+нужно переделать/переосмыслить механизм определения и использования
+позиций шаговика, а то какая-то каша получается
+*/
+	state.current_pos = 0;
+	if(dz>dx){
+		state.end_pos = dz>=0?dz:-dz; //abs(dz);
+	} else {
+		state.end_pos = dx>=0?dx:-dx; //abs(dz);
+	}
+	if(state.end_pos > 0){
+		state.end_pos &= 0xFFFFFFFF - step_divider + 1;
+//		s->end_pos |= step_divider; // to make sure that we'll not stop between full steps
+
+//	} else {
+//		state.sync = true;
+	}
+	do_fsm_move_start(&state);
 }
 
 
@@ -455,69 +490,32 @@ void G33(int dx, int dz, int K){
 	state.main_feed_direction = feed_direction;
 //	}
 
-	z_axis.current_pos = 0;
-	z_axis.end_pos = dz>=0?dz:-dz; //abs(dz);
-	if(z_axis.end_pos > 0){
-		z_axis.end_pos &= 0xFFFFFFFF - step_divider + 1;
-//		z_axis.end_pos |= step_divider; // to make sure that we'll not stop between full steps
+	state.current_pos = 0;
+	state.end_pos = dz>=0?dz:-dz; //abs(dz);
+	if(state.end_pos > 0){
+		state.end_pos &= 0xFFFFFFFF - step_divider + 1;
+//		s->end_pos |= step_divider; // to make sure that we'll not stop between full steps
 
 //	} else {
 //		state.sync = true;
 	}
 	do_fsm_move_start(&state);
 }
+
+
 
 
 
 /**
-* @brief  G01: Coordinated Straight Motion Feed Rate
+* @brief  G76: Threading cycle
   * @retval void.
+P- - The thread pitch in distance per revolution.
+Z- - The final position of threads. At the end of the cycle the tool will be at this Z position.
   */
-void G01(int dx, int dz, int feed){
-	g_lock = true;
-	// linear interpolated move to position with defined feed
-	dzdx_init(dx, dz, &state);
-/*
-	if(dz<0) {
-		feed_direction = feed_direction_left;
-		MOTOR_Z_Reverse();
-	} else {
-		feed_direction = feed_direction_right;
-		MOTOR_Z_Forward();
-	}
-
-	if(dx<0) {
-		MOTOR_X_Reverse();
-	} else {
-		MOTOR_X_Forward();
-	}
-*/
-//	state.sync = false; 
-	state.sync = false;
-//	if(state.sync){
-//		state.main_feed_direction = feed_direction;
-//	}
-
-/*
-TODO
-нужно переделать/переосмыслить механизм определения и использования
-позиций шаговика, а то какая-то каша получается.
-в данном случае баг если по оси Х шагов больше и шагать мы должны по ней (основная ось для интерполяции)\
-то их количество обрезается здесь z_axis.end_pos = dz>=0?dz:-dz;
-поправить то не сложно но не хочется ставить очередной костыль
-*/
-	z_axis.current_pos = 0;
-	z_axis.end_pos = dz>=0?dz:-dz; //abs(dz);
-	if(z_axis.end_pos > 0){
-		z_axis.end_pos &= 0xFFFFFFFF - step_divider + 1;
-//		z_axis.end_pos |= step_divider; // to make sure that we'll not stop between full steps
-
-//	} else {
-//		state.sync = true;
-	}
-	do_fsm_move_start(&state);
+void G76(int p, int z){
+	// move to position with spindle sync. Used for threading.
+	// command is the same(?) as the G95 with followed G01 and sync start by tacho pulse from spindle
 }
-
 
 fixedptu f;
 G_pipeline current_code;
@@ -545,8 +543,8 @@ void process_G_pipeline(void){
 //		feed_direction = feed_direction_left;
 		MOTOR_X_Reverse();
 	}
-	state.state_Z = current_code.Z;
-	state.state_X = current_code.X;
+	state.state_Z = current_code.Z & ~1uL<<10; // drop fract part when store
+	state.state_X = current_code.X & ~1uL<<10;
 	z = fixedpt_toint2210(z);
 	x = fixedpt_toint2210(x);
 	// calculate feed:
@@ -558,17 +556,17 @@ void process_G_pipeline(void){
 //#define hz_min2210 1800000 << 10 // 500 = 30000hz*60sec
 #define hzminps 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
 	if(current_code.code == 33){ 	// unit(mm) per rev
-		z_axis.Q824set = current_code.feed;
+		state.Q824set = current_code.feed;
 	} else { 											// unit(mm) per min
 		f = fixedpt_xdiv2210(hzminps, current_code.feed);
 		f = f << 14; // translate to 8.24 format used for delays
-		z_axis.Q824set = f;
+		state.Q824set = f;
 	}
 	
 	debug();
 	switch(current_code.code){
 		case 0:
-			z_axis.Q824set = 0x048E9E1B; //todo max feedrate here
+			state.Q824set = 0x048E9E1B; //todo max feedrate here
 			G01(x,z,current_code.feed);
 			break;
 		case 1:
@@ -605,13 +603,13 @@ void process_G_pipeline(void){
 void do_fsm_main_cut_back_prolong(state_t* s)   // reverse movement: main part with prolong activated. todo split it with 46 mode?
 {
 	MOTOR_Z_SetPulse();
-	--z_axis.current_pos;
-	if(z_axis.current_pos == z_axis.ramp_step) { // we reach end of main path and have long_pressed key, so just add additional thread full turn to shift initial start point
-		z_axis.prolong_fract += z_axis.prolong_addSteps; // fract part from prev step
-		uint32_t prolong_fixpart = z_axis.prolong_fract >> 24;
-		z_axis.current_pos += prolong_fixpart; // add fixed part
-		z_axis.end_pos += prolong_fixpart;
-		z_axis.prolong_fract &= FIXEDPT_FMASK; // leave fract part to accumulate with next dividing cycle
+	--s->current_pos;
+	if(s->current_pos == s->ramp_step) { // we reach end of main path and have long_pressed key, so just add additional thread full turn to shift initial start point
+		s->prolong_fract += s->prolong_addSteps; // fract part from prev step
+		uint32_t prolong_fixpart = s->prolong_fract >> 24;
+		s->current_pos += prolong_fixpart; // add fixed part
+		s->end_pos += prolong_fixpart;
+		s->prolong_fract &= FIXEDPT_FMASK; // leave fract part to accumulate with next dividing cycle
 		// when long_press end, get back to 46 mode to proceed
 	}
 }

@@ -537,6 +537,7 @@ void process_G_pipeline(void){
 	if(current_code.X > state.state_X){ // go forward
 		x = current_code.X - state.state_X;
 //		feed_direction = feed_direction_right;
+//		MOTOR_X_DIR_GPIO_Port
 		MOTOR_X_Forward();
 	} else { // go back
 		x = state.state_X - current_code.X;

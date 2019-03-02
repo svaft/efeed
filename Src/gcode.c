@@ -2,16 +2,30 @@
 #include "nuts_bolts.h"
 //int ii, kk;
 
+fixedpt command;
 void command_parser(char *line){
   uint8_t char_counter = 0;  
 	char letter;
 //	char *end;
-	fixedpt command;
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
     letter = line[char_counter++];
 		switch(letter){
 			case 'G':
 				command = str_f_to_steps2210(line, &char_counter);
+				switch(command){
+					//todo now its only one G command per line supported
+					case 409600://G1 command packed into 2210_400 format
+						G01parse(line+char_counter);
+						return;	
+					case 1228800: //G3
+						G03parse(line+char_counter);
+						return;	
+					case 13516800: //G33
+						return;	
+				}
+				break;
+			case 'X':
+			case 'Z':
 				switch(command){
 					//todo now its only one G command per line supported
 					case 409600://G1 command packed into 2210_400 format
@@ -23,8 +37,9 @@ void command_parser(char *line){
 					case 13516800: //G33
 						return;	
 				}
-			
 				break;
+// repeat same command				
+						
 		}
 	}
 
@@ -232,8 +247,8 @@ if(oct0 < oct1){ //CW, outer(right) part of the arc this kind: ")"
 	pos_count >>= 10;
 /*
   общее число шагов для дуги равно сумме шагов по осям в соответствии с текущей октантой
-	для октант 0,3,4 и 7 основной осью является ось Х, сдвиг по оси Z вычисляется как корень(R*R-dx*dx)
-	для октант 1,2,5 и 6 основной осью является ось Z, сдвиг по оси X вычисляется как корень(R*R-dz*dz)
+	для октант 0,3,4 и 7 основной осью является ось Х, сдвиг по оси Z вычисляется как sqrt(R*R-dx*dx)
+	для октант 1,2,5 и 6 основной осью является ось Z, сдвиг по оси X вычисляется как sqrt(R*R-dz*dz)
 	Если дуга в нескольких октантах, например начинается в 0-1-2,
 	то число шагов равно:
 		участок в 0м октанте:
@@ -241,8 +256,8 @@ if(oct0 < oct1){ //CW, outer(right) part of the arc this kind: ")"
 		участок в 1м октанте:
 		octant
 		участок в 2м октанте:
-		x2
-		итого (octant-x1 + octant + x2)
+		abs(z2)
+		итого (octant-x1 + octant + abs(x2))
 	при переходе границы октанта меняется ось по которой шагаем, 
 	в т.ч. при переходе границ осей меняем направления шагания для моторов(плюс корректировка backlash если надо)
 	

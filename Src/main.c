@@ -294,7 +294,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-
+/*
 	MX_DMA_Init();
   MX_I2C2_Init();
   MX_TIM1_Init();
@@ -328,9 +328,12 @@ int main(void)
 	debug();
 
 	static const char * const garray[] = { 
-		"G1 X0. Z-2.5 F1.",
-		"G1 X10.", 
-		"G3 X12. Z-4.5 I-1.99 K-2.245" 
+//		"G1 X0. Z-2.5 F1.",
+//		"G1 X10.", 
+//		"G3 X12. Z-4.5 I-1.99 K-2.245" 
+"G1 X40.279 Z-31.064",
+"X40.554 Z-31.09",
+"X40.822 Z-31.132",
 	};
 
 	static const char * shape1[] = {
@@ -392,10 +395,12 @@ int main(void)
 "G1 X50.828 Z-99.659",
 "X55.068"
 	};
-//	for(int a = 0; a < sizeof(garray); a++ )
-//		command_parser((char *)garray[a]);
+	for(int a = 0; a < sizeof(garray); a++ ){
+		command_parser((char *)garray[a]);
+		process_G_pipeline();
+	}
 
-//	return 0;
+	return 0;
 
 
   /* Enable DMA TX Interrupt */

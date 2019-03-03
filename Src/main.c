@@ -252,6 +252,19 @@ uint32_t y1 = 5800;
 uint32_t y2 = 12480;
 uint32_t x1 = 0;
 
+//G_pipeline gpp[100];
+//LL_GPIO_SetOutputPin
+//LL_GPIO_ResetOutputPin
+
+
+typedef struct G_task{
+	uint32_t main_axis_steps, subaxis_steps; //
+	fixedptu feed; //Q824
+	void *ref; //callback ref to iterate line or arc
+	uint8_t z_direction, x_direction;
+	
+} G_task;
+G_task gt[100];
 /* USER CODE END 0 */
 
 /**
@@ -261,6 +274,10 @@ uint32_t x1 = 0;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+//	MOTOR_Z_DIR_GPIO_Port->BSRR
+	gt[0].z_direction = zdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
+	gt[0].x_direction = xdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
+//	zdir = gt[0].z_direction;
 	memset(&state,0,sizeof(state));
 //	memset(&z_axis,0,sizeof(z_axis));
 	state.function = do_fsm_menu_lps;
@@ -303,7 +320,11 @@ int main(void)
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-	debug();
+
+//	LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
+//	debug();
+//	ZDIR = 1;
+//	TIMER_B0 = 1;
 /*
 // perfomance measurement block
 	debug();

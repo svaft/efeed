@@ -150,6 +150,8 @@ void Error_Handler(void);
 //#endif /* _SIMU */
 
 
+
+
 #define t3cr1			((uint32_t *)((0x42000000  + ((0x40000400)-0x40000000)*32)))
 
 #define t4cr1			((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
@@ -166,10 +168,21 @@ void Error_Handler(void);
 // main carriage
 
 
+#define BB_PERI(c,d) *((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)( &( c ) - PERIPH_BASE)*32 + ( d*4 ))))
+#define XDIR *((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  0x4001100C - PERIPH_BASE)*32 + ( 15*4 ))))
+
+
 #define MOTOR_Z_SetPulse()           t3cr1[TIM_CR1_CEN_Pos] = 1 //bitbang version, or with LL: LL_TIM_EnableCounter(TIM3) 
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
-#define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR        = MOTOR_Z_DIR_Pin
-#define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR         = MOTOR_Z_DIR_Pin
+
+#define zdir_forward 1
+#define zdir_backward 0
+#define xdir_forward 1
+#define xdir_backward 0
+
+#define ZDIR *((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  0x4001080C - PERIPH_BASE)*32 + ( 7*4 ))))
+//#define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR        = MOTOR_Z_DIR_Pin
+//#define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR         = MOTOR_Z_DIR_Pin
 
 #define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
 #define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BRR  = MOTOR_Z_ENABLE_Pin
@@ -272,8 +285,10 @@ extern uint32_t menu_changed;
 */
 #define MOTOR_X_SetPulse()           t3cr1[TIM_CR1_CEN_Pos] = 1 //LL_TIM_EnableCounter(TIM3) //__HAL_TIM_ENABLE(&htim3)
 #define MOTOR_X_RemovePulse()        // dummy macro, pulse disabled by hardware
-#define MOTOR_X_Forward()            MOTOR_X_DIR_GPIO_Port->BSRR    = MOTOR_X_DIR_Pin
-#define MOTOR_X_Reverse()            MOTOR_X_DIR_GPIO_Port->BRR     = MOTOR_X_DIR_Pin
+#define XDIR *((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  0x4001100C - PERIPH_BASE)*32 + ( 15*4 ))))
+
+//#define MOTOR_X_Forward()            MOTOR_X_DIR_GPIO_Port->BSRR    = MOTOR_X_DIR_Pin
+//#define MOTOR_X_Reverse()            MOTOR_X_DIR_GPIO_Port->BRR     = MOTOR_X_DIR_Pin
 
 #define MOTOR_X_Enable()             MOTOR_X_ENABLE_GPIO_Port->BSRR = MOTOR_X_ENABLE_Pin
 #define MOTOR_X_Disable()            MOTOR_X_ENABLE_GPIO_Port->BRR  = MOTOR_X_ENABLE_Pin

@@ -294,6 +294,30 @@ void do_fsm_move_start(state_t* s){
 }
 
 
+void do_fsm_ramp_up2(state_t* s){
+//	debug();
+	s->steps_to_end--;
+	fixedptu  set_with_fract = fixedpt_add(ramp_profile[s->ramp_step], s->fract_part); // calculate new step delay with fract from previous step
+	uint16_t rs2 = s->ramp_step << 1;
+	if(s->Q824set > set_with_fract || rs2 >= s->steps_to_end) { 	// reach desired speed (or end of ramp map? || s->ramp_step == sync_ramp_profile_len)
+		if(rs2 >= s->steps_to_end){ 
+			s->ramp_step -=2;
+			set_with_fract = ramp_profile[s->ramp_step];
+			set_ARR(s,set_with_fract);
+			s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+			s->function = do_fsm_ramp_down2;
+		} else {
+			set_ARR(s,set_with_fract);
+			s->fract_part = fixedpt_fracpart(s->Q824set); 								// save fract part for future use on next step
+			s->function = do_fsm_move2;
+		}
+	} else {
+		s->ramp_step++;
+		set_ARR(s,set_with_fract);
+		s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	}
+}
+
 
 void do_fsm_ramp_up(state_t* s){
 //	debug();
@@ -319,6 +343,53 @@ void do_fsm_ramp_up(state_t* s){
 	}
 }
 
+void do_fsm_move2(state_t* s){
+	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
+	set_ARR(s,set_with_fract);
+	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+  if( --s->steps_to_end == (s->ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
+		s->function = do_fsm_ramp_down2;
+	}
+}
+void do_fsm_ramp_down2(state_t* s){
+//	debug();
+	s->steps_to_end--;
+	fixedptu set_with_fract;
+	if(s->ramp_step == 0){
+		set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
+	} else {
+		set_with_fract = fixedpt_add(ramp_profile[--s->ramp_step], s->fract_part); // calculate new step delay with fract from previous step
+		s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	}
+	set_ARR(s,set_with_fract);
+	if (s->ramp_step == 0) {
+//		if(s->end_pos != s->current_pos) {
+//			s->end_pos = s->current_pos;
+//		}
+		s->function = do_fsm_move_end2;
+	}	
+}
+void do_fsm_move_end2(state_t* s){
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+
+	if (s->sync) {
+		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
+		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+	} else {
+		LL_TIM_DisableCounter(s->syncbase); // pause async timer
+	}
+	LL_TIM_DisableUpdateEvent(s->syncbase);
+	s->z_period = 0;
+	LL_mDelay(2);
+  MOTOR_Z_Disable();
+  MOTOR_X_Disable();
+	menu_changed = 1; 													//update menu
+	s->function = do_fsm_wait_sclick;
+	g_lock = false;
+}
+
+
+
 void do_fsm_move(state_t* s){
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	set_ARR(s,set_with_fract);
@@ -327,6 +398,7 @@ void do_fsm_move(state_t* s){
 		s->function = do_fsm_ramp_down;
 	}
 }
+
 /**
   * @brief  ramp down stepper
   * @param  state structure
@@ -432,20 +504,16 @@ TODO
 нужно переделать/переосмыслить механизм определения и использования
 позиций шаговика, а то какая-то каша получается
 */
-	state.current_pos = 0;
-	if(dz>dx){
-		state.end_pos = dz>=0?dz:-dz; //abs(dz);
-	} else {
-		state.end_pos = dx>=0?dx:-dx; //abs(dz);
+	
+	if(state.steps_to_end == 0) {
+		state.steps_to_end += dz>dx?dz:dx;
+	//	if(state.end_pos > 0){
+	//		state.end_pos &= 0xFFFFFFFF - step_divider + 1;// to make sure that we'll not stop between full steps
+	//	}
+		do_fsm_move_start(&state);
+	} else{
+		state.steps_to_end += dz>dx?dz:dx;
 	}
-	if(state.end_pos > 0){
-		state.end_pos &= 0xFFFFFFFF - step_divider + 1;
-//		s->end_pos |= step_divider; // to make sure that we'll not stop between full steps
-
-//	} else {
-//		state.sync = true;
-	}
-	do_fsm_move_start(&state);
 }
 
 
@@ -517,10 +585,22 @@ void G76(int p, int z){
 	// command is the same(?) as the G95 with followed G01 and sync start by tacho pulse from spindle
 }
 
+
+
+
+
 fixedptu f;
 G_pipeline current_code;
-void process_G_pipeline(void){
-	if(g_lock || gp_cb.count == 0)
+
+
+void process_G_pipeline(void){//переименовать в recalculate
+	if(g_lock || gp_cb.count == 0)/* todo убрать, переделать на асинхронные вызовы. здесь оставить только парсинг и подготовку
+		переменных и структур для конвеера в прерываниях:
+	вычислить направление
+	определить по какой оси шагаем
+	вычислить скорость подачи
+	вычислить угол между векторами предыдущего шага и текущего
+		*/
 		return;
 	cb_pop_front(&gp_cb, &current_code);
 
@@ -528,26 +608,29 @@ void process_G_pipeline(void){
 	if(current_code.Z > state.state_Z){ // go from left to right
 		z = current_code.Z - state.state_Z;
 		feed_direction = feed_direction_right;
-		MOTOR_Z_Forward();
+		ZDIR = zdir_forward;
 	} else { // go back from right to left
 		z = state.state_Z - current_code.Z;
 		feed_direction = feed_direction_left;
-		MOTOR_Z_Reverse();
+		ZDIR = zdir_backward;
 	}
 	if(current_code.X > state.state_X){ // go forward
 		x = current_code.X - state.state_X;
 //		feed_direction = feed_direction_right;
 //		MOTOR_X_DIR_GPIO_Port
-		MOTOR_X_Forward();
+//		MOTOR_X_Forward();
 	} else { // go back
 		x = state.state_X - current_code.X;
 //		feed_direction = feed_direction_left;
-		MOTOR_X_Reverse();
+//		MOTOR_X_Reverse();
 	}
 	state.state_Z = current_code.Z & ~1uL<<10; // drop fract part when store
 	state.state_X = current_code.X & ~1uL<<10;
 	z = fixedpt_toint2210(z);
 	x = fixedpt_toint2210(x);
+
+// calculate cos between vectors todo
+
 	// calculate feed:
 	/*
 	ARR = feed * hz_min2210 / pspr2210

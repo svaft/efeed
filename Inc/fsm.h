@@ -15,6 +15,7 @@ typedef void (*state_func_t)( struct state* );
 
 typedef struct state
 {
+	uint32_t steps_to_end;
 	uint32_t current_pos;
 	uint32_t end_pos;
 	uint8_t ramp_step;
@@ -72,6 +73,12 @@ void do_fsm_main_cut(state_t*);								//55. если счетчик current_pos
 void do_fsm_main_cut_infeed(state_t*);				//56. infeed для резьбы: в зависимости от номера прохода сдвигаем каретку на определенное количество шагов для облегчения резания+основной путь, далее в п. 30
 */
 void z_move(uint32_t , uint32_t  , bool, bool);
+
+
+void do_fsm_ramp_up2(state_t* );
+void do_fsm_move2(state_t*);
+void do_fsm_ramp_down2(state_t* );
+void do_fsm_move_end2(state_t* );
 
 
 void do_fsm_move_start(state_t* );

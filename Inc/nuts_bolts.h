@@ -20,6 +20,8 @@ typedef struct circular_buffer{
     void *tail;       // pointer to tail
 } circular_buffer;
 extern circular_buffer gp_cb;
+extern circular_buffer task_cb;
+void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref);
 
 __STATIC_INLINE void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
     cb->buffer = malloc(capacity * sz);

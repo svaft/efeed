@@ -3,6 +3,36 @@
 //int ii, kk;
 
 fixedpt command;
+
+
+G_task * add_empty_task(){
+	G_task tmp_gt;
+	cb_push_back(&task_cb, &tmp_gt);
+	return task_cb.top;
+}
+
+//__STATIC_INLINE 
+void add_task(int dx, int dz, int feed, int inc_dec, void *ref, uint32_t rr, uint8_t x_dir, uint8_t z_dir ){
+	G_task tmp_gt;
+	tmp_gt.dx = dx;
+	tmp_gt.dz = dz;
+	tmp_gt.feed = feed;
+	tmp_gt.inc_dec = inc_dec;
+	tmp_gt.callback_ref = ref;
+	tmp_gt.rr = rr;
+	tmp_gt.x_direction = x_dir;
+	tmp_gt.z_direction = z_dir;
+	cb_push_back(&task_cb, &tmp_gt);
+
+}
+
+
+//__STATIC_INLINE 
+G_task* get_last_task( void ){
+	return (G_task *)task_cb.top;
+}
+
+
 void command_parser(char *line){
   uint8_t char_counter = 0;  
 	char letter;
@@ -123,6 +153,7 @@ void G01parse(char *line){
 //int xc,zc,r;
 int oct0,oct1;
 int pos_count; // 1st octant count by X
+
 
 void G03parse(char *line){
 	G_pipeline *gref_prev = gp_cb.top;

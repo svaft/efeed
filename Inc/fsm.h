@@ -7,11 +7,12 @@
 #define FSM_H_
 
 #include "main.h"
-
+#include "gcode.h"
 #define debug()	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin)
 
 struct state;
 typedef void (*state_func_t)( struct state* );
+typedef void (*callback_func_t)( struct state* );
 
 typedef struct state
 {
@@ -23,8 +24,10 @@ typedef struct state
 	uint32_t fract_part; // Q8.24 format fract part
 	
 	
-	
+	G_task current_task;
+
   state_func_t function;
+  callback_func_t callback;
 	uint32_t async_z;
 	uint8_t z_period;
 	bool f_encoder;
@@ -43,12 +46,14 @@ typedef struct state
 //	uint8_t x_period;
 
 	//	bresenham
-	int dx,dz;//,d,d1,d2;
+//	int dx,dz;//,d,d1,d2;
+//	int rr, inc_dec;
 //	int sx,sz;
 	int err;
-  int i, x,z;
+//  int i, x,z;
 //  state_func_t set_pulse_function;
 } state_t;
+
 
 extern state_t state;
 
@@ -79,7 +84,7 @@ void do_fsm_ramp_up2(state_t* );
 void do_fsm_move2(state_t*);
 void do_fsm_ramp_down2(state_t* );
 void do_fsm_move_end2(state_t* );
-
+void load_next_task(void);
 
 void do_fsm_move_start(state_t* );
 void do_fsm_ramp_up(state_t* );
@@ -104,22 +109,16 @@ _Bool z_axis_ramp_down_async(state_t* );
 
 void dzdx_init(int dx, int dz, state_t* s);
 
+
+
+void arc_dx_callback(state_t*);// arc movement callback
+void arc_dz_callback(state_t*); // arc movement callback
+void dxdz_callback(state_t* s); // line movement callback
+
 // TIM3->CCER register bitbang access:
 #define t3ccer			((uint32_t *)((0x42000000  + ((0x40000420)-0x40000000)*32)))
 
 
-__STATIC_INLINE void dxdz_callback(state_t* s){
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	int e2 = s->err;
-	if (e2 > -s->dx)	{ // step X axis
-		s->err -= s->dz; 
-		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
-	}
-	if (e2 < s->dz)	{ // step Z axis
-		s->err += s->dx;
-		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
-	}
-}
 
 //void dxdz_callback(state_t* );
 void G01(int dx, int dz, int feed);

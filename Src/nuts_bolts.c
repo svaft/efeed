@@ -1,5 +1,21 @@
 #include "nuts_bolts.h"
 
+
+void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref){
+    cb->buffer = ref;
+    if(cb->buffer == NULL){
+        // handle error
+        }
+    cb->buffer_end = (char *)cb->buffer + capacity * sz;
+    cb->capacity = capacity;
+    cb->count = 0;
+    cb->sz = sz;
+    cb->head = cb->buffer;
+    cb->tail = cb->buffer;
+		cb->top  = cb->buffer;
+}
+
+
 int str_f_to_steps(const char *str, uint16_t steps_per_unit, char **endptr)
 {
     uint8_t ten = 0;

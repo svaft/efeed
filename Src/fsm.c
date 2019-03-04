@@ -11,6 +11,9 @@
 #define steps_x 1
 
 circular_buffer gp_cb;
+circular_buffer task_cb;
+G_task gt[30];
+G_pipeline gp[30];
 bool g_lock = false;
 
 /**
@@ -294,31 +297,6 @@ void do_fsm_move_start(state_t* s){
 }
 
 
-void do_fsm_ramp_up2(state_t* s){
-//	debug();
-	s->steps_to_end--;
-	fixedptu  set_with_fract = fixedpt_add(ramp_profile[s->ramp_step], s->fract_part); // calculate new step delay with fract from previous step
-	uint16_t rs2 = s->ramp_step << 1;
-	if(s->Q824set > set_with_fract || rs2 >= s->steps_to_end) { 	// reach desired speed (or end of ramp map? || s->ramp_step == sync_ramp_profile_len)
-		if(rs2 >= s->steps_to_end){ 
-			s->ramp_step -=2;
-			set_with_fract = ramp_profile[s->ramp_step];
-			set_ARR(s,set_with_fract);
-			s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-			s->function = do_fsm_ramp_down2;
-		} else {
-			set_ARR(s,set_with_fract);
-			s->fract_part = fixedpt_fracpart(s->Q824set); 								// save fract part for future use on next step
-			s->function = do_fsm_move2;
-		}
-	} else {
-		s->ramp_step++;
-		set_ARR(s,set_with_fract);
-		s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-	}
-}
-
-
 void do_fsm_ramp_up(state_t* s){
 //	debug();
 	s->current_pos++;
@@ -335,6 +313,35 @@ void do_fsm_ramp_up(state_t* s){
 			set_ARR(s,set_with_fract);
 			s->fract_part = fixedpt_fracpart(s->Q824set); 								// save fract part for future use on next step
 			s->function = do_fsm_move;
+		}
+	} else {
+		s->ramp_step++;
+		set_ARR(s,set_with_fract);
+		s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	}
+}
+
+
+
+void load_next_task(){
+	cb_pop_front(&task_cb, &state.current_task);
+}
+void do_fsm_ramp_up2(state_t* s){
+//	debug();
+	s->steps_to_end--;
+	fixedptu  set_with_fract = fixedpt_add(ramp_profile[s->ramp_step], s->fract_part); // calculate new step delay with fract from previous step
+	uint16_t rs2 = s->ramp_step << 1;
+	if(s->Q824set > set_with_fract || rs2 >= s->steps_to_end) { 	// reach desired speed (or end of ramp map? || s->ramp_step == sync_ramp_profile_len)
+		if(rs2 >= s->steps_to_end){ 
+			s->ramp_step -=2;
+			set_with_fract = ramp_profile[s->ramp_step];
+			set_ARR(s,set_with_fract);
+			s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+			s->function = do_fsm_ramp_down2;
+		} else {
+			set_ARR(s,set_with_fract);
+			s->fract_part = fixedpt_fracpart(s->Q824set); 								// save fract part for future use on next step
+			s->function = do_fsm_move2;
 		}
 	} else {
 		s->ramp_step++;
@@ -458,9 +465,9 @@ void do_fsm_move_end(state_t* s){
 
 // init bresenham algorithm variables for generate stepper motors pulses
 __STATIC_INLINE void dzdx_init(int dx, int dz, state_t* s) {
-	s->dx = dx; //dx>0?dx:-dx; //	s->dx = abs(dx); 
-	s->dz = dz; //dz>0?dz:-dz;//  s->dz = abs(dz);
-  s->err = (s->dx > s->dz ? s->dx : -s->dz) >> 1;
+	s->current_task.dx = dx; //dx>0?dx:-dx; //	s->dx = abs(dx); 
+	s->current_task.dz = dz; //dz>0?dz:-dz;//  s->dz = abs(dz);
+  s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
 }
 
 /**
@@ -482,21 +489,6 @@ void G01(int dx, int dz, int feed){
 	g_lock = true;
 	// linear interpolated move to position with defined feed
 	dzdx_init(dx, dz, &state);
-/*
-	if(dz<0) {
-		feed_direction = feed_direction_left;
-		MOTOR_Z_Reverse();
-	} else {
-		feed_direction = feed_direction_right;
-		MOTOR_Z_Forward();
-	}
-
-	if(dx<0) {
-		MOTOR_X_Reverse();
-	} else {
-		MOTOR_X_Forward();
-	}
-*/
 	state.sync = false;
 
 /*
@@ -582,7 +574,7 @@ Z- - The final position of threads. At the end of the cycle the tool will be at 
   */
 void G76(int p, int z){
 	// move to position with spindle sync. Used for threading.
-	// command is the same(?) as the G95 with followed G01 and sync start by tacho pulse from spindle
+	// command is the same(?) as the G95 with followed G01 and sync! start by tacho pulse from spindle
 }
 
 
@@ -591,10 +583,10 @@ void G76(int p, int z){
 
 fixedptu f;
 G_pipeline current_code;
-
+G_pipeline prev_code;
 
 void process_G_pipeline(void){//переименовать в recalculate
-	if(g_lock || gp_cb.count == 0)/* todo убрать, переделать на асинхронные вызовы. здесь оставить только парсинг и подготовку
+	if(gp_cb.count == 0)/* todo убрать, переделать на асинхронные вызовы. здесь оставить только парсинг и подготовку
 		переменных и структур для конвеера в прерываниях:
 	вычислить направление
 	определить по какой оси шагаем
@@ -604,30 +596,29 @@ void process_G_pipeline(void){//переименовать в recalculate
 		return;
 	cb_pop_front(&gp_cb, &current_code);
 
-	int x,z;
-	if(current_code.Z > state.state_Z){ // go from left to right
-		z = current_code.Z - state.state_Z;
-		feed_direction = feed_direction_right;
-		ZDIR = zdir_forward;
+	G_task *gt_last_task 	= get_last_task();
+	G_task *gt_new_task 	= add_empty_task();
+	
+	
+	int dx,dz, xdir,zdir, rr;
+	if(current_code.Z > prev_code.Z){ // go from left to right
+		dz = current_code.Z - prev_code.Z;
+		zdir = zdir_forward;
 	} else { // go back from right to left
-		z = state.state_Z - current_code.Z;
-		feed_direction = feed_direction_left;
-		ZDIR = zdir_backward;
+		dz = prev_code.Z - current_code.Z;
+		zdir = zdir_backward;
 	}
-	if(current_code.X > state.state_X){ // go forward
-		x = current_code.X - state.state_X;
-//		feed_direction = feed_direction_right;
-//		MOTOR_X_DIR_GPIO_Port
-//		MOTOR_X_Forward();
+	if(current_code.X > prev_code.X){ // go forward
+		dx = current_code.X - prev_code.X;
+		xdir = xdir_forward;
 	} else { // go back
-		x = state.state_X - current_code.X;
-//		feed_direction = feed_direction_left;
-//		MOTOR_X_Reverse();
+		dx = prev_code.X - current_code.X;
+		xdir = xdir_backward;
 	}
-	state.state_Z = current_code.Z & ~1uL<<10; // drop fract part when store
-	state.state_X = current_code.X & ~1uL<<10;
-	z = fixedpt_toint2210(z);
-	x = fixedpt_toint2210(x);
+//	state.state_Z = current_code.Z & ~1uL<<10; // drop fract part when store
+//	state.state_X = current_code.X & ~1uL<<10;
+	gt_new_task->dz = abs(fixedpt_toint2210(dz));
+	gt_new_task->dx = abs(fixedpt_toint2210(dx));
 
 // calculate cos between vectors todo
 
@@ -647,27 +638,60 @@ void process_G_pipeline(void){//переименовать в recalculate
 		state.Q824set = f;
 	}
 	
+	
+	prev_code.X = current_code.X;
+	prev_code.Z = current_code.Z;
+	
 	debug();
 	switch(current_code.code){
 		case 0:
 			state.Q824set = 0x048E9E1B; //todo max feedrate here
-			G01(x,z,current_code.feed);
+//			G01(x,z,current_code.feed);
 			break;
 		case 1:
-//			LL_mDelay(10);
-//			MOTOR_X_Enable();
-//			MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-			G01(x,z,current_code.feed);
+//			G01(x,z,current_code.feed);
 			break;
 		case 33:
-			G33(x,z,current_code.feed);
+//			G33(x,z,current_code.feed);
 			break;
 	}
 }
 
 
+void arc_dx_callback(state_t *s){
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+	int dz = SquareRoot(s->current_task.rr - s->current_task.dx * s->current_task.dx);
+	if(dz != s->current_task.dz){
+		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		s->current_task.dz = dz;
+	}
+	s->current_task.dx += s->current_task.inc_dec;
+}
 
+void arc_dz_callback(state_t *s){
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+	int dx = SquareRoot(s->current_task.rr - s->current_task.dz * s->current_task.dz);
+	if(dx != s->current_task.dx){
+	t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+		s->current_task.dx = dx;
+	}
+	s->current_task.dz += s->current_task.inc_dec;
+}
 
+void dxdz_callback(state_t* s){
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int e2 = s->err;
+	if (e2 > -s->current_task.dx)	{ // step X axis
+		s->err -= s->current_task.dz; 
+		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+	}
+	if (e2 < s->current_task.dz)	{ // step Z axis
+		s->err += s->current_task.dx;
+		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+	}
+}
 
 
 

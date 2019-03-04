@@ -257,14 +257,6 @@ uint32_t x1 = 0;
 //LL_GPIO_ResetOutputPin
 
 
-typedef struct G_task{
-	uint32_t main_axis_steps, subaxis_steps; //
-	fixedptu feed; //Q824
-	void *ref; //callback ref to iterate line or arc
-	uint8_t z_direction, x_direction;
-	
-} G_task;
-G_task gt[100];
 /* USER CODE END 0 */
 
 /**
@@ -275,12 +267,15 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 //	MOTOR_Z_DIR_GPIO_Port->BSRR
-	gt[0].z_direction = zdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
-	gt[0].x_direction = xdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
+//	gt[0].z_direction = zdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
+//	gt[0].x_direction = xdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
 //	zdir = gt[0].z_direction;
 	memset(&state,0,sizeof(state));
 //	memset(&z_axis,0,sizeof(z_axis));
 	state.function = do_fsm_menu_lps;
+	state.callback = dxdz_callback;
+
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -341,20 +336,24 @@ int main(void)
 
 //	char *end;
 
-	int size = 10;
-	cb_init(&gp_cb, size, sizeof(G_pipeline));
+
+	cb_init_ref(&task_cb, 100, sizeof(G_task), &gt);
+	cb_init_ref(&gp_cb, 100, sizeof(G_pipeline),&gp);
+
+//	int size = 10;
+//	cb_init(&gp_cb, size, sizeof(G_pipeline));
 	G01parse("X1. Z-2.5 F1.");
 //	G01parse("X10.");
 //	G03parse("X12. Z-4.5 I-1.99 K-2.245");
 	debug();
 
 	static const char * const garray[] = { 
-//		"G1 X0. Z-2.5 F1.",
-//		"G1 X10.", 
-//		"G3 X12. Z-4.5 I-1.99 K-2.245" 
-"G1 X40.279 Z-31.064",
-"X40.554 Z-31.09",
-"X40.822 Z-31.132",
+		"G1 X0. Z-2.5 F1.",
+		"G1 X10.", 
+		"G3 X12. Z-4.5 I-1.99 K-2.245" 
+//"G1 X40.279 Z-31.064",
+//"X40.554 Z-31.09",
+//"X40.822 Z-31.132",
 	};
 
 	static const char * shape1[] = {

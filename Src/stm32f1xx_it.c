@@ -255,6 +255,10 @@ void TIM2_IRQHandler(void)
 		state.function(&state);
 //		state.syncbase->ARR = state.z_period;
 		state.syncbase->EGR |= TIM_EGR_UG;
+		if(state.steps_to_end == 0){
+			load_next_task();
+			
+		}
 	}
 
   /* USER CODE END TIM2_IRQn 0 */
@@ -282,7 +286,8 @@ TODO
 	так же вот здесь баг TIM3->SMCR == 0x16 т.к. привязаны мжем быть и к TIM4(sync with spindle)
 	*/	
 	if(TIM3->SMCR == 0x16) { // TIM3 connected to TIM2 as SLAVE
-		dxdz_callback(&state);
+		state.callback(&state);
+//		dxdz_callback(&state);
 	}
 	TIM3->SR = 0;
 	

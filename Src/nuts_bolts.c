@@ -66,8 +66,11 @@ int str_f_to_steps(const char *str, uint16_t steps_per_unit, char **endptr)
 
 
 
-fixedpt strto824(const char *str, char **endptr)
-{
+int str_f_to_824(char *line, uint8_t *char_counter){
+  char *str = line + *char_counter;
+
+//fixedptu strto824(char *str) //, char **endptr)
+//{
     uint32_t ten = 0;
     fixedpt t824 = 0;
     fixedptu number = 0;
@@ -89,7 +92,7 @@ fixedpt strto824(const char *str, char **endptr)
         str++;
     }
 
-    if (endptr != 0) *endptr = (char *)str;
+//    if (endptr != 0) *endptr = (char *)str;
     switch(ten){
         case 1:{
             number *= 1677721; // div 10
@@ -105,6 +108,7 @@ fixedpt strto824(const char *str, char **endptr)
         }
     }
 
+	*char_counter = str - line - 1; // Set char_counter to next statement
     t824 |= number;//fixedpt_xdiv(number,ten);
     if (negative) return -t824;
     else return t824;

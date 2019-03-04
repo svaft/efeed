@@ -342,13 +342,13 @@ int main(void)
 
 //	int size = 10;
 //	cb_init(&gp_cb, size, sizeof(G_pipeline));
-	G01parse("X1. Z-2.5 F1.");
+	G01parse("X1. Z-2.5 F.4");
 //	G01parse("X10.");
 //	G03parse("X12. Z-4.5 I-1.99 K-2.245");
 	debug();
 
 	static const char * const garray[] = { 
-		"G1 X0. Z-2.5 F1.",
+		"G1 X0. Z-2.5 F.3",
 		"G1 X10.", 
 		"G3 X12. Z-4.5 I-1.99 K-2.245" 
 //"G1 X40.279 Z-31.064",

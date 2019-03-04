@@ -630,8 +630,13 @@ void process_G_pipeline(void){//переименовать в recalculate
 //#define pspr2210 400 << 10
 //#define hz_min2210 1800000 << 10 // 500 = 30000hz*60sec
 #define hzminps 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
+	gt_new_task->feed =fixedptu_div(9<<24,current_code.feed);
 	if(current_code.code == 33){ 	// unit(mm) per rev
-		state.Q824set = current_code.feed;
+/* 1800enc lines*2(2x mode) / (400steps p mm / 1mm lead screw * current_code.feed ) << 24 to q824
+		1800*2/(400/1*feed)<<24 = 3600/(400feed)<<24=9<<24/feed
+*/
+		gt_new_task->feed =fixedptu_div(9<<24,current_code.feed);
+//		state.Q824set = current_code.feed;
 	} else { 											// unit(mm) per min
 		f = fixedpt_xdiv2210(hzminps, current_code.feed);
 		f = f << 14; // translate to 8.24 format used for delays
@@ -694,8 +699,32 @@ void dxdz_callback(state_t* s){
 }
 
 
-
-
+/*
+0x4B000000,
+0x4137A6F4,
+0x2D745D17,
+0x1C50D509,
+0x17D84530,
+0x13EF9BE2,
+0x111EC621,
+0x0F21BDA2,
+*/
+uint8_t get_ramp_steps(fixedptu from_speed, fixedptu to_speed){
+	uint32_t ramp_delay, from, to;
+	if(from_speed > to_speed){//ramp up
+		ramp_delay = ramp_profile[0];
+		while(ramp_delay > from_speed){
+			from++;
+			ramp_delay = ramp_profile[from];
+		}
+		for(int a = from; a <sizeof(ramp_profile);a++){
+			ramp_delay = ramp_profile[a];
+			if(ramp_delay <= to_speed)
+				return a - from;
+		}
+	} else { //ramp down
+	}
+}
 
 
 

@@ -103,7 +103,7 @@ G_pipeline* G_parse(char *line){
 				init_gp.K = str_f_to_steps2210(line, &char_counter);
 				break;
 			case 'F':
-				init_gp.feed = str_f_to_steps2210(line, &char_counter);
+				init_gp.feed = str_f_to_824(line, &char_counter);
 				break;
 		}
 	}

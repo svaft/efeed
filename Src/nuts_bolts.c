@@ -64,6 +64,34 @@ int str_f_to_steps(const char *str, uint16_t steps_per_unit, char **endptr)
     else return t824;
 }
 
+/**
+ * \brief convert value mm/rev in Q824 format to delay according to stepper per rev,
+ * 	lead screw pitch and encoder resolution
+ * \param[in] 
+ *
+ * \return 
+ */
+fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
+/* 1800enc lines*2(2x mode) / (400steps p mm / 1mm lead screw * current_code.feed ) << 24 to q824
+		1800*2/(400/1*feed)<<24 = 3600/(400feed)<<24=9<<24/feed
+*/
+	return fixedptu_div(9<<24,feed);
+}
+
+
+/**
+ * \brief convert value mm/min in Qxxx format to delay in Q824
+ * \param[in] 
+ *
+ * \return 
+ */
+#define hzminps 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
+fixedptu str_f824mm_min_to_delay824(fixedptu feed){
+	fixedptu f = fixedpt_xdiv2210(hzminps, feed);
+	f = f << 14; // translate to 8.24 format used for delays
+	return f;
+}
+
 
 
 int str_f_to_824(char *line, uint8_t *char_counter){

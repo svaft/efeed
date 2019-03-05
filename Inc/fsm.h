@@ -23,6 +23,7 @@ typedef struct state
 	uint32_t Q824set; // feed rate
 	uint32_t fract_part; // Q8.24 format fract part
 	
+	bool G94G95; // 0 - unit per min, 1 - unit per rev
 	
 	G_task current_task;
 

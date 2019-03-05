@@ -8,7 +8,9 @@ uint32_t SquareRoot(uint32_t a_nInput);
 uint32_t SquareRootRounded(uint32_t a_nInput);
 int str_f_to_steps2210(char *str, uint8_t *char_counter);
 int str_f_inch_to_steps2210(const char *str, char **endptr);
-
+int str_f_to_824(char *line, uint8_t *char_counter);
+fixedptu str_f824mm_rev_to_delay824(fixedptu feed); //mm/rev
+fixedptu str_f824mm_min_to_delay824(fixedptu feed); //mm/min
 typedef struct circular_buffer{
     void *buffer;     // data buffer
     void *buffer_end; // end of data buffer

@@ -596,7 +596,7 @@ void process_G_pipeline(void){//переименовать в recalculate
 		return;
 	cb_pop_front(&gp_cb, &current_code);
 
-	G_task *gt_last_task 	= get_last_task();
+//	G_task *gt_last_task 	= get_last_task();
 	G_task *gt_new_task 	= add_empty_task();
 	
 	
@@ -617,33 +617,19 @@ void process_G_pipeline(void){//переименовать в recalculate
 	}
 //	state.state_Z = current_code.Z & ~1uL<<10; // drop fract part when store
 //	state.state_X = current_code.X & ~1uL<<10;
-	gt_new_task->dz = abs(fixedpt_toint2210(dz));
-	gt_new_task->dx = abs(fixedpt_toint2210(dx));
-
+	gt_new_task->dz = fixedpt_toint2210(dz);
+	gt_new_task->dx = fixedpt_toint2210(dx);
+//	gt_new_task->rr = current_code.R;
 // calculate cos between vectors todo
 
 	// calculate feed:
-	/*
-	ARR = feed * hz_min2210 / pspr2210
-
-	*/
-//#define pspr2210 400 << 10
-//#define hz_min2210 1800000 << 10 // 500 = 30000hz*60sec
-#define hzminps 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
-	gt_new_task->feed =fixedptu_div(9<<24,current_code.feed);
 	if(current_code.code == 33){ 	// unit(mm) per rev
-/* 1800enc lines*2(2x mode) / (400steps p mm / 1mm lead screw * current_code.feed ) << 24 to q824
-		1800*2/(400/1*feed)<<24 = 3600/(400feed)<<24=9<<24/feed
-*/
-		gt_new_task->feed =fixedptu_div(9<<24,current_code.feed);
-//		state.Q824set = current_code.feed;
+		gt_new_task->F = str_f824mm_rev_to_delay824(current_code.F);
 	} else { 											// unit(mm) per min
-		f = fixedpt_xdiv2210(hzminps, current_code.feed);
-		f = f << 14; // translate to 8.24 format used for delays
-		state.Q824set = f;
+		gt_new_task->F = str_f824mm_min_to_delay824(current_code.F);
 	}
 	
-	
+// save calculated abs coordinates for using on next step
 	prev_code.X = current_code.X;
 	prev_code.Z = current_code.Z;
 	

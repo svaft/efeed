@@ -6,8 +6,7 @@ fixedpt command;
 G_pipeline init_gp={0,0,0,0,0};
 
 G_task * add_empty_task(){
-	G_task tmp_gt;
-	cb_push_back(&task_cb, &tmp_gt);
+	cb_push_back_empty(&task_cb);
 	return task_cb.top;
 }
 
@@ -180,8 +179,8 @@ void G01parse(char *line){
 	}
 	G_task *gt_new_task = add_empty_task();
 	gt_new_task->callback_ref = dxdz_callback;
-	gt_new_task->dx = dx;
-	gt_new_task->dz = dz;
+	gt_new_task->dx =  fixedpt_toint2210(dx);
+	gt_new_task->dz =  fixedpt_toint2210(dz);
 
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
@@ -197,12 +196,12 @@ void G01parse(char *line){
 }
 
 //int xc,zc,r;
-int pos_count; // 1st octant count by X
 
 
 void G03parse(char *line, int8_t cwccw){
 	int x0 = init_gp.X; //get from prev gcode
 	int z0 = init_gp.Z;
+//	int pos_count; // 1st octant count by X
 	G_pipeline *gref = G_parse(line);
 	gref->code = 3;
 
@@ -236,7 +235,7 @@ void G03parse(char *line, int8_t cwccw){
 	int oct0 = get_octant(x0z, z0z, octant);
 	int oct1 = get_octant(x1z, z1z, octant);
 
-	pos_count = 0;
+//	pos_count = 0;
 	G_task *gt_new_task;
 
 	if(oct0 == oct1){
@@ -244,13 +243,13 @@ void G03parse(char *line, int8_t cwccw){
 		gt_new_task->rr = rr;
 		switch(oct0){
 			case 0: case 3: case 7: case 4:
-				pos_count = abs(x1z - x0z);
-				gt_new_task->dx = pos_count;
+//				pos_count = abs(x1z - x0z);
+				gt_new_task->dx = abs(x1z - x0z);
 				gt_new_task->callback_ref = arc_dx_callback;
 				break;
 			case 1: case 2: case 5: case 6:
-				pos_count = abs(z0z - z1z);
-				gt_new_task->dz = pos_count;
+//				pos_count = abs(z0z - z1z);
+				gt_new_task->dz = abs(z0z - z1z);//pos_count;
 				gt_new_task->callback_ref = arc_dz_callback;
 				break;
 		}
@@ -279,32 +278,32 @@ void G03parse(char *line, int8_t cwccw){
 // X direction
 			switch(current_oct){
 				case 0: case 1: case 4: case 5:
-					gt_new_task->x_direction = xdir_forward;
+					gt_new_task->x_direction = xdir_forward; 				break;
 				case 2: case 3: case 6: case 7:
-					gt_new_task->x_direction = xdir_backward;
+					gt_new_task->x_direction = xdir_backward;				break;
 			}
 			gt_new_task->z_direction = zdir_forward;
 
 			if(current_oct == oct0){
 				switch(current_oct){
 					case 0: case 7:
-						pos_count = abs(octant - x0z);
-						gt_new_task->dx = pos_count;
+//						pos_count = abs(octant - x0z);
+						gt_new_task->dx = abs(octant - x0z);//pos_count;
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
 					case 1: case 6:
-						pos_count = abs(z0z);
-						gt_new_task->dz = pos_count;
+//						pos_count = abs(z0z);
+						gt_new_task->dz = abs(z0z);//pos_count;
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 2: case 5:
-						pos_count = abs(octant - z0z);
-						gt_new_task->dz = pos_count;
+//						pos_count = abs(octant - z0z);
+						gt_new_task->dz = abs(octant - z0z);
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 3: case 4:
-						pos_count = abs(x0z);
-						gt_new_task->dx = pos_count;
+//						pos_count = abs(x0z);
+						gt_new_task->dx = abs(x0z); //pos_count;
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
 				}
@@ -313,23 +312,23 @@ void G03parse(char *line, int8_t cwccw){
 					case 0: case 7:
 						while(1);
 					case 1: case 6:
-						pos_count += abs(octant - z1z);
+//						pos_count = abs(octant - z1z);
 						gt_new_task->dz = abs(octant - z1z);
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 2: case 5:
-						pos_count += abs(z1z);
+//						pos_count = abs(z1z);
 						gt_new_task->dz = abs(z1z);
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 3: case 4:
-						pos_count += abs(octant - x1z);
+//						pos_count = abs(octant - x1z);
 						gt_new_task->dx = abs(octant - x1z);
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
 				}
 			} else {
-				pos_count +=octant;
+//				pos_count =octant;
 				switch(current_oct){
 					case 0: case 3: case 7: case 4:
 						gt_new_task->dx = octant;
@@ -348,7 +347,8 @@ void G03parse(char *line, int8_t cwccw){
 			} else { 											// unit(mm) per min
 				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 			}
-			
+			gt_new_task->dz = fixedpt_toint2210(gt_new_task->dz);
+			gt_new_task->dx = fixedpt_toint2210(gt_new_task->dx);
 			current_oct +=cwccw;
 			if(current_oct == 255)
 				current_oct = 7;
@@ -569,7 +569,7 @@ void G03parse(char *line, int8_t cwccw){
 		}		
 	}
 	*/
-	pos_count >>= 10;
+//	pos_count >>= 10;
 /*
   общее число шагов для дуги равно сумме шагов по осям в соответствии с текущей октантой
 	для октант 0,3,4 и 7 основной осью является ось Х, сдвиг по оси Z вычисляется как sqrt(R*R-dx*dx)

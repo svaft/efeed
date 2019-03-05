@@ -57,6 +57,20 @@ __STATIC_INLINE void cb_push_back(circular_buffer *cb, const void *item){
     cb->count++;
 }
 
+__STATIC_INLINE void cb_push_back_empty(circular_buffer *cb){
+    if(cb->count == cb->capacity){
+        while(1){}
+            // handle error
+    }
+    memset(cb->head, 0, cb->sz);
+		cb->top = cb->head;
+    cb->head = (uint8_t *)cb->head + cb->sz;
+    if(cb->head == cb->buffer_end)
+        cb->head = cb->buffer;
+    cb->count++;
+}
+
+
 __STATIC_INLINE void cb_init_by_top(circular_buffer *cb, void *item){
     if(cb->count == 0){
         return;

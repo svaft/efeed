@@ -86,7 +86,7 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
  * \return 
  */
 #define hzminps 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
-fixedptu str_f824mm_min_to_delay824(fixedptu feed){
+	fixedptu str_f824mm_min_to_delay824(fixedptu feed){
 	fixedptu f = fixedpt_xdiv2210(hzminps, feed);
 	f = f << 14; // translate to 8.24 format used for delays
 	return f;

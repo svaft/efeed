@@ -364,6 +364,9 @@ int main(void)
 //"X40.822 Z-31.132",
 	};
 
+	
+	
+	
 	static const char * shape1[] = {
 		"G1 X2.828 F1",
 		"X0. Z-1",
@@ -423,7 +426,7 @@ int main(void)
 		"G1 X50.828 Z-99.659",
 		"X55.068"
 	};
-	for(int a = 0; a < sizeof(garray); a++ ){
+	for(int a = 0; a < 10; a++ ){
 		command_parser((char *)garray[a]);
 //		process_G_pipeline();
 	}

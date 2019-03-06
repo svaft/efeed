@@ -170,7 +170,7 @@ void G01parse(char *line){ //~60-70us
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
 	gt_new_task->dz =  fixedpt_toint2210(dz);
-
+	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
 
@@ -186,6 +186,13 @@ void G01parse(char *line){ //~60-70us
 //int xc,zc,r;
 
 
+
+
+
+/**
+* @brief  G33 parse to tasks
+* @retval void.
+  */
 void G03parse(char *line, int8_t cwccw){ //~130-150us
 	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
 	int z0 = init_gp.Z & ~1uL<<10;
@@ -223,22 +230,37 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 
 //	pos_count = 0;
 	G_task *gt_new_task;
-
+/*
+				 ^ Z  
+		 \ 7 | 0 /
+			\  |  /
+			 \ | /       
+			6 \|/ 1
+	 ------0------->X
+			5 /|\ 2
+			 / | \
+			/  |  \      
+		 / 4 | 3 \
+*/
 	if(oct0 == oct1){
 		gt_new_task 		= add_empty_task();
 		gt_new_task->rr = rr;
-		if(oct0 == 0 || oct0 == 3 || oct0 == 4 || oct0 == 7){
-			gt_new_task->dx = abs(x1z - x0z);
+		int current_oct = oct0;
+
+		if(current_oct == 0 || current_oct == 3 || current_oct == 4 || current_oct == 7){
+			gt_new_task->steps_to_end = abs(x1z - x0z);
+			gt_new_task->dx = x0z;
 			gt_new_task->callback_ref = arc_dx_callback;
 		} else{
-			gt_new_task->dz = abs(z0z - z1z);//pos_count;
+			gt_new_task->steps_to_end = abs(z0z - z1z);
+			gt_new_task->dz = z0z;//pos_count;
 			gt_new_task->callback_ref = arc_dz_callback;
 		}
-		int current_oct = oct0;
+
 		if(cwccw>0){ //cw
-			if(current_oct == 0 || current_oct == 2){
+			if(current_oct == 0 || current_oct == 2){ // 4,6
 				gt_new_task->inc_dec = 1;
-			} else {
+			} else { // 1,3
 				gt_new_task->inc_dec = -1;
 			}
 		} else { //ccw
@@ -250,7 +272,7 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 		}
 		
 		// X direction:
-		if(oct0 == 0 || oct0 == 1 || oct0 == 4 || oct0 == 5){
+		if(current_oct == 0 || current_oct == 1 || current_oct == 4 || current_oct == 5){
 				gt_new_task->x_direction = xdir_forward;
 		} else{
 				gt_new_task->x_direction = xdir_backward;
@@ -263,15 +285,13 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 		} else { 											// unit(mm) per min
 			gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 		}
-		
-		
 	} else {
 		uint8_t current_oct = oct0;
 		while(current_oct != oct1+cwccw){
 			gt_new_task 		= add_empty_task();
 			gt_new_task->rr = rr;
 // X direction
-			if(oct0 == 0 || oct0 == 1 || oct0 == 4 || oct0 == 5){
+			if(current_oct == 0 || current_oct == 1 || current_oct == 4 || current_oct == 5){
 					gt_new_task->x_direction = xdir_forward;
 			} else{
 					gt_new_task->x_direction = xdir_backward;
@@ -281,18 +301,22 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 			if(current_oct == oct0){
 				switch(current_oct){
 					case 0: case 7:
-						gt_new_task->dx = abs(octant - x0z);//pos_count;
+						gt_new_task->steps_to_end = abs(octant - x0z);
+						gt_new_task->dx = x0z;//pos_count;
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
 					case 1: case 6:
+						gt_new_task->steps_to_end = abs(z0z);
 						gt_new_task->dz = abs(z0z);//pos_count;
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 2: case 5:
-						gt_new_task->dz = abs(octant - z0z);
+						gt_new_task->steps_to_end = abs(octant - z0z);
+						gt_new_task->dz = abs(z0z);
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 3: case 4:
+						gt_new_task->steps_to_end = abs(x0z);
 						gt_new_task->dx = abs(x0z); //pos_count;
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
@@ -302,38 +326,50 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 					case 0: case 7:
 						while(1);
 					case 1: case 6:
-						gt_new_task->dz = abs(octant - z1z);
+						gt_new_task->steps_to_end = abs(octant - z1z);
+						gt_new_task->dz = octant;
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 2: case 5:
+						gt_new_task->steps_to_end = abs(z1z);
 						gt_new_task->dz = abs(z1z);
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 3: case 4:
-						gt_new_task->dx = abs(octant - x1z);
-						gt_new_task->callback_ref = arc_dx_callback;
-						break;
-				}
-			} else {
-//				pos_count =octant;
-				if(current_oct == 0 || current_oct == 3 || current_oct == 4 || current_oct == 7){
-					gt_new_task->dx = octant;
-					gt_new_task->callback_ref = arc_dx_callback;
-				} else{
-					gt_new_task->dz = octant;
-					gt_new_task->callback_ref = arc_dz_callback;
-				}
-
-/*				switch(current_oct){
-					case 0: case 3: case 7: case 4:
+						gt_new_task->steps_to_end = abs(octant - x1z);
 						gt_new_task->dx = octant;
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
-					case 1: case 2: case 5: case 6:
-						gt_new_task->dz = octant;
-						gt_new_task->callback_ref = arc_dz_callback;
-						break;
-				}*/
+				}
+			} else { //middle octant
+			if(cwccw>0){ //cw
+				switch(current_oct){
+					case 1:
+						gt_new_task->dz = octant; break;
+					case 2:
+						gt_new_task->dz = 0; break;
+					case 3:
+						gt_new_task->dx = octant; break;
+				}
+			} else {
+				switch(current_oct){
+					case 6:
+						gt_new_task->dz = octant; break;
+					case 5:
+						gt_new_task->dz = 0; break;
+					case 4:
+						gt_new_task->dx = octant; break;
+				}
+			}
+				//				pos_count =octant;
+				gt_new_task->steps_to_end = octant;
+				if(current_oct == 0 || current_oct == 3 || current_oct == 4 || current_oct == 7){
+//					gt_new_task->dx = octant;
+					gt_new_task->callback_ref = arc_dx_callback;
+				} else{
+//					gt_new_task->dz = octant;
+					gt_new_task->callback_ref = arc_dz_callback;
+				}
 			}
 //inc_dec
 			if(cwccw>0){ //cw
@@ -357,6 +393,7 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 			}
 			gt_new_task->dz = fixedpt_toint2210(gt_new_task->dz);
 			gt_new_task->dx = fixedpt_toint2210(gt_new_task->dx);
+			gt_new_task->steps_to_end = fixedpt_toint2210(gt_new_task->steps_to_end);
 			current_oct +=cwccw;
 			if(current_oct == 255)
 				current_oct = 7;
@@ -597,13 +634,11 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 	for cross octane arc:
 
 				 ^ Z  
-				 |
-				 |
 		 \ 7 | 0 /
 			\  |  /
 			 \ | /       
 			6 \|/ 1
-	 ------0----------->X
+	 ------0------->X
 			5 /|\ 2
 			 / | \
 			/  |  \      

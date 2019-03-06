@@ -324,9 +324,10 @@ void do_fsm_move_start2(state_t* s){
 			
 			load_next_task(); // load first task from queue
 			s->Q824set = s->current_task.F; // load feed value
-			s->steps_to_end = s->current_task.dz > s->current_task.dx ? s->current_task.dz : s->current_task.dx;
+//			s->steps_to_end = s->current_task.dz > s->current_task.dx ? s->current_task.dz : s->current_task.dx;
 //			dzdx_init(int dx, int dz, s);
 			s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
+//			s->current_task.
 			
 			// connect async timer:
 			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
@@ -400,7 +401,7 @@ void do_fsm_move2(state_t* s){
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	set_ARR(s,set_with_fract);
 	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-	s->steps_to_end--;
+	s->current_task.steps_to_end--;
 //  if( --s->steps_to_end == (s->ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
 //		s->function = do_fsm_ramp_down2;
 //	}

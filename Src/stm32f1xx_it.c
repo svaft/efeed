@@ -255,7 +255,7 @@ void TIM2_IRQHandler(void)
 		state.function(&state);
 //		state.syncbase->ARR = state.z_period;
 		state.syncbase->EGR |= TIM_EGR_UG;
-		if(state.steps_to_end == 0){
+		if(state.current_task.steps_to_end == 0){
 			debug();
 			if(task_cb.count == 0){
 				do_fsm_move_end2(&state);
@@ -263,7 +263,7 @@ void TIM2_IRQHandler(void)
 			}
 			load_next_task();
 			state.Q824set = state.current_task.F; // load feed value
-			state.steps_to_end = state.current_task.dz > state.current_task.dx ? state.current_task.dz : state.current_task.dx;
+//			state.steps_to_end = state.current_task.dz > state.current_task.dx ? state.current_task.dz : state.current_task.dx;
 		}
 	}
 

@@ -30,6 +30,7 @@ extern G_pipeline gp[];
 
 typedef struct G_task{
 	int32_t dx, dz; // delta
+	uint32_t steps_to_end;
 	fixedptu F; //Q824
 	callback_func_t callback_ref; //callback ref to iterate line or arc
 	uint8_t z_direction, x_direction;

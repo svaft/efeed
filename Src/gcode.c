@@ -1,30 +1,18 @@
 #include "gcode.h"
-#include "nuts_bolts.h"
 #include "fsm.h"
 
 fixedpt command;
 G_pipeline init_gp={0,0,0,0,0};
 
-G_task * add_empty_task(){
-	cb_push_back_empty(&task_cb);
-	return task_cb.top;
-}
+G_task gt[30];
+G_pipeline gp[30];
+
 
 //__STATIC_INLINE 
-void add_task(int dx, int dz, int feed, int inc_dec, void *ref, uint32_t rr, uint8_t x_dir, uint8_t z_dir ){
-	G_task tmp_gt;
-	tmp_gt.dx = dx;
-	tmp_gt.dz = dz;
-	tmp_gt.F = feed;
-	tmp_gt.inc_dec = inc_dec;
-	tmp_gt.callback_ref = ref;
-	tmp_gt.rr = rr;
-	tmp_gt.x_direction = x_dir;
-	tmp_gt.z_direction = z_dir;
-	cb_push_back(&task_cb, &tmp_gt);
-
-}
-
+//G_task * add_empty_task(){
+//	cb_push_back_empty(&task_cb);
+//	return task_cb.top;
+//}
 
 //__STATIC_INLINE 
 G_task* get_last_task( void ){
@@ -51,6 +39,7 @@ void command_parser(char *line){
 						break;
 					case 38912000: //G95 - is Units per Revolution Mode
 						state.G94G95 = 1;
+//						state.sync = 1;
 						break;
 					case 409600://G1 command packed into 2210_400 format
 						G01parse(line+char_counter);
@@ -112,13 +101,13 @@ G_pipeline* G_parse(char *line){
 				init_gp.K = str_f_to_steps2210(line, &char_counter);
 				break;
 			case 'F':
-				init_gp.F = str_f_to_824(line, &char_counter);
+				init_gp.F = str_f_to_2210(line, &char_counter);
 				break;
 		}
 	}
 
-	cb_push_back(&gp_cb, &init_gp);
-	return gp_cb.top;
+//	cb_push_back(&gp_cb, &init_gp);
+	return &init_gp; //gp_cb.top;
 }
 
 
@@ -157,9 +146,9 @@ uint8_t get_octant(int x0z,int z0z, int octant10){
 
 
 
-void G01parse(char *line){
-	int x0 = init_gp.X; //get from prev gcode
-	int z0 = init_gp.Z;
+void G01parse(char *line){ //~60-70us
+	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
+	int z0 = init_gp.Z & ~1uL<<10;
 	G_pipeline *gref = G_parse(line);
 
 	int dx,dz, xdir,zdir;
@@ -191,38 +180,35 @@ void G01parse(char *line){
 	} else { 											// unit(mm) per min
 		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 	}
-
-	gref->code = 1;
+//	gref->code = 1;
 }
 
 //int xc,zc,r;
 
 
-void G03parse(char *line, int8_t cwccw){
-	int x0 = init_gp.X; //get from prev gcode
-	int z0 = init_gp.Z;
+void G03parse(char *line, int8_t cwccw){ //~130-150us
+	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
+	int z0 = init_gp.Z & ~1uL<<10;
 //	int pos_count; // 1st octant count by X
 	G_pipeline *gref = G_parse(line);
 	gref->code = 3;
-
+//#define SQ64
+	#ifndef SQ64
 	int ii 	= gref->I >> 10, kk = gref->K >> 10; //back from 2210 to steps
-	int rr = SquareRoot(ii*ii + kk*kk); // find arc radius
+	uint32_t rr = SquareRoot(ii*ii + kk*kk); // find arc radius
 	rr *= rr;
 	int octant = SquareRoot(rr >>1) << 10; // find octant value
-//	gref->R	= SquareRoot(ii*ii + kk*kk); // find arc radius
-//	gref->R *= gref->R; // gref->R *= gref->R; // pow2
-//	int octant = SquareRoot(gref->R >>1) << 10; // find octant value
-
- // more preceise 64bit evaluation of R and octant:
-/*
+	#else
+	// more preceise 64bit evaluation of R and octant, 13% slower then 32bit
 	uint64_t ik0 = abs(gref->I);
 	uint64_t ik = ik0*ik0;
 	ik0 = abs(gref->K);
 	ik += ik0*ik0;
 	ik  = SquareRoot64(ik);
 	ik *= ik;
-	uint64_t octant64 = SquareRoot64(ik >>1); // find octant value
-*/
+	uint32_t octant = SquareRoot64(ik >>1); // find octant value
+	uint32_t rr = ik >> 20;
+	#endif
 
 //	int zdelta = -(z0+gref->K); // center delta to shift it to zero 
 //	int xdelta = -(x0+gref->I);
@@ -241,23 +227,32 @@ void G03parse(char *line, int8_t cwccw){
 	if(oct0 == oct1){
 		gt_new_task 		= add_empty_task();
 		gt_new_task->rr = rr;
-		switch(oct0){
-			case 0: case 3: case 7: case 4:
-//				pos_count = abs(x1z - x0z);
-				gt_new_task->dx = abs(x1z - x0z);
-				gt_new_task->callback_ref = arc_dx_callback;
-				break;
-			case 1: case 2: case 5: case 6:
-//				pos_count = abs(z0z - z1z);
-				gt_new_task->dz = abs(z0z - z1z);//pos_count;
-				gt_new_task->callback_ref = arc_dz_callback;
-				break;
+		if(oct0 == 0 || oct0 == 3 || oct0 == 4 || oct0 == 7){
+			gt_new_task->dx = abs(x1z - x0z);
+			gt_new_task->callback_ref = arc_dx_callback;
+		} else{
+			gt_new_task->dz = abs(z0z - z1z);//pos_count;
+			gt_new_task->callback_ref = arc_dz_callback;
 		}
+		int current_oct = oct0;
+		if(cwccw>0){ //cw
+			if(current_oct == 0 || current_oct == 2){
+				gt_new_task->inc_dec = 1;
+			} else {
+				gt_new_task->inc_dec = -1;
+			}
+		} else { //ccw
+			if(current_oct == 7 || current_oct == 5){
+				gt_new_task->inc_dec = 1;
+			} else {
+				gt_new_task->inc_dec = -1;
+			}
+		}
+		
 		// X direction:
-		switch(oct0){
-			case 0: case 1: case 4: case 5:
+		if(oct0 == 0 || oct0 == 1 || oct0 == 4 || oct0 == 5){
 				gt_new_task->x_direction = xdir_forward;
-			case 2: case 3: case 6: case 7:
+		} else{
 				gt_new_task->x_direction = xdir_backward;
 		}
 		gt_new_task->z_direction = zdir_forward;
@@ -276,33 +271,28 @@ void G03parse(char *line, int8_t cwccw){
 			gt_new_task 		= add_empty_task();
 			gt_new_task->rr = rr;
 // X direction
-			switch(current_oct){
-				case 0: case 1: case 4: case 5:
-					gt_new_task->x_direction = xdir_forward; 				break;
-				case 2: case 3: case 6: case 7:
-					gt_new_task->x_direction = xdir_backward;				break;
+			if(oct0 == 0 || oct0 == 1 || oct0 == 4 || oct0 == 5){
+					gt_new_task->x_direction = xdir_forward;
+			} else{
+					gt_new_task->x_direction = xdir_backward;
 			}
 			gt_new_task->z_direction = zdir_forward;
 
 			if(current_oct == oct0){
 				switch(current_oct){
 					case 0: case 7:
-//						pos_count = abs(octant - x0z);
 						gt_new_task->dx = abs(octant - x0z);//pos_count;
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
 					case 1: case 6:
-//						pos_count = abs(z0z);
 						gt_new_task->dz = abs(z0z);//pos_count;
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 2: case 5:
-//						pos_count = abs(octant - z0z);
 						gt_new_task->dz = abs(octant - z0z);
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 3: case 4:
-//						pos_count = abs(x0z);
 						gt_new_task->dx = abs(x0z); //pos_count;
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
@@ -312,24 +302,29 @@ void G03parse(char *line, int8_t cwccw){
 					case 0: case 7:
 						while(1);
 					case 1: case 6:
-//						pos_count = abs(octant - z1z);
 						gt_new_task->dz = abs(octant - z1z);
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 2: case 5:
-//						pos_count = abs(z1z);
 						gt_new_task->dz = abs(z1z);
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
 					case 3: case 4:
-//						pos_count = abs(octant - x1z);
 						gt_new_task->dx = abs(octant - x1z);
 						gt_new_task->callback_ref = arc_dx_callback;
 						break;
 				}
 			} else {
 //				pos_count =octant;
-				switch(current_oct){
+				if(current_oct == 0 || current_oct == 3 || current_oct == 4 || current_oct == 7){
+					gt_new_task->dx = octant;
+					gt_new_task->callback_ref = arc_dx_callback;
+				} else{
+					gt_new_task->dz = octant;
+					gt_new_task->callback_ref = arc_dz_callback;
+				}
+
+/*				switch(current_oct){
 					case 0: case 3: case 7: case 4:
 						gt_new_task->dx = octant;
 						gt_new_task->callback_ref = arc_dx_callback;
@@ -338,9 +333,22 @@ void G03parse(char *line, int8_t cwccw){
 						gt_new_task->dz = octant;
 						gt_new_task->callback_ref = arc_dz_callback;
 						break;
+				}*/
+			}
+//inc_dec
+			if(cwccw>0){ //cw
+				if(current_oct == 0 || current_oct == 2){
+					gt_new_task->inc_dec = 1;
+				} else {
+					gt_new_task->inc_dec = -1;
+				}
+			} else { //ccw
+				if(current_oct == 7 || current_oct == 5){
+					gt_new_task->inc_dec = 1;
+				} else {
+					gt_new_task->inc_dec = -1;
 				}
 			}
-			
 			//feed:
 			if(state.G94G95 == 1){ 	// unit(mm) per rev
 				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);

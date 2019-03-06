@@ -273,7 +273,7 @@ int main(void)
 	memset(&state,0,sizeof(state));
 //	memset(&z_axis,0,sizeof(z_axis));
 	state.function = do_fsm_menu_lps;
-	state.callback = dxdz_callback;
+//	state.callback = dxdz_callback;
 
 
   /* USER CODE END 1 */
@@ -306,7 +306,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-/*
+
 	MX_DMA_Init();
   MX_I2C2_Init();
   MX_TIM1_Init();
@@ -349,10 +349,20 @@ int main(void)
 
 	static const char * const garray[] = {
 		"G90 G94",
-		"G1 X2.828 F1",
+//		"G1 X2.828 F1",
+//		"G1 X.05 F600",
+
+"G1 X0. Z-1. F600",
+"X2.205",
+"G3 X6.205 Z-3. K-2.",
+		
+		
+//		"G1 X41.507 Z-11.713",
+//		"G2 X41.114 Z-11.945 I7.843 K-6.843",
+
 		"X0. Z-1",
-		"X30.",
-		"G3 X40. Z-6 K-5",
+		"X3.",
+		"G3 X4. Z-6 K-5",
 		"G1 Z-11.056",
 		"G2 Z-26.056 I8.597 K-7.5",
 
@@ -364,7 +374,13 @@ int main(void)
 //"X40.822 Z-31.132",
 	};
 
-	
+//	LL_mDelay(100);
+	for(int a = 0; a < 4; a++ ){
+//		debug();
+		command_parser((char *)garray[a]);
+	}
+//			debug();
+
 	
 	
 	static const char * shape1[] = {
@@ -426,14 +442,10 @@ int main(void)
 		"G1 X50.828 Z-99.659",
 		"X55.068"
 	};
-	for(int a = 0; a < 10; a++ ){
-		command_parser((char *)garray[a]);
-//		process_G_pipeline();
-	}
 
-	return 0;
+//	return 0;
 
-
+{
   /* Enable DMA TX Interrupt */
   LL_USART_EnableDMAReq_TX(USART2);
   /* Enable DMA Channel Tx */
@@ -566,6 +578,10 @@ int main(void)
 //	LL_mDelay(5);
 //	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 	LED_GPIO_Port->BSRR = LED_Pin; // led off
+	
+}
+	debug();
+	do_fsm_move_start2(&state);
 	while (1) {
     /* USER CODE END WHILE */
 
@@ -574,7 +590,7 @@ int main(void)
 //		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
 #endif		
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
-		process_G_pipeline();
+//		process_G_pipeline();
 		process_button();
 //		process_joystick();
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);

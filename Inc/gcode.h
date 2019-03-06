@@ -7,7 +7,7 @@
 #define GCODE_H_
 
 #include "main.h"
-
+#include "nuts_bolts.h"
 void command_parser(char *line);
 
 void G01parse(char *line);
@@ -16,6 +16,8 @@ void G01parse(char *line);
 void G03parse(char *line, int8_t cwccw);
 void G33parse(char *line);
 void G00parse(char *line);
+
+typedef void (*callback_func_t)(void);
 
 
 typedef struct G_pipeline{
@@ -29,7 +31,7 @@ extern G_pipeline gp[];
 typedef struct G_task{
 	int32_t dx, dz; // delta
 	fixedptu F; //Q824
-	void *callback_ref; //callback ref to iterate line or arc
+	callback_func_t callback_ref; //callback ref to iterate line or arc
 	uint8_t z_direction, x_direction;
 	int rr, inc_dec;
 } G_task;
@@ -38,7 +40,13 @@ extern G_task gt[];
 
 void process_G_pipeline(void);
 
-G_task* add_empty_task(void);
+__STATIC_INLINE 
+G_task * add_empty_task(){
+	cb_push_back_empty(&task_cb);
+	return task_cb.top;
+}
+
+//G_task* add_empty_task(void);
 void add_task(int dx, int dz, int feed, int inc_dec, void *ref, uint32_t rr, uint8_t x_dir, uint8_t z_dir );
 G_task* get_last_task( void );
 

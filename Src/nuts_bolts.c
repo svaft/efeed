@@ -1,5 +1,7 @@
 #include "nuts_bolts.h"
 
+circular_buffer gp_cb;
+circular_buffer task_cb;
 
 void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref){
     cb->buffer = ref;
@@ -99,99 +101,125 @@ int str_f_to_824(char *line, uint8_t *char_counter){
 
 //fixedptu strto824(char *str) //, char **endptr)
 //{
-    uint32_t ten = 0;
-    fixedpt t824 = 0;
-    fixedptu number = 0;
-    bool negative = false;
-    char c;
-    while ((c = *str) != 0) {
-        if (c >= '0' && c <= '9')   {
-            number = number * 10 + (c - '0');
-            ten++;
-        } 
-        else if (c == '-')  {
-            negative = true;
-        }
-        else if (c == '.') {
-            t824 = fixedpt_fromint(number);
-            ten = 0;
-            number = 0;
-        } else break;
-        str++;
-    }
+	uint32_t ten = 0;
+	fixedpt t824 = 0;
+	fixedptu number = 0;
+	bool negative = false;
+	bool fract = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9') {
+			if(fract==false){
+					number = number * 10 + (c - '0');
+			} else{
+					if(ten<3){
+							number = number * 10 + (c - '0');
+					}
+					ten++;
+			}
+		} else if (c == '-')  {
+				negative = true;
+		}
+		else if (c == '.') {
+			t824 = fixedpt_fromint(number);
+			fract = true;
+			ten = 0;
+			number = 0;
+		} else break;
+		str++;
+	}
 
 //    if (endptr != 0) *endptr = (char *)str;
-    switch(ten){
-        case 1:{
-            number *= 1677721; // div 10
-            break;
-        }
-        case 2:{
-            number *= 167772; // div 100
-            break;
-        }
-        case 3:{
-            number *= 16777; // div 1000
-            break;
-        }
-    }
+	if(fract == true){
+		switch(ten){
+				case 1:{
+						number *= 1677721; // div 10
+						break;
+				}
+				case 2:{
+						number *= 167772; // div 100
+						break;
+				}
+				case 3:{
+						number *= 16777; // div 1000
+						break;
+				}
+		}
+		t824 |= number;//fixedpt_xdiv(number,ten);
+	} else {
+		t824 = fixedpt_fromint(number);
+	}
 
 	*char_counter = str - line - 1; // Set char_counter to next statement
-    t824 |= number;//fixedpt_xdiv(number,ten);
-    if (negative) return -t824;
-    else return t824;
+	if (negative) return -t824;
+	else return t824;
 }
 
 
-fixedpt strto2210(const char *str, char **endptr)
-{
-    uint32_t ten = 0;
-    fixedpt t2210 = 0;
-    fixedptu number = 0;
-    bool negative = false;
-    char c;
-    while ((c = *str) != 0) {
-        if (c >= '0' && c <= '9')   {
-            number = number * 10 + (c - '0');
-            ten++;
-        } 
-        else if (c == '-')  {
-            negative = true;
-        }
-        else if (c == '.') {
-            t2210 = fixedpt_fromint2210(number);
-            ten = 0;
-            number = 0;
-        } else break;   
-        str++;
-    }
+int str_f_to_2210(char *line, uint8_t *char_counter){
+  char *str = line + *char_counter;
+	uint32_t ten = 0;
+	fixedpt t2210 = 0;
+	fixedptu number = 0;
+	bool negative = false;
+	bool fract = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9') {
+			if(fract==false){
+					number = number * 10 + (c - '0');
+			} else{
+					if(ten<3){
+							number = number * 10 + (c - '0');
+					}
+					ten++;
+			}
+		} else if (c == '-')  {
+				negative = true;
+		}
+		else if (c == '-')  {
+				negative = true;
+		}
+		else if (c == '.') {
+				t2210 = fixedpt_fromint2210(number);
+				ten = 0;
+				number = 0;
+		} else break;   
+		str++;
+	}
 
-    if (endptr != 0) *endptr = (char *)str;
-    switch(ten){
-        case 1:{
-            number *= 1677721; // div 10
-            break;
-        }
-        case 2:{
-            number *= 167772; // div 100
-            break;
-        }
-        case 3:{
-            number *= 16777; // div 1000
-            break;
-        }
-    }
+	if(fract == true) {
+		switch(ten){
+				case 1:{
+						number *= 1677721; // div 10
+						break;
+				}
+				case 2:{
+						number *= 167772; // div 100
+						break;
+				}
+				case 3:{
+						number *= 16777; // div 1000
+						break;
+				}
+		}
+		t2210 |= number;//fixedpt_xdiv(number,ten);
+	} else {
+		t2210 = fixedpt_fromint2210(number);
+	}
 
-    t2210 |= number;//fixedpt_xdiv(number,ten);
-    if (negative) return -t2210;
-    else return t2210;
+	if (negative) return -t2210;
+	else return t2210;
 }
 
 
 
-int str_f_inch_to_steps2210(const char *str, char **endptr){
+//int str_f_inch_to_steps2210(const char *str, char **endptr){
+int str_f_inch_to_steps2210(char *line, uint8_t *char_counter){
+  char *str = line + *char_counter;
+
 // minimum processed value is 0.0001inch
-    #define steps_per_inch_Z_2210   254*40*1024 //
+    #define steps_per_inch_Z_2210   254*40*1024
 
     uint8_t ten = 0;
     fixedpt t2210 = 0;
@@ -220,8 +248,10 @@ int str_f_inch_to_steps2210(const char *str, char **endptr){
         }   
         str++;
     }
-    if (endptr != 0) *endptr = (char *)str;
+//    if (endptr != 0) *endptr = (char *)str;
 
+	*char_counter = str - line - 1; // Set char_counter to next statement
+	if (fract == true){
     switch(ten){
         case 1:{ // if only one fract didgit in g-code
             number *= 1000;
@@ -236,7 +266,6 @@ int str_f_inch_to_steps2210(const char *str, char **endptr){
             break;
         }
     }
-
     /* some explanations:
     number contains fract part*10000, ie when 0.9999inch = 9999.
     translate in to 25.4*10, = 9999*254
@@ -254,6 +283,9 @@ int str_f_inch_to_steps2210(const char *str, char **endptr){
     */
 //  t2210 += ((number<<10)*127/125);
     t2210 += ((number*8323)>>3);
+	} else {
+		t2210 = number; //steps_per_unit_Z_2210 already in 2210 format
+	}
     if (negative) return -t2210;
     else return t2210;
 }
@@ -306,8 +338,8 @@ int str_f_to_steps2210(char *line, uint8_t *char_counter){
 			}
 		}
 
-//		t2210 += ((number << 10) * 400 / 1000);
-		t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
+		t2210 += ((number << 12) / 10); //		t2210 += ((number << 10) * 400 / 1000);
+//		t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
 	} else {
 		t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
 	}

@@ -10,10 +10,6 @@
 #define steps_z 30
 #define steps_x 1
 
-circular_buffer gp_cb;
-circular_buffer task_cb;
-G_task gt[30];
-G_pipeline gp[30];
 bool g_lock = false;
 
 /**
@@ -297,6 +293,56 @@ void do_fsm_move_start(state_t* s){
 }
 
 
+void do_fsm_move_start2(state_t* s){
+	bool f_tacho = t4sr[TIM_SR_CC3IF_Pos];
+	if(s->sync && !f_tacho){
+		s->syncbase = TIM4;
+		LL_TIM_EnableIT_CC3(s->syncbase);
+		LL_TIM_EnableUpdateEvent(s->syncbase);
+		s->function = do_fsm_move_start;// return here from interrupt when TACHO event
+		// enable and wait tacho event on spindle encoder
+		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+		//		LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
+//		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+		return;
+	}
+
+	if(f_tacho || !s->sync) { // if tacho event or we going to start back feed to initial position with async clock
+		s->function = do_fsm_move2;
+		if(s->sync && f_tacho) {
+			LL_TIM_DisableIT_CC3(s->syncbase);
+			LL_TIM_CC_DisableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// disable TACHO events on channel 3
+			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
+			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+			TIM3->ARR = min_pulse;
+			LL_TIM_GenerateEvent_UPDATE(TIM3);
+			set_ARR(s,(uint32_t)255<<24);
+			// enable update inerrupt:
+			LL_TIM_EnableIT_UPDATE(s->syncbase); //enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
+			LL_TIM_GenerateEvent_UPDATE(s->syncbase); /* Force update generation */
+		} else {
+			
+			load_next_task(); // load first task from queue
+			s->Q824set = s->current_task.F; // load feed value
+			s->steps_to_end = s->current_task.dz > s->current_task.dx ? s->current_task.dz : s->current_task.dx;
+//			dzdx_init(int dx, int dz, s);
+			s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
+			
+			// connect async timer:
+			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by spindle encoder timer TIM4(sync mode)
+			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+			TIM3->ARR = min_pulse;
+			LL_TIM_GenerateEvent_UPDATE(TIM3);
+			s->syncbase->CNT = 0;
+			set_ARR(s,10<<24);
+			LL_TIM_EnableCounter(s->syncbase);
+		}
+		LL_TIM_EnableUpdateEvent(s->syncbase);
+	}	
+}
+
+
 void do_fsm_ramp_up(state_t* s){
 //	debug();
 	s->current_pos++;
@@ -354,9 +400,10 @@ void do_fsm_move2(state_t* s){
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	set_ARR(s,set_with_fract);
 	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-  if( --s->steps_to_end == (s->ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
-		s->function = do_fsm_ramp_down2;
-	}
+	s->steps_to_end--;
+//  if( --s->steps_to_end == (s->ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
+//		s->function = do_fsm_ramp_down2;
+//	}
 }
 void do_fsm_ramp_down2(state_t* s){
 //	debug();
@@ -585,71 +632,9 @@ fixedptu f;
 G_pipeline current_code;
 G_pipeline prev_code;
 
-void process_G_pipeline(void){//переименовать в recalculate
-	if(gp_cb.count == 0)/* todo убрать, переделать на асинхронные вызовы. здесь оставить только парсинг и подготовку
-		переменных и структур для конвеера в прерываниях:
-	вычислить направление
-	определить по какой оси шагаем
-	вычислить скорость подачи
-	вычислить угол между векторами предыдущего шага и текущего
-		*/
-		return;
-	cb_pop_front(&gp_cb, &current_code);
 
-//	G_task *gt_last_task 	= get_last_task();
-	G_task *gt_new_task 	= add_empty_task();
-	
-	
-	int dx,dz, xdir,zdir, rr;
-	if(current_code.Z > prev_code.Z){ // go from left to right
-		dz = current_code.Z - prev_code.Z;
-		zdir = zdir_forward;
-	} else { // go back from right to left
-		dz = prev_code.Z - current_code.Z;
-		zdir = zdir_backward;
-	}
-	if(current_code.X > prev_code.X){ // go forward
-		dx = current_code.X - prev_code.X;
-		xdir = xdir_forward;
-	} else { // go back
-		dx = prev_code.X - current_code.X;
-		xdir = xdir_backward;
-	}
-//	state.state_Z = current_code.Z & ~1uL<<10; // drop fract part when store
-//	state.state_X = current_code.X & ~1uL<<10;
-	gt_new_task->dz = fixedpt_toint2210(dz);
-	gt_new_task->dx = fixedpt_toint2210(dx);
-//	gt_new_task->rr = current_code.R;
-// calculate cos between vectors todo
-
-	// calculate feed:
-	if(current_code.code == 33){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(current_code.F);
-	} else { 											// unit(mm) per min
-		gt_new_task->F = str_f824mm_min_to_delay824(current_code.F);
-	}
-	
-// save calculated abs coordinates for using on next step
-	prev_code.X = current_code.X;
-	prev_code.Z = current_code.Z;
-	
-	debug();
-	switch(current_code.code){
-		case 0:
-			state.Q824set = 0x048E9E1B; //todo max feedrate here
-//			G01(x,z,current_code.feed);
-			break;
-		case 1:
-//			G01(x,z,current_code.feed);
-			break;
-		case 33:
-//			G33(x,z,current_code.feed);
-			break;
-	}
-}
-
-
-void arc_dx_callback(state_t *s){
+void arc_dx_callback(){
+	state_t *s = &state;
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 	int dz = SquareRoot(s->current_task.rr - s->current_task.dx * s->current_task.dx);
@@ -660,7 +645,8 @@ void arc_dx_callback(state_t *s){
 	s->current_task.dx += s->current_task.inc_dec;
 }
 
-void arc_dz_callback(state_t *s){
+void arc_dz_callback(){
+	state_t *s = &state;
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 	int dx = SquareRoot(s->current_task.rr - s->current_task.dz * s->current_task.dz);
@@ -671,7 +657,8 @@ void arc_dz_callback(state_t *s){
 	s->current_task.dz += s->current_task.inc_dec;
 }
 
-void dxdz_callback(state_t* s){
+void dxdz_callback(){
+	state_t *s = &state;
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int e2 = s->err;
 	if (e2 > -s->current_task.dx)	{ // step X axis

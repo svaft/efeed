@@ -12,7 +12,6 @@
 
 struct state;
 typedef void (*state_func_t)( struct state* );
-typedef void (*callback_func_t)( struct state* );
 
 typedef struct state
 {
@@ -23,12 +22,11 @@ typedef struct state
 	uint32_t Q824set; // feed rate
 	uint32_t fract_part; // Q8.24 format fract part
 	
+	G_task current_task;
 	bool G94G95; // 0 - unit per min, 1 - unit per rev
 	
-	G_task current_task;
-
   state_func_t function;
-  callback_func_t callback;
+//  callback_func_t callback;
 	uint32_t async_z;
 	uint8_t z_period;
 	bool f_encoder;
@@ -112,9 +110,9 @@ void dzdx_init(int dx, int dz, state_t* s);
 
 
 
-void arc_dx_callback(state_t*);// arc movement callback
-void arc_dz_callback(state_t*); // arc movement callback
-void dxdz_callback(state_t* s); // line movement callback
+void arc_dx_callback(void);// arc movement callback
+void arc_dz_callback(void); // arc movement callback
+void dxdz_callback(void); // line movement callback
 
 // TIM3->CCER register bitbang access:
 #define t3ccer			((uint32_t *)((0x42000000  + ((0x40000420)-0x40000000)*32)))

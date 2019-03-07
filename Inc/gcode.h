@@ -21,7 +21,7 @@ typedef void (*callback_func_t)(void);
 
 
 typedef struct G_pipeline{
-	int X,Z,F; //general variables
+	int X,Z,F,P; //general registers
 	int I,K; //for arc
 	bool sync;
 	uint8_t code;
@@ -33,6 +33,7 @@ typedef struct G_task{
 	uint32_t steps_to_end;
 	fixedptu F; //Q824
 	callback_func_t callback_ref; //callback ref to iterate line or arc
+	callback_func_t init_callback_ref;
 	uint8_t z_direction, x_direction;
 	int rr, inc_dec;
 } G_task;
@@ -40,7 +41,7 @@ extern G_task gt[];
 
 
 void process_G_pipeline(void);
-
+G_pipeline* G_parse(char *line);
 __STATIC_INLINE 
 G_task * add_empty_task(){
 	cb_push_back_empty(&task_cb);

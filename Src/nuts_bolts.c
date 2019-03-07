@@ -181,6 +181,7 @@ int str_f_to_2210(char *line, uint8_t *char_counter){
 				negative = true;
 		}
 		else if (c == '.') {
+				fract = true;
 				t2210 = fixedpt_fromint2210(number);
 				ten = 0;
 				number = 0;
@@ -203,6 +204,7 @@ int str_f_to_2210(char *line, uint8_t *char_counter){
 						break;
 				}
 		}
+		number >>=14;
 		t2210 |= number;//fixedpt_xdiv(number,ten);
 	} else {
 		t2210 = fixedpt_fromint2210(number);

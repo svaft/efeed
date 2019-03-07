@@ -20,6 +20,18 @@ G_task* get_last_task( void ){
 }
 
 
+void G04parse(char *line){
+  uint8_t char_counter = 0;  
+	G_pipeline *gref = G_parse(line);
+
+	G_task *gt_new_task = add_empty_task();
+	
+	gt_new_task->steps_to_end = (gref->P * 1000) >> 10;
+	gt_new_task->callback_ref = dwell_callback;
+	gt_new_task->init_callback_ref = P04init_callback;
+}
+
+
 void command_parser(char *line){
   uint8_t char_counter = 0;  
 	char letter;
@@ -31,6 +43,9 @@ void command_parser(char *line){
 				command = str_f_to_steps2210(line, &char_counter);
 				switch(command){
 					//todo now its only one G command per line supported
+					case 4*400*1024: //G4 dwell, pause P seconds
+						G04parse(line+char_counter);
+						break;
 					case 36864000: //G90  absolute distance mode
 						
 						break;
@@ -68,6 +83,10 @@ void command_parser(char *line){
 						return;	
 				}
 				break;
+			case 'F':
+				init_gp.F = str_f_to_2210(line, &char_counter);
+
+				break;
 // repeat same command				
 						
 		}
@@ -102,6 +121,9 @@ G_pipeline* G_parse(char *line){
 				break;
 			case 'F':
 				init_gp.F = str_f_to_2210(line, &char_counter);
+				break;
+			case 'P':
+				init_gp.P = str_f_to_2210(line, &char_counter);
 				break;
 		}
 	}

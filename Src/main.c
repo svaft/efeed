@@ -348,13 +348,20 @@ int main(void)
 //	debug();
 
 	static const char * const garray[] = {
-		"G90 G94",
+		"G90 G94 F600",
 //		"G1 X2.828 F1",
 //		"G1 X.05 F600",
+"G1 X0.02 Z0.",
+"G4 P.01",
+"G3 X2.3 Z-1.15 I-0.01 K-1.15",
 
-"G1 X0. Z-1. F600",
-"X2.205",
-"G3 X6.205 Z-3. K-2.",
+//		"G1 X1.951 Z0. F600",
+//		"Z-0.28",
+//		"G3 X2.81 Z-1.2 I-0.77 K-0.92",
+		
+//"G1 X0. Z-1. F600",
+//"X2.205",
+//"G3 X6.205 Z-3. K-2.",
 		
 		
 //		"G1 X41.507 Z-11.713",
@@ -581,7 +588,10 @@ int main(void)
 	
 }
 	debug();
+	G94(&state);
+//	LL_mDelay(100);
 	do_fsm_move_start2(&state);
+	debug();
 	while (1) {
     /* USER CODE END WHILE */
 

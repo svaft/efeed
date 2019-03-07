@@ -293,54 +293,53 @@ void do_fsm_move_start(state_t* s){
 }
 
 
-void do_fsm_move_start2(state_t* s){
-	bool f_tacho = t4sr[TIM_SR_CC3IF_Pos];
-	if(s->sync && !f_tacho){
-		s->syncbase = TIM4;
-		LL_TIM_EnableIT_CC3(s->syncbase);
-		LL_TIM_EnableUpdateEvent(s->syncbase);
-		s->function = do_fsm_move_start;// return here from interrupt when TACHO event
-		// enable and wait tacho event on spindle encoder
-		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
-		//		LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
-//		LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-		return;
-	}
+void G94(state_t* s){
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
-	if(f_tacho || !s->sync) { // if tacho event or we going to start back feed to initial position with async clock
-		s->function = do_fsm_move2;
-		if(s->sync && f_tacho) {
-			LL_TIM_DisableIT_CC3(s->syncbase);
-			LL_TIM_CC_DisableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// disable TACHO events on channel 3
-			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
-			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-			TIM3->ARR = min_pulse;
-			LL_TIM_GenerateEvent_UPDATE(TIM3);
-			set_ARR(s,(uint32_t)255<<24);
-			// enable update inerrupt:
-			LL_TIM_EnableIT_UPDATE(s->syncbase); //enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
-			LL_TIM_GenerateEvent_UPDATE(s->syncbase); /* Force update generation */
-		} else {
-			
-			load_next_task(); // load first task from queue
-			s->Q824set = s->current_task.F; // load feed value
-//			s->steps_to_end = s->current_task.dz > s->current_task.dx ? s->current_task.dz : s->current_task.dx;
-//			dzdx_init(int dx, int dz, s);
-			s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
-//			s->current_task.
-			
-			// connect async timer:
-			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
-			LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by spindle encoder timer TIM4(sync mode)
-			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-			TIM3->ARR = min_pulse;
-			LL_TIM_GenerateEvent_UPDATE(TIM3);
-			s->syncbase->CNT = 0;
-			set_ARR(s,10<<24);
-			LL_TIM_EnableCounter(s->syncbase);
-		}
-		LL_TIM_EnableUpdateEvent(s->syncbase);
-	}	
+	LL_TIM_DisableCounter(TIM2); // pause async timer
+	LL_TIM_DisableUpdateEvent(TIM2);
+
+	
+//	s->function = do_fsm_move2;
+//	load_next_task(); // load first task from queue
+//	s->Q824set = s->current_task.F; // load feed value
+//	s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
+	// connect async timer:
+	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
+	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+	TIM3->ARR = min_pulse;
+	LL_TIM_DisableIT_UPDATE(TIM3);
+	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr
+
+	TIM2->CNT = 0;
+//	set_ARR(s,10<<24);
+//	LL_TIM_EnableCounter(TIM2);
+//	LL_TIM_EnableUpdateEvent(TIM2);
+}
+
+
+void do_fsm_move_start2(state_t* s){
+	s->function = do_fsm_move2;
+	load_next_task(); // load first task from queue
+
+	// connect async timer:
+//	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+//	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by spindle encoder timer TIM4(sync mode)
+//	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+//	TIM3->ARR = min_pulse;
+//	LL_TIM_GenerateEvent_UPDATE(TIM3);
+
+//	LL_TIM_GenerateEvent_UPDATE(TIM3);
+//	LL_TIM_GenerateEvent_UPDATE(TIM3);
+
+	s->syncbase->CNT = 0;
+	s->syncbase->ARR = 1;
+//	set_ARR(s,1<<24);
+	LL_TIM_EnableIT_UPDATE(TIM3);
+	LL_TIM_EnableUpdateEvent(s->syncbase);
+	LL_TIM_EnableCounter(s->syncbase);
+	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
 }
 
 
@@ -372,7 +371,13 @@ void do_fsm_ramp_up(state_t* s){
 
 void load_next_task(){
 	cb_pop_front(&task_cb, &state.current_task);
+	if(state.current_task.init_callback_ref){
+		state.current_task.init_callback_ref(); // task specific init
+	}
+	state.Q824set = state.current_task.F; // load feed value
 }
+
+
 void do_fsm_ramp_up2(state_t* s){
 //	debug();
 	s->steps_to_end--;
@@ -657,6 +662,27 @@ void arc_dz_callback(){
 	}
 	s->current_task.dz += s->current_task.inc_dec;
 }
+
+
+void P04init_callback(void){
+	state.function = do_fsm_dwell;
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED); // disable pulse generation
+	TIM2->ARR = 30;
+}
+
+void do_fsm_dwell(state_t *s){
+	// callback from TIM2
+	state.current_task.steps_to_end--;
+	if(state.current_task.steps_to_end == 0)
+			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+
+}
+
+void dwell_callback(void){
+// callback from TIM3
+//	while(1);
+}
+
 
 void dxdz_callback(){
 	state_t *s = &state;

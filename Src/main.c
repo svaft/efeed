@@ -477,11 +477,17 @@ int main(void)
 //  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
 //	TIM3->SR = 0;
 //	TIM2->SR = 0;
+
+
+/*
 	TIM3->ARR = 0;
 	LL_TIM_GenerateEvent_UPDATE(TIM3);
 	LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	TIM3->SR = 0;
 	LL_TIM_EnableIT_UPDATE(TIM3);
+*/
+
+
 
 //	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 
@@ -588,6 +594,15 @@ int main(void)
 	
 }
 	debug();
+//	TIM3->ARR = min_pulse;
+//	LL_TIM_DisableIT_UPDATE(TIM3);
+//	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
+//	plotOptimizedEllipse(0,0,460,690);
+	int64_t x0 = -7, z0 = 0;
+	plotEllipse(x0, z0, (int64_t)7,(int64_t)4);
+
+
+debug();
 	G94(&state);
 //	LL_mDelay(100);
 	do_fsm_move_start2(&state);
@@ -598,7 +613,6 @@ int main(void)
     /* USER CODE BEGIN 3 */
 #ifndef _SIMU		
 //		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
-#endif		
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 //		process_G_pipeline();
 		process_button();
@@ -633,6 +647,8 @@ int main(void)
 		if(menu_changed == 1){ // haltodo && hi2c2.hdmatx->State == HAL_DMA_STATE_READY) {
 			menu_changed = update_screen();
 		}
+#endif		
+		
 	}
   /* USER CODE END 3 */
 }

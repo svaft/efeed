@@ -251,21 +251,16 @@ void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
-//	if(TIM3->SMCR == 0x16) { // TIM3 connected to TIM2 as SLAVE
 		state.function(&state);
-//		state.syncbase->ARR = state.z_period;
-		state.syncbase->EGR |= TIM_EGR_UG;
+//	TIM2->EGR |= TIM_EGR_UG;
 		if(state.current_task.steps_to_end == 0){
-			debug();
+//			debug();
 			if(task_cb.count == 0){
 				do_fsm_move_end2(&state);
 				return;
 			}
 			load_next_task();
-//			state.steps_to_end = state.current_task.dz > state.current_task.dx ? state.current_task.dz : state.current_task.dx;
 		}
-//	}
-
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
   /* Check whether update interrupt is pending */
@@ -285,19 +280,11 @@ void TIM2_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
-/*
-TODO
-	dxdz_callback вызывается для линий, для дуг будет свой алгоритм интерполяции и соответственно свой callback
-	так же вот здесь баг TIM3->SMCR == 0x16 т.к. привязаны мжем быть и к TIM4(sync with spindle)
-	*/	
-	if(state.current_task.callback_ref)
+	if(state.current_task.callback_ref){
 		state.current_task.callback_ref();
-//	if(TIM3->SMCR == 0x16) { // TIM3 connected to TIM2 as SLAVE
-//		state.current_task.callback_ref();
-//		dxdz_callback(&state);
-//	}
+	}
 	TIM3->SR = 0;
-	
+
   /* USER CODE END TIM3_IRQn 0 */
   /* USER CODE BEGIN TIM3_IRQn 1 */
 

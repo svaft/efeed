@@ -492,6 +492,21 @@
               <FileType>1</FileType>
               <FilePath>..\Src\nuts_bolts.c</FilePath>
             </File>
+            <File>
+              <FileName>g01.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\g01.c</FilePath>
+            </File>
+            <File>
+              <FileName>g03.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\g03.c</FilePath>
+            </File>
+            <File>
+              <FileName>g04.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\g04.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

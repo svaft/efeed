@@ -5,7 +5,74 @@ fixedpt command;
 G_pipeline init_gp={0,0,0,0,0};
 
 G_task gt[30];
-G_pipeline gp[30];
+G_pipeline gp[10];
+
+
+void load_next_task(){
+	cb_pop_front(&task_cb, &state.current_task);
+	if(state.current_task.init_callback_ref){
+		state.current_task.init_callback_ref(); // task specific init
+	}
+	state.Q824set = state.current_task.F; // load feed value
+}
+
+void G94(state_t* s){
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+
+	LL_TIM_DisableCounter(TIM2); // pause async timer
+	LL_TIM_DisableUpdateEvent(TIM2);
+	// connect async timer:
+	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+//	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
+
+	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
+	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+//	TIM3->ARR = min_pulse;
+//	LL_TIM_DisableIT_UPDATE(TIM3);
+//	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
+}
+
+void do_fsm_move_start2(state_t* s){
+	load_next_task(); // load first task from queue
+	
+//	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
+	s->syncbase->ARR = 1;
+	s->syncbase->CNT = 1; // set ARR=CNT to start pulse generation on next count increment after EnableCounter.
+	// disclamer: why not to generate	update event by setting in EGR UG bit? with hardware logic analyzer all works fine,
+	// but in simulator this first pulse not generater propertly by UG
+	
+	LL_TIM_ClearFlag_UPDATE(TIM3);
+	LL_TIM_EnableIT_UPDATE(TIM3);
+	LL_TIM_EnableUpdateEvent(s->syncbase);
+	LL_TIM_EnableCounter(s->syncbase);
+
+	LL_TIM_DisableIT_UPDATE(TIM2);
+	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
+	LL_TIM_ClearFlag_UPDATE(TIM2);
+	LL_TIM_EnableIT_UPDATE(TIM2);
+}
+
+void do_fsm_move2(state_t* s){
+	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
+	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;
+	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	s->current_task.steps_to_end--;
+}
+
+
+void do_fsm_move_end2(state_t* s){
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+
+	if (s->sync) {
+		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
+		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+	} else {
+		LL_TIM_DisableCounter(s->syncbase); // pause async timer
+	}
+	LL_TIM_DisableIT_UPDATE(s->syncbase);
+
+	LL_TIM_DisableUpdateEvent(s->syncbase);
+}
 
 
 //__STATIC_INLINE 
@@ -19,17 +86,6 @@ G_task* get_last_task( void ){
 	return (G_task *)task_cb.top;
 }
 
-
-void G04parse(char *line){
-  uint8_t char_counter = 0;  
-	G_pipeline *gref = G_parse(line);
-
-	G_task *gt_new_task = add_empty_task();
-	
-	gt_new_task->steps_to_end = (gref->P * 1000) >> 10;
-	gt_new_task->callback_ref = dwell_callback;
-	gt_new_task->init_callback_ref = P04init_callback;
-}
 
 
 void command_parser(char *line){
@@ -133,541 +189,8 @@ G_pipeline* G_parse(char *line){
 }
 
 
-uint8_t get_octant(int x0z,int z0z, int octant10){
-	if(x0z>=0){								//0,1,2,3
-		if(x0z < octant10){			//0,3
-			if(z0z>0){ 						//oct0
-				return 0;
-			} else{ 							//oct3
-				return 3;
-			}
-		} else { 								//1,2
-			if(z0z>=0){ 						//oct1
-				return 1;
-			} else{ 							//oct2
-				return 2;
-			}
-		}
-	} else { //4,5,6,7
-		if(x0z > -octant10){			//4,7
-			if(z0z>0){ 						//oct7
-				return 7;
-			} else{ 							//oct4
-				return 4;
-			}
-		} else { 								//5,6
-			if(z0z>0){ 						//oct6
-				return 6;
-			} else{ 							//oct5
-				return 5;
-			}
-		}
-	}
-}
-
-
-
-
-void G01parse(char *line){ //~60-70us
-	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
-	int z0 = init_gp.Z & ~1uL<<10;
-	G_pipeline *gref = G_parse(line);
-
-	int dx,dz, xdir,zdir;
-	if(gref->Z > z0){ // go from left to right
-		dz = gref->Z - z0;
-		zdir = zdir_forward;
-	} else { // go back from right to left
-		dz = z0 - gref->Z;
-		zdir = zdir_backward;
-	}
-	if(gref->X > x0){ // go forward
-		dx = gref->X - x0;
-		xdir = xdir_forward;
-	} else { // go back
-		dx = x0 - gref->X;
-		xdir = xdir_backward;
-	}
-	G_task *gt_new_task = add_empty_task();
-	gt_new_task->callback_ref = dxdz_callback;
-	gt_new_task->dx =  fixedpt_toint2210(dx);
-	gt_new_task->dz =  fixedpt_toint2210(dz);
-	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
-	gt_new_task->x_direction = xdir;
-	gt_new_task->z_direction = zdir;
-
-//		bool G94G95; // 0 - unit per min, 1 - unit per rev
-	if(state.G94G95 == 1){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
-	} else { 											// unit(mm) per min
-		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
-	}
-//	gref->code = 1;
-}
-
-//int xc,zc,r;
 
 
 
 
 
-/**
-* @brief  G33 parse to tasks
-* @retval void.
-  */
-void G03parse(char *line, int8_t cwccw){ //~130-150us
-	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
-	int z0 = init_gp.Z & ~1uL<<10;
-//	int pos_count; // 1st octant count by X
-	G_pipeline *gref = G_parse(line);
-	gref->code = 3;
-//#define SQ64
-	#ifndef SQ64
-	int ii 	= gref->I >> 10, kk = gref->K >> 10; //back from 2210 to steps
-	uint32_t rr = SquareRoot(ii*ii + kk*kk); // find arc radius
-	rr *= rr;
-	int octant = SquareRoot(rr >>1) << 10; // find octant value
-	#else
-	// more preceise 64bit evaluation of R and octant, 13% slower then 32bit
-	uint64_t ik0 = abs(gref->I);
-	uint64_t ik = ik0*ik0;
-	ik0 = abs(gref->K);
-	ik += ik0*ik0;
-	ik  = SquareRoot64(ik);
-	ik *= ik;
-	uint32_t octant = SquareRoot64(ik >>1); // find octant value
-	uint32_t rr = ik >> 20;
-	#endif
-
-//	int zdelta = -(z0+gref->K); // center delta to shift it to zero 
-//	int xdelta = -(x0+gref->I);
-
-	int x0z = -gref->I; //x0+xdelta;
-	int z0z = -gref->K; //z0+zdelta;
-	int x1z = gref->X - x0 - gref->I;
-	int z1z = gref->Z - z0 - gref->K;
-
-	int oct0 = get_octant(x0z, z0z, octant);
-	int oct1 = get_octant(x1z, z1z, octant);
-
-//	pos_count = 0;
-	G_task *gt_new_task;
-/*
-				 ^ Z  
-		 \ 7 | 0 /
-			\  |  /
-			 \ | /       
-			6 \|/ 1
-	 ------0------->X
-			5 /|\ 2
-			 / | \
-			/  |  \      
-		 / 4 | 3 \
-*/
-	if(oct0 == oct1){
-		gt_new_task 		= add_empty_task();
-		gt_new_task->rr = rr;
-		int current_oct = oct0;
-
-		if(current_oct == 0 || current_oct == 3 || current_oct == 4 || current_oct == 7){
-			gt_new_task->steps_to_end = abs(x1z - x0z);
-			gt_new_task->dx = x0z;
-			gt_new_task->callback_ref = arc_dx_callback;
-		} else{
-			gt_new_task->steps_to_end = abs(z0z - z1z);
-			gt_new_task->dz = z0z;//pos_count;
-			gt_new_task->callback_ref = arc_dz_callback;
-		}
-
-		if(cwccw>0){ //cw
-			if(current_oct == 0 || current_oct == 2){ // 4,6
-				gt_new_task->inc_dec = 1;
-			} else { // 1,3
-				gt_new_task->inc_dec = -1;
-			}
-		} else { //ccw
-			if(current_oct == 7 || current_oct == 5){
-				gt_new_task->inc_dec = 1;
-			} else {
-				gt_new_task->inc_dec = -1;
-			}
-		}
-		
-		// X direction:
-		if(current_oct == 0 || current_oct == 1 || current_oct == 4 || current_oct == 5){
-				gt_new_task->x_direction = xdir_forward;
-		} else{
-				gt_new_task->x_direction = xdir_backward;
-		}
-		gt_new_task->z_direction = zdir_forward;
-		
-		//feed:
-		if(state.G94G95 == 1){ 	// unit(mm) per rev
-			gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
-		} else { 											// unit(mm) per min
-			gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
-		}
-	} else {
-		uint8_t current_oct = oct0;
-		while(current_oct != oct1+cwccw){
-			gt_new_task 		= add_empty_task();
-			gt_new_task->rr = rr;
-// X direction
-			if(current_oct == 0 || current_oct == 1 || current_oct == 4 || current_oct == 5){
-					gt_new_task->x_direction = xdir_forward;
-			} else{
-					gt_new_task->x_direction = xdir_backward;
-			}
-			gt_new_task->z_direction = zdir_forward;
-
-			if(current_oct == oct0){
-				switch(current_oct){
-					case 0: case 7:
-						gt_new_task->steps_to_end = abs(octant - x0z);
-						gt_new_task->dx = x0z;//pos_count;
-						gt_new_task->callback_ref = arc_dx_callback;
-						break;
-					case 1: case 6:
-						gt_new_task->steps_to_end = abs(z0z);
-						gt_new_task->dz = abs(z0z);//pos_count;
-						gt_new_task->callback_ref = arc_dz_callback;
-						break;
-					case 2: case 5:
-						gt_new_task->steps_to_end = abs(octant - z0z);
-						gt_new_task->dz = abs(z0z);
-						gt_new_task->callback_ref = arc_dz_callback;
-						break;
-					case 3: case 4:
-						gt_new_task->steps_to_end = abs(x0z);
-						gt_new_task->dx = abs(x0z); //pos_count;
-						gt_new_task->callback_ref = arc_dx_callback;
-						break;
-				}
-			} else if(current_oct == oct1){
-				switch(current_oct){
-					case 0: case 7:
-						while(1);
-					case 1: case 6:
-						gt_new_task->steps_to_end = abs(octant - z1z);
-						gt_new_task->dz = octant;
-						gt_new_task->callback_ref = arc_dz_callback;
-						break;
-					case 2: case 5:
-						gt_new_task->steps_to_end = abs(z1z);
-						gt_new_task->dz = abs(z1z);
-						gt_new_task->callback_ref = arc_dz_callback;
-						break;
-					case 3: case 4:
-						gt_new_task->steps_to_end = abs(octant - x1z);
-						gt_new_task->dx = octant;
-						gt_new_task->callback_ref = arc_dx_callback;
-						break;
-				}
-			} else { //middle octant
-			if(cwccw>0){ //cw
-				switch(current_oct){
-					case 1:
-						gt_new_task->dz = octant; break;
-					case 2:
-						gt_new_task->dz = 0; break;
-					case 3:
-						gt_new_task->dx = octant; break;
-				}
-			} else {
-				switch(current_oct){
-					case 6:
-						gt_new_task->dz = octant; break;
-					case 5:
-						gt_new_task->dz = 0; break;
-					case 4:
-						gt_new_task->dx = octant; break;
-				}
-			}
-				//				pos_count =octant;
-				gt_new_task->steps_to_end = octant;
-				if(current_oct == 0 || current_oct == 3 || current_oct == 4 || current_oct == 7){
-//					gt_new_task->dx = octant;
-					gt_new_task->callback_ref = arc_dx_callback;
-				} else{
-//					gt_new_task->dz = octant;
-					gt_new_task->callback_ref = arc_dz_callback;
-				}
-			}
-//inc_dec
-			if(cwccw>0){ //cw
-				if(current_oct == 0 || current_oct == 2){
-					gt_new_task->inc_dec = 1;
-				} else {
-					gt_new_task->inc_dec = -1;
-				}
-			} else { //ccw
-				if(current_oct == 7 || current_oct == 5){
-					gt_new_task->inc_dec = 1;
-				} else {
-					gt_new_task->inc_dec = -1;
-				}
-			}
-			//feed:
-			if(state.G94G95 == 1){ 	// unit(mm) per rev
-				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
-			} else { 											// unit(mm) per min
-				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
-			}
-			gt_new_task->dz = fixedpt_toint2210(gt_new_task->dz);
-			gt_new_task->dx = fixedpt_toint2210(gt_new_task->dx);
-			gt_new_task->steps_to_end = fixedpt_toint2210(gt_new_task->steps_to_end);
-			current_oct +=cwccw;
-			if(current_oct == 255)
-				current_oct = 7;
-			else if(current_oct == 8)
-				current_oct = 0;
-		}
-	}					
-
-/*
-	if(cwccw == CW) { // clockwise arc
-		if(pos_count == 0){ // same octant?
-			switch(oct0){
-				case 0: case 3: case 7: case 4:
-					pos_count += abs(x1z - x0z);
-					break;
-				case 1: case 2: case 5: case 6:
-					pos_count += abs(z0z - z1z);
-					break;
-			}
-		}
-
-		
-		
-		if(oct0 < oct1){ //CW, outer(right) part of the arc this kind: ")"
-			for (int oct = oct0; oct <= oct1; oct++){
-				if(oct == oct0){
-					switch(oct){
-						case 0:
-							pos_count += (octant - x0z);
-							break;
-						case 1:
-							pos_count += z0z;
-							break;
-						case 2:
-							pos_count += (octant - z0z);
-							break;
-						case 3:
-							pos_count += x0z;
-							break;
-					}
-					continue;
-				}
-				if(oct == oct1){
-					switch(oct){
-						case 0:
-							while(1);
-						case 1:
-							pos_count += (octant - z1z);
-							break;
-						case 2:
-							pos_count += abs(z1z);
-							break;
-						case 3:
-							pos_count += (octant - x1z);
-							break;
-					}
-				} else pos_count +=octant;
-			}	
-		} else if(oct0 == oct1){ // if arc start and end in the same octant 
-			switch(oct0){
-				case 0:
-				case 3:
-				case 7:
-				case 4:
-					pos_count += abs(x1z - x0z);
-					break;
-				case 1:
-				case 2:
-				case 5:
-				case 6:
-					pos_count += abs(z0z - z1z);
-					break;
-			}
-		} else { // not supporder on lathe?
-			while(1);
-		} 
-	} else { // CCW
-		if (oct1 < oct0){ 	//CCW, inner(left) part of the arc this kind: "("
-			for (int oct = oct0; oct >= oct1; oct--){
-				if(oct == oct0){
-					switch(oct){
-						case 7:
-							pos_count += abs(octant - x0z);
-							break;
-						case 6:
-							pos_count += abs(z0z);
-							break;
-						case 5:
-							pos_count += abs(octant - z0z);
-							break;
-						case 4:
-							pos_count += abs(x0z);
-							break;
-					}
-					continue;
-				}
-				if(oct == oct1){
-					switch(oct){
-						case 7:
-							while(1);
-						case 6:
-							pos_count += abs(octant - z1z);
-							break;
-						case 5:
-							pos_count += abs(z1z);
-							break;
-						case 4:
-							pos_count += abs(octant - x1z);
-							break;
-					}
-				} else pos_count +=octant;
-			}		
-		} else if(oct0 == oct1){ // if arc start and end in the same octant 
-			switch(oct0){
-				case 0:
-				case 3:
-				case 7:
-				case 4:
-					pos_count += abs(x1z - x0z);
-					break;
-				case 1:
-				case 2:
-				case 5:
-				case 6:
-					pos_count += abs(z0z - z1z);
-					break;
-			}
-		} else { // not supporder on lathe?
-			while(1);
-		} 
-	}
-*/	
-/*
-	if(oct0 < oct1){ //CW, outer(right) part of the arc this kind: ")"
-		for (int oct = oct0; oct <= oct1; oct++){
-			if(oct == oct0){
-				switch(oct){
-					case 0:
-						pos_count += (octant - x0z);
-						break;
-					case 1:
-						pos_count += z0z;
-						break;
-					case 2:
-						pos_count += (octant - z0z);
-						break;
-					case 3:
-						pos_count += x0z;
-						break;
-				}
-				continue;
-			}
-			if(oct == oct1){
-				switch(oct){
-					case 0:
-						while(1);
-					case 1:
-						pos_count += (octant - z1z);
-						break;
-					case 2:
-						pos_count += abs(z1z);
-						break;
-					case 3:
-						pos_count += (octant - x1z);
-						break;
-				}
-			} else pos_count +=octant;
-		}	
-	} else if(oct0 == oct1){ // if arc start and end in the same octant 
-		switch(oct0){
-			case 0:
-			case 3:
-			case 7:
-			case 4:
-				pos_count += abs(x1z - x0z);
-				break;
-			case 1:
-			case 2:
-			case 5:
-			case 6:
-				pos_count += abs(z0z - z1z);
-				break;
-		}
-	} else if (oct1 < oct0){ 	//CCW, inner(left) part of the arc this kind: "("
-		for (int oct = oct0; oct >= oct1; oct--){
-			if(oct == oct0){
-				switch(oct){
-					case 7:
-						pos_count += abs(octant - x0z);
-						break;
-					case 6:
-						pos_count += abs(z0z);
-						break;
-					case 5:
-						pos_count += abs(octant - z0z);
-						break;
-					case 4:
-						pos_count += abs(x0z);
-						break;
-				}
-				continue;
-			}
-			if(oct == oct1){
-				switch(oct){
-					case 7:
-						while(1);
-					case 6:
-						pos_count += abs(octant - z1z);
-						break;
-					case 5:
-						pos_count += abs(z1z);
-						break;
-					case 4:
-						pos_count += abs(octant - x1z);
-						break;
-				}
-			} else pos_count +=octant;
-		}		
-	}
-	*/
-//	pos_count >>= 10;
-/*
-  общее число шагов для дуги равно сумме шагов по осям в соответствии с текущей октантой
-	для октант 0,3,4 и 7 основной осью является ось Х, сдвиг по оси Z вычисляется как sqrt(R*R-dx*dx)
-	для октант 1,2,5 и 6 основной осью является ось Z, сдвиг по оси X вычисляется как sqrt(R*R-dz*dz)
-	Если дуга в нескольких октантах, например начинается в 0-1-2,
-	то число шагов равно:
-		участок в 0м октанте:
-		octant-x1
-		участок в 1м октанте:
-		octant
-		участок в 2м октанте:
-		abs(z2)
-		итого (octant-x1 + octant + abs(x2))
-	при переходе границы октанта меняется ось по которой шагаем, 
-	в т.ч. при переходе границ осей меняем направления шагания для моторов(плюс корректировка backlash если надо)
-	
-	for cross octane arc:
-
-				 ^ Z  
-		 \ 7 | 0 /
-			\  |  /
-			 \ | /       
-			6 \|/ 1
-	 ------0------->X
-			5 /|\ 2
-			 / | \
-			/  |  \      
-		 / 4 | 3 \
-
-
-
-	
-*/	
-}

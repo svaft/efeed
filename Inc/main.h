@@ -234,6 +234,61 @@ typedef struct
 extern axis z_axis;
 */
 
+typedef void (*callback_func_t)(void);
+
+struct state;
+typedef void (*state_func_t)( struct state* );
+
+
+typedef struct G_pipeline{
+	int X,Z,F,P; //general registers
+	int I,K; //for arc
+	bool sync;
+	uint8_t code;
+} G_pipeline;
+
+typedef struct G_task{
+	int32_t dx, dz; // delta
+	uint32_t steps_to_end;
+	fixedptu F; //Q824
+	callback_func_t callback_ref; //callback ref to iterate line or arc
+	callback_func_t init_callback_ref;
+	uint8_t z_direction, x_direction;
+	int rr, inc_dec;
+} G_task;
+
+
+typedef struct state
+{
+	uint32_t steps_to_end;
+	uint32_t current_pos;
+	uint32_t end_pos;
+	uint8_t ramp_step;
+	uint32_t Q824set; // feed rate
+	uint32_t fract_part; // Q8.24 format fract part
+	
+	G_task current_task;
+	bool G94G95; // 0 - unit per min, 1 - unit per rev
+	
+  state_func_t function;
+//  callback_func_t callback;
+	uint32_t async_z;
+	uint8_t z_period;
+	bool f_encoder;
+	bool f_tacho;
+	bool spindle_dir;
+	_Bool sync;
+	_Bool main_feed_direction;
+	TIM_TypeDef *syncbase;
+  // other stateful data
+
+	//	bresenham
+	int err;
+} state_t;
+
+
+
+
 typedef struct {
 	fixedptu Q824; //Q8.24 fixed math format
 	uint8_t submenu;

@@ -176,8 +176,8 @@ void do_fsm_menu(state_t* s){
 		break;
 	}
 	case long_press_end_Msk: {
-		if(s->function == do_fsm_move)
-			s->function = do_long_press_end_callback;
+//		if(s->function == do_fsm_move)
+//			s->function = do_long_press_end_callback;
 		break;
 	}
 	}
@@ -187,10 +187,10 @@ void do_long_press_end_callback(state_t* s){          // direct movement: first 
 	// для 1/2 микрошага нужно что бы общее количество шагов в цикле резьбы было кратно 2,(для 1/4 кратно 4 и тп).
 	// это нужно для того что бы в конце шаговый мотор остановился на одном из двухсот устойчивых шагов,
 	// не перескакивая на соседние шаги при потере питания.
-	if(s->end_pos == 0) //s->sync?
-		s->end_pos = ( s->ramp_step + s->current_pos ) | (step_divider - 1);
-	s->function = do_fsm_move;
-	do_fsm_move(s);
+//	if(s->end_pos == 0) //s->sync?
+//		s->end_pos = ( s->ramp_step + s->current_pos ) | (step_divider - 1);
+//	s->function = do_fsm_move;
+//	do_fsm_move(s);
 }
 
 
@@ -238,6 +238,8 @@ void set_ARR(state_t* s, fixedptu value){
 }
 
 //---------------------------------------------------------------------------------------------
+
+/*
 void do_fsm_move_start(state_t* s){
 	bool f_tacho = t4sr[TIM_SR_CC3IF_Pos];
 	if(s->sync && !f_tacho){
@@ -273,10 +275,7 @@ void do_fsm_move_start(state_t* s){
 
 			// enable update inerrupt:
 			LL_TIM_EnableIT_UPDATE(s->syncbase); //enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
-//			LL_TIM_EnableCounter(s->syncbase);
-//			*/
-//			LL_TIM_DisableUpdateEvent(TIM4);
-			LL_TIM_GenerateEvent_UPDATE(s->syncbase); /* Force update generation */
+			LL_TIM_GenerateEvent_UPDATE(s->syncbase); 
 		} else {
 			s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 
@@ -293,54 +292,7 @@ void do_fsm_move_start(state_t* s){
 }
 
 
-void G94(state_t* s){
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
-	LL_TIM_DisableCounter(TIM2); // pause async timer
-	LL_TIM_DisableUpdateEvent(TIM2);
-
-	
-//	s->function = do_fsm_move2;
-//	load_next_task(); // load first task from queue
-//	s->Q824set = s->current_task.F; // load feed value
-//	s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
-	// connect async timer:
-	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
-	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
-	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-	TIM3->ARR = min_pulse;
-	LL_TIM_DisableIT_UPDATE(TIM3);
-	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr
-
-	TIM2->CNT = 0;
-//	set_ARR(s,10<<24);
-//	LL_TIM_EnableCounter(TIM2);
-//	LL_TIM_EnableUpdateEvent(TIM2);
-}
-
-
-void do_fsm_move_start2(state_t* s){
-	s->function = do_fsm_move2;
-	load_next_task(); // load first task from queue
-
-	// connect async timer:
-//	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
-//	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by spindle encoder timer TIM4(sync mode)
-//	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-//	TIM3->ARR = min_pulse;
-//	LL_TIM_GenerateEvent_UPDATE(TIM3);
-
-//	LL_TIM_GenerateEvent_UPDATE(TIM3);
-//	LL_TIM_GenerateEvent_UPDATE(TIM3);
-
-	s->syncbase->CNT = 0;
-	s->syncbase->ARR = 1;
-//	set_ARR(s,1<<24);
-	LL_TIM_EnableIT_UPDATE(TIM3);
-	LL_TIM_EnableUpdateEvent(s->syncbase);
-	LL_TIM_EnableCounter(s->syncbase);
-	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
-}
 
 
 void do_fsm_ramp_up(state_t* s){
@@ -369,85 +321,6 @@ void do_fsm_ramp_up(state_t* s){
 
 
 
-void load_next_task(){
-	cb_pop_front(&task_cb, &state.current_task);
-	if(state.current_task.init_callback_ref){
-		state.current_task.init_callback_ref(); // task specific init
-	}
-	state.Q824set = state.current_task.F; // load feed value
-}
-
-
-void do_fsm_ramp_up2(state_t* s){
-//	debug();
-	s->steps_to_end--;
-	fixedptu  set_with_fract = fixedpt_add(ramp_profile[s->ramp_step], s->fract_part); // calculate new step delay with fract from previous step
-	uint16_t rs2 = s->ramp_step << 1;
-	if(s->Q824set > set_with_fract || rs2 >= s->steps_to_end) { 	// reach desired speed (or end of ramp map? || s->ramp_step == sync_ramp_profile_len)
-		if(rs2 >= s->steps_to_end){ 
-			s->ramp_step -=2;
-			set_with_fract = ramp_profile[s->ramp_step];
-			set_ARR(s,set_with_fract);
-			s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-			s->function = do_fsm_ramp_down2;
-		} else {
-			set_ARR(s,set_with_fract);
-			s->fract_part = fixedpt_fracpart(s->Q824set); 								// save fract part for future use on next step
-			s->function = do_fsm_move2;
-		}
-	} else {
-		s->ramp_step++;
-		set_ARR(s,set_with_fract);
-		s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-	}
-}
-
-void do_fsm_move2(state_t* s){
-	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
-	set_ARR(s,set_with_fract);
-	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-	s->current_task.steps_to_end--;
-//  if( --s->steps_to_end == (s->ramp_step - 1) ) { // when end_pos is zero, end_pos-ramp_step= 4294967296 - ramp_step, so it will be much more lager then current_pos
-//		s->function = do_fsm_ramp_down2;
-//	}
-}
-void do_fsm_ramp_down2(state_t* s){
-//	debug();
-	s->steps_to_end--;
-	fixedptu set_with_fract;
-	if(s->ramp_step == 0){
-		set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
-	} else {
-		set_with_fract = fixedpt_add(ramp_profile[--s->ramp_step], s->fract_part); // calculate new step delay with fract from previous step
-		s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-	}
-	set_ARR(s,set_with_fract);
-	if (s->ramp_step == 0) {
-//		if(s->end_pos != s->current_pos) {
-//			s->end_pos = s->current_pos;
-//		}
-		s->function = do_fsm_move_end2;
-	}	
-}
-void do_fsm_move_end2(state_t* s){
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-
-	if (s->sync) {
-		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
-		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
-	} else {
-		LL_TIM_DisableCounter(s->syncbase); // pause async timer
-	}
-	LL_TIM_DisableUpdateEvent(s->syncbase);
-	s->z_period = 0;
-	LL_mDelay(2);
-  MOTOR_Z_Disable();
-  MOTOR_X_Disable();
-	menu_changed = 1; 													//update menu
-	s->function = do_fsm_wait_sclick;
-	g_lock = false;
-}
-
 
 
 void do_fsm_move(state_t* s){
@@ -458,11 +331,11 @@ void do_fsm_move(state_t* s){
 		s->function = do_fsm_ramp_down;
 	}
 }
+*/
 
 /**
   * @brief  ramp down stepper
   * @param  state structure
-  */
 void do_fsm_ramp_down(state_t* s){
 //	debug();
 	s->current_pos++;
@@ -514,53 +387,7 @@ void do_fsm_move_end(state_t* s){
 	g_lock = false;
 }
 
-
-
-// init bresenham algorithm variables for generate stepper motors pulses
-__STATIC_INLINE void dzdx_init(int dx, int dz, state_t* s) {
-	s->current_task.dx = dx; //dx>0?dx:-dx; //	s->dx = abs(dx); 
-	s->current_task.dz = dz; //dz>0?dz:-dz;//  s->dz = abs(dz);
-  s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
-}
-
-/**
-* @brief  G00: Coordinated Straight Motion Rapid Rate
-  * @retval void.
   */
-void G00(int dx, int dz){
-	g_lock = true;
-//	G01(dx,dz);
-// move to position with max speed	
-}
-
-
-/**
-* @brief  G01: Coordinated Straight Motion Feed Rate
-  * @retval void.
-  */
-void G01(int dx, int dz, int feed){
-	g_lock = true;
-	// linear interpolated move to position with defined feed
-	dzdx_init(dx, dz, &state);
-	state.sync = false;
-
-/*
-TODO
-нужно переделать/переосмыслить механизм определения и использования
-позиций шаговика, а то какая-то каша получается
-*/
-	
-	if(state.steps_to_end == 0) {
-		state.steps_to_end += dz>dx?dz:dx;
-	//	if(state.end_pos > 0){
-	//		state.end_pos &= 0xFFFFFFFF - step_divider + 1;// to make sure that we'll not stop between full steps
-	//	}
-		do_fsm_move_start(&state);
-	} else{
-		state.steps_to_end += dz>dx?dz:dx;
-	}
-}
-
 
 /**
 * @brief  G33: Spindle Synchronized Motion
@@ -578,41 +405,6 @@ and can immediately begin cutting a good thread.
 * @retval void.
   */
 void G33(int dx, int dz, int K){
-	g_lock = true;
-	// move to position with spindle sync. Used for threading.
-	// command is the same(?) as the G95 with followed G01 and sync start by tacho pulse from spindle
-	dzdx_init(dx, dz, &state);
-/*
-	if(dz<0) {
-		feed_direction = feed_direction_left;
-		MOTOR_Z_Reverse();
-	} else {
-		feed_direction = feed_direction_right;
-		MOTOR_Z_Forward();
-	}
-
-	if(dx<0) {
-		MOTOR_X_Reverse();
-	} else {
-		MOTOR_X_Forward();
-	}
-*/
-//	state.sync = false; 
-	state.sync = true;
-//	if(state.sync){
-	state.main_feed_direction = feed_direction;
-//	}
-
-	state.current_pos = 0;
-	state.end_pos = dz>=0?dz:-dz; //abs(dz);
-	if(state.end_pos > 0){
-		state.end_pos &= 0xFFFFFFFF - step_divider + 1;
-//		s->end_pos |= step_divider; // to make sure that we'll not stop between full steps
-
-//	} else {
-//		state.sync = true;
-	}
-	do_fsm_move_start(&state);
 }
 
 
@@ -634,69 +426,9 @@ void G76(int p, int z){
 
 
 
-fixedptu f;
-G_pipeline current_code;
-G_pipeline prev_code;
-
-
-void arc_dx_callback(){
-	state_t *s = &state;
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
-	int dz = SquareRoot(s->current_task.rr - s->current_task.dx * s->current_task.dx);
-	if(dz != s->current_task.dz){
-		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
-		s->current_task.dz = dz;
-	}
-	s->current_task.dx += s->current_task.inc_dec;
-}
-
-void arc_dz_callback(){
-	state_t *s = &state;
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
-	int dx = SquareRoot(s->current_task.rr - s->current_task.dz * s->current_task.dz);
-	if(dx != s->current_task.dx){
-	t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
-		s->current_task.dx = dx;
-	}
-	s->current_task.dz += s->current_task.inc_dec;
-}
-
-
-void P04init_callback(void){
-	state.function = do_fsm_dwell;
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED); // disable pulse generation
-	TIM2->ARR = 30;
-}
-
-void do_fsm_dwell(state_t *s){
-	// callback from TIM2
-	state.current_task.steps_to_end--;
-	if(state.current_task.steps_to_end == 0)
-			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-
-}
-
-void dwell_callback(void){
-// callback from TIM3
-//	while(1);
-}
-
-
-void dxdz_callback(){
-	state_t *s = &state;
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	int e2 = s->err;
-	if (e2 > -s->current_task.dx)	{ // step X axis
-		s->err -= s->current_task.dz; 
-		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
-	}
-	if (e2 < s->current_task.dz)	{ // step Z axis
-		s->err += s->current_task.dx;
-		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
-	}
-}
+//fixedptu f;
+//G_pipeline current_code;
+//G_pipeline prev_code;
 
 
 /*

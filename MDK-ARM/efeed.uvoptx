@@ -157,9 +157,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>91</LineNumber>
+          <LineNumber>172</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134229824</Address>
+          <Address>134227010</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -168,14 +168,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\g03.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/g03.c\91</Expression>
+          <Expression>\\efeed\../Src/g03.c\172</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>607</LineNumber>
+          <LineNumber>610</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134227926</Address>
+          <Address>134226872</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -184,23 +184,7 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>../Src/main.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/main.c\607</Expression>
-        </Bp>
-        <Bp>
-          <Number>2</Number>
-          <Type>0</Type>
-          <LineNumber>69</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134229226</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\g03.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/g03.c\69</Expression>
+          <Expression>\\efeed\../Src/main.c\610</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -334,6 +318,76 @@
           <WinNumber>1</WinNumber>
           <ItemText>int(z)</ItemText>
         </Ww>
+        <Ww>
+          <count>26</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>dx,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>27</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>dz,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>28</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>err,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>29</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>2*b*b,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>30</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>2*a*a,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>31</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>dx-dz,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>32</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>b*b,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>33</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>dx,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>34</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>dz,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>35</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>a,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>36</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>e2,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>37</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>\\efeed\../Src/g03.c\plotOptimizedEllipse\err</ItemText>
+        </Ww>
+        <Ww>
+          <count>38</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>\\efeed\../Src/g03.c\plotOptimizedEllipse\err</ItemText>
+        </Ww>
+        <Ww>
+          <count>39</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>aa,0x0A</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
@@ -366,7 +420,7 @@
       <DebugFlag>
         <trace>1</trace>
         <periodic>1</periodic>
-        <aLwin>0</aLwin>
+        <aLwin>1</aLwin>
         <aCover>0</aCover>
         <aSer1>0</aSer1>
         <aSer2>0</aSer2>
@@ -405,13 +459,13 @@
       <LogicAnalyzers>
         <Wi>
           <IntNumber>0</IntNumber>
-          <FirstString>\\efeed\../Src/g03.c\x32</FirstString>
-          <SecondString>FF0000000000000000001CC00000000000001840000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6730332E635C78333200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004100000001000000000000000000E03F060000000000000000000000000000000000000020280008</SecondString>
+          <FirstString>\\efeed\../Src/g03.c\x</FirstString>
+          <SecondString>FF000000000000000058BBC0000000000058BB40000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6730332E635C78000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004100000001000000000000000000E03F0F0000000000000000000000000000000000000074280008</SecondString>
         </Wi>
         <Wi>
           <IntNumber>1</IntNumber>
-          <FirstString>\\efeed\../Src/g03.c\z32</FirstString>
-          <SecondString>0080000000000000000010C00000000000000840000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6730332E635C7A333200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004100000002000000000000000000E03F060000000000000000000000000000000000000014260008</SecondString>
+          <FirstString>\\efeed\../Src/g03.c\z</FirstString>
+          <SecondString>00800000000000000040AFC0000000000040AF40000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6730332E635C7A000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004100000002000000000000000000E03F0F0000000000000000000000000000000000000074280008</SecondString>
         </Wi>
       </LogicAnalyzers>
       <SystemViewers>

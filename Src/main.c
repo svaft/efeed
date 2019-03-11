@@ -593,17 +593,20 @@ int main(void)
 	LED_GPIO_Port->BSRR = LED_Pin; // led off
 	
 }
-	debug();
+//	debug();
 //	TIM3->ARR = min_pulse;
 //	LL_TIM_DisableIT_UPDATE(TIM3);
 //	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
 //	plotOptimizedEllipse(0,0,460,690);
 	int64_t x0 = -7, z0 = 0;
-	plotEllipse(x0, z0, (int64_t)7,(int64_t)4);
-//	plotOptimizedEllipse(x0, z0, 7,4);
-
-
+//debug();
+//	plotEllipse(0, 0, 7000,4000);
 debug();
+	plotOptimizedEllipse(0, 0, 7000,4000);
+debug();
+
+
+//debug();
 	G94(&state);
 //	LL_mDelay(100);
 	do_fsm_move_start2(&state);

@@ -10,6 +10,7 @@
 #include "nuts_bolts.h"
 
 void plotOptimizedEllipse(int x0, int z0, int a, int b);
+void plotEllipse(int x0, int z0, int a, int b);
 void G03init_callback(void);
 void arc_dx_callback(void);// arc movement callback
 void arc_dz_callback(void); // arc movement callback

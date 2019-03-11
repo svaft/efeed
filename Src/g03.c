@@ -10,13 +10,15 @@ uint8_t bufz[2000];
 #define BIT_BAND_SRAM(RAM,BIT) (*(volatile uint32_t*)(SRAM_BB_BASE+32*((uint32_t)((void*)(RAM))-SRAM_BASE)+4*((uint32_t)(BIT))))
 	
 
-int64_t err2;
-int32_t x32, z32, ex, ey, e2, err;
+int32_t x32, z32;
 void plotEllipse(int64_t x0, int64_t z0, int64_t a, int64_t b){
 	int64_t x = x0, z = z0; /* II. quadrant from bottom left to top right */
-	e2 = (int64_t)b*b, 
-//	err = x*(2*e2+x)+e2; /* error of 1.step */
+	
+	int64_t ex, ey, e2, err;
+	e2 = (int64_t)b*b;
 
+
+	// II quadrant
 	err = (x0+1)*(x0+1)*b*b + (z0+1)*(z0+1)*a*a - a*a*b*b;
 	// -373 403 -321632000	
 	z32 = z;
@@ -26,14 +28,12 @@ void plotEllipse(int64_t x0, int64_t z0, int64_t a, int64_t b){
 		ex = (x*2+1)*(int64_t)b*b;
 		if (e2 >= ex){ /* e_xy+e_x > 0 */
 			err += (++x*2+1)*(int64_t)b*b;
-			BIT_BAND_SRAM(&bufx,count) = 1;
-			x32 = x;
+//			BIT_BAND_SRAM(&bufx,count) = 1;
 		}
 		ey = (z*2+1)*(int64_t)a*a;
 		if (e2 <= ey){ /* e_xy+e_y < 0 */
 			err += (++z*2+1)*(int64_t)a*a;
-			BIT_BAND_SRAM(&bufz,count) = 1;
-			z32 = z;
+//			BIT_BAND_SRAM(&bufz,count) = 1;
 		}
 		count++;
 	} while (x <= 0);
@@ -43,6 +43,71 @@ void plotEllipse(int64_t x0, int64_t z0, int64_t a, int64_t b){
 	x = x0;
 	z = z0;
 
+
+	// I quadrant:
+	err = (x0+1)*(x0+1)*b*b + (z0-1)*(z0-1)*a*a - a*a*b*b;
+	do {
+		e2 = 2*err;
+		ex = (x*2+1)*(int64_t)b*b;
+		if (e2 < ex){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
+			err += (++x*2+1)*(int64_t)b*b;
+		}
+		ey = (z*2-1)*(int64_t)a*a;
+		if (e2 > -ey){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
+			err -= (--z*2-1)*(int64_t)a*a;
+			z32 = z;
+		}
+	} while (z >0);
+
+
+	// IV quadrant:
+	x0 = 7;
+	z0 = 0;
+	x = x0;
+	z = z0;
+
+	err = (x0-1)*(x0-1)*b*b + (z0-1)*(z0-1)*a*a - a*a*b*b;
+	do {
+		e2 = 2*err;
+		ex = (x*2-1)*(int64_t)b*b;
+		if (e2+ex>0){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
+			err -= (--x*2-1)*(int64_t)b*b;
+		x32 = x;
+		}
+		ey = (z*2-1)*(int64_t)a*a;
+		if (e2+ey<0){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
+			err -= (--z*2-1)*(int64_t)a*a;
+			z32 = z;			
+		}
+	} while (x>=0);
+
+	
+	// III quadrant:
+	x0 = 0;
+	z0 = -4;
+	x = x0;
+	z = z0;
+
+	err = (x0-1)*(x0-1)*b*b + (z0+1)*(z0+1)*a*a - a*a*b*b;
+	do {
+		e2 = 2*err;
+		ex = (x*2-1)*(int64_t)b*b;
+		if (e2+ex<0){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
+			err -= (--x*2-1)*(int64_t)b*b;
+		x32 = x;
+		}
+		ey = (z*2+1)*(int64_t)a*a;
+		if (e2-ey>0){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
+			err += (++z*2+1)*(int64_t)a*a;
+			z32 = z;			
+		}
+	} while (z<=0);
+	
+	
+	
+	
+	
+	
 /*	do{ //bitband by precalculated quadrant, fast but memory depended
 		if(BIT_BAND_SRAM(&bufx,count) == 1){
 			x32++;
@@ -53,7 +118,7 @@ void plotEllipse(int64_t x0, int64_t z0, int64_t a, int64_t b){
 		count--;
 	} while(count >= 0);
 */
-
+/*
 /// II	
 	do {
 		int exy = (x+1)*(x+1)*b*b + (z-1)*(z-1)*a*a - a*a*b*b;
@@ -97,26 +162,7 @@ void plotEllipse(int64_t x0, int64_t z0, int64_t a, int64_t b){
 		}
 	} while (x >= 0);
 	
-	
-	
-	/*
-
-
-	err = (x0+1)*(x0+1)*b*b + (z0-1)*(z0-1)*a*a - a*a*b*b;
-	do {
-		e2 = 2*err;
-		ex = (x*2+1)*(int64_t)b*b;
-		if (e2 < ex){ // e_xy+e_x > 0 
-			err += (++x*2+1)*(int64_t)b*b;
-			x32 = x;
-		}
-		ey = (z*2+1)*(int64_t)a*a;
-		if (e2 > ey){ //e_xy+e_y < 0	
-			err -= (--z*2-1)*(int64_t)a*a;
-			z32 = z;
-		}
-	} while (x <= 400);
-
+*/
 	
 //	while (z++ < b) { /* to early stop of flat ellipses a=1, */
 //			z32 = z;
@@ -130,29 +176,60 @@ void plotEllipse(int64_t x0, int64_t z0, int64_t a, int64_t b){
 
 //int64_t x = 0, z = 0;
 void plotOptimizedEllipse(int x0, int z0, int a, int b){
-	int64_t x = -a;
-	int64_t z = 0; /* II. quadrant from bottom left to top right */
-	int64_t e2 = b, dx = (1+2*x)*e2*e2; /* error increment */
-	int64_t dz = x*x, err = dx+dz; /* error of 1.step */
-	z32 = z;
-	x32 = x;
+	int32_t x = -a;
+	int32_t z = 0; /* II. quadrant from bottom left to top right */
+	int32_t e2 = b, dx = (1+2*x)*e2*e2; /* error increment */
+	int32_t dz = x*x, err = dx+dz; /* error of 1.step */
+
+	// Q2
+	do {
+//		setPixel(xm, ym-y);
+		e2 = 2*err;
+		if (e2 >= dx) { 
+			x++; 
+			err += dx += 2*(int32_t)b*b; 
+		} // x step
+		if (e2 <= dz) { 
+			z++;
+			err += dz += 2*(int32_t)a*a; 
+		} // z step
+	} while (x <= 0);
+
+///////////////-----------------Q1	
+	//Q1
+	x = 0;
+	z = b;
+	dx = (2*x + 1)*b*b;
+	dz = x * x;
+	err = dx + dz;
 	do {
 //		setPixel(xm, ym-y);
 		count++;
 		e2 = 2*err;
-		if (e2 >= dx) { 
+		if (e2 < dx) { 
 			x++; 
-			x32 = x;
-			err += dx += 2*(int64_t)b*b; 
-		} /* x step */
-		if (e2 <= dz) { 
-			z++;
-		z32 = z;			
-			err += dz += 2*(int64_t)a*a; 
-		} /* z step */
+			err += dx += 2*(int32_t)b*b; 
+		} // x step
+		if (e2 > -dz) { 
+			z--;
+			err -= dz -= 2*(int32_t)a*a; 
+		} // z step
 	} while (x <= 0);
+
+/*	
+		if (e2 < ex){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
+			err += (++x*2+1)*(int64_t)b*b;
+			x32 = x;
+		}
+		ey = (z*2-1)*(int64_t)a*a;
+		if (e2 > -ey){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
+			err -= (--z*2-1)*(int64_t)a*a;
+*/
+	
+
+	
+	
 	while (z++ < b) { /* to early stop for flat ellipses with a=1, */
-		z32 = z;			
 //		setPixel(xm, ym+y); /* -> finish tip of ellipse */
 //		setPixel(xm, ym-y);
 	}

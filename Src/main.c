@@ -600,6 +600,7 @@ int main(void)
 //	plotOptimizedEllipse(0,0,460,690);
 	int64_t x0 = -7, z0 = 0;
 	plotEllipse(x0, z0, (int64_t)7,(int64_t)4);
+//	plotOptimizedEllipse(x0, z0, 7,4);
 
 
 debug();

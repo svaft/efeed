@@ -147,10 +147,15 @@ void G03init_callback(void){
 	state.arc_aa = (uint64_t)state.current_task.a * state.current_task.a<<1;
 	state.arc_bb = (uint64_t)state.current_task.b * state.current_task.b<<1;
 
+	state.current_task.z  = fixedpt_toint2210(state.current_task.z);
+	state.current_task.x  = fixedpt_toint2210(state.current_task.x);
+	state.current_task.z1 = fixedpt_toint2210(state.current_task.z1);
+	state.current_task.x1 = fixedpt_toint2210(state.current_task.x1);
+
 	uint8_t q_from 	= get_quadrant(state.current_task.x, state.current_task.z);
 //	uint8_t q_to 		= get_quadrant(state.current_task.x1, state.current_task.z1);
 
-	int cwccw = 0;
+	int cwccw = 1;
 	if(cwccw>0){ //cw
 		switch(q_from){
 			case 1:
@@ -238,7 +243,6 @@ this is about 1.5 more than the Z axis.
 so in the case of transferring the physical circle into a stepped ellipse, 
 we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 */
-#define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400	todo move to some central point to modify
 
 // xf is X radius corrected by ~1,50097 factor:
 	fixedptu xf, zf;
@@ -247,6 +251,15 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 
 	G_task *gt_new_task;
 	gt_new_task 		= add_empty_task();
+
+//feed:
+	if(state.G94G95 == 1){ 	// unit(mm) per rev
+		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+	} else { 											// unit(mm) per min
+		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+	}
+
+	gt_new_task->init_callback_ref = G03init_callback;
 	gt_new_task->a = xf;
 	gt_new_task->b = zf;
 
@@ -283,6 +296,14 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 		if(q_to != q_from){ 
 			// two quadrants used, add next quadrant as separated task with changed motor direction flag:
 			gt_new_task 		= add_empty_task();
+		//feed:
+			if(state.G94G95 == 1){ 	// unit(mm) per rev
+				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+			} else { 											// unit(mm) per min
+				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+			}
+			
+			gt_new_task->init_callback_ref = G03init_callback;
 
 //			gt_new_task->aa = xf*xf<<1;
 //			gt_new_task->bb = zf*zf<<1;
@@ -324,6 +345,15 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 		if(q_to != q_from){ 
 			// two quadrants used, add next quadrant as separated task with changed motor direction flag:
 			gt_new_task 		= add_empty_task();
+		//feed:
+			if(state.G94G95 == 1){ 	// unit(mm) per rev
+				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+			} else { 											// unit(mm) per min
+				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+			}
+			
+			gt_new_task->init_callback_ref = G03init_callback;
+
 //			gt_new_task->aa = xf*xf<<1;
 //			gt_new_task->bb = zf*zf<<1;
 

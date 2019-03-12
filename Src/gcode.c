@@ -163,7 +163,7 @@ G_pipeline* G_parse(char *line){
     letter = line[char_counter++];
 		switch(letter){
 			case 'X':
-				init_gp.X = str_f_to_steps2210(line, &char_counter);
+				init_gp.X = fixedpt_xmul2210(str_f_to_steps2210(line, &char_counter),z_to_x_factor2210);
 				init_gp.X >>= 1; //Fusion360 generate X in diameter mode, so divide by 2
 				break;
 			case 'Z':

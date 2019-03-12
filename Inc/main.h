@@ -194,6 +194,9 @@ void Error_Handler(void);
 #define MOTOR_X_AllowPulse()         TIM3->CCR1 = 1
 
 
+#define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400	todo move to some central point to modify
+
+
 typedef enum {
 	fsm_menu,										//0 . menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
 	fsm_menu_lps, 							//10. long_press_start: end_pos = current_pos = 0, идем в п. fsm_first_cut_lps

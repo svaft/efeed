@@ -613,6 +613,7 @@ int main(void)
 	do_fsm_move_start2(&state);
 	debug();
 	while (1) {
+		__WFI();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

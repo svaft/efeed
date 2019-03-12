@@ -56,7 +56,7 @@ void do_fsm_move2(state_t* s){
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;
 	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
-	s->current_task.steps_to_end--;
+//	s->current_task.steps_to_end--; // migrated to callback
 }
 
 

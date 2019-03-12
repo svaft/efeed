@@ -349,6 +349,7 @@ int main(void)
 
 	static const char * const garray[] = {
 		"G90 G94 F600",
+		"G3 X12. Z-6 K-6",		
 //		"G1 X2.828 F1",
 //		"G1 X.05 F600",
 "G1 X0.02 Z0.",
@@ -382,7 +383,7 @@ int main(void)
 	};
 
 //	LL_mDelay(100);
-	for(int a = 0; a < 4; a++ ){
+	for(int a = 0; a < 2; a++ ){
 //		debug();
 		command_parser((char *)garray[a]);
 	}
@@ -598,12 +599,12 @@ int main(void)
 //	LL_TIM_DisableIT_UPDATE(TIM3);
 //	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
 //	plotOptimizedEllipse(0,0,460,690);
-	int64_t x0 = -7, z0 = 0;
+	int a = 7000, b = 4000;
 //debug();
-//	plotEllipse(0, 0, 7000,4000);
-debug();
-	plotOptimizedEllipse(0, 0, 7000,4000);
-debug();
+//	plotEllipse(0, 0, a,b);
+//debug();
+//	plotOptimizedEllipse(500, 3990, 944,-3963, a,b);
+//debug();
 
 
 //debug();

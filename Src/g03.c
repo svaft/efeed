@@ -7,280 +7,460 @@ int count_total = 0;
 uint8_t bufx[2000];
 uint8_t bufz[2000];
 
-#define BIT_BAND_SRAM(RAM,BIT) (*(volatile uint32_t*)(SRAM_BB_BASE+32*((uint32_t)((void*)(RAM))-SRAM_BASE)+4*((uint32_t)(BIT))))
-	
-int x=0, z=0;
-void plotEllipse(int x0, int z0, int a, int b){
-	x = -a;
-	z = 0;
-	int64_t ex, ey, e2, err;
-
-	e2 = (int64_t)b*b;
+//int x=0, z=0;
 
 
-	// II quadrant
-	err = (x0+1)*(x0+1)*b*b + (z0+1)*(z0+1)*a*a - a*a*b*b;
-	// -373 403 -321632000	
-	do {
-		e2 = 2*err;
-		ex = (x*2+1)*(int64_t)b*b;
-		if (e2 >= ex){ //e_xy+e_x > 0
-			err += (++x*2+1)*(int64_t)b*b;
-//			BIT_BAND_SRAM(&bufx,count) = 1;
-		}
-		ey = (z*2+1)*(int64_t)a*a;
-		if (e2 <= ey){ // e_xy+e_y < 0 
-			err += (++z*2+1)*(int64_t)a*a;
-//			BIT_BAND_SRAM(&bufz,count) = 1;
-		}
-		count++;
-	} while (x <= 0);
-	count_total = --count;
-	x0 = 0;
-	z0 = b;
-	x = x0;
-	z = z0;
+void arc_q1_callback(void){
+	state_t *s = &state;
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
 
+	if (e2 < s->arc_dx) { 
+		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+		s->current_task.x++;
+		s->arc_err += s->arc_dx += s->arc_bb; 
+	} // x step
+	if (e2 > s->arc_dz) { 
+		s->current_task.z--;
+		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		s->arc_err += s->arc_dz += s->arc_aa; 
+	} // z step
 
-	// I quadrant:
-	err = (x0+1)*(x0+1)*b*b + (z0-1)*(z0-1)*a*a - a*a*b*b;
-	do {
-		e2 = 2*err;
-		ex = (x*2+1)*(int64_t)b*b;
-		if (e2 < ex){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
-			err += (++x*2+1)*(int64_t)b*b;
-		}
-		ey = (z*2-1)*(int64_t)a*a;
-		if (e2 > -ey){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
-			err -= (--z*2-1)*(int64_t)a*a;
-		}
-	} while (z >0);
-
-
-	// IV quadrant:
-	x0 = a;
-	z0 = 0;
-	x = x0;
-	z = z0;
-
-	err = (x0-1)*(x0-1)*b*b + (z0-1)*(z0-1)*a*a - a*a*b*b;
-	do {
-		e2 = 2*err;
-		ex = (x*2-1)*(int64_t)b*b;
-		if (e2+ex>0){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
-			err -= (--x*2-1)*(int64_t)b*b;
-		}
-		ey = (z*2-1)*(int64_t)a*a;
-		if (e2+ey<0){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
-			err -= (--z*2-1)*(int64_t)a*a;
-		}
-	} while (x>=0);
-
-	
-	// III quadrant:
-	x0 = 0;
-	z0 = -b;
-	x = x0;
-	z = z0;
-
-	err = (x0-1)*(x0-1)*b*b + (z0+1)*(z0+1)*a*a - a*a*b*b;
-	do {
-		e2 = 2*err;
-		ex = (x*2-1)*(int64_t)b*b;
-		if (e2+ex<0){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
-			err -= (--x*2-1)*(int64_t)b*b;
-		}
-		ey = (z*2+1)*(int64_t)a*a;
-		if (e2-ey>0){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
-			err += (++z*2+1)*(int64_t)a*a;
-		}
-	} while (z<=0);
-	
-	
-	
-	
-	
-	
-/*	do{ //bitband by precalculated quadrant, fast but memory depended
-		if(BIT_BAND_SRAM(&bufx,count) == 1){
-			x32++;
-		}
-		if(BIT_BAND_SRAM(&bufz,count) == 1){
-			z32--;
-		}
-		count--;
-	} while(count >= 0);
-*/
-/*
-/// II	
-	do {
-		int exy = (x+1)*(x+1)*b*b + (z-1)*(z-1)*a*a - a*a*b*b;
-		int eyloc = (x+1)*(x+1)*b*b + (z)*(z)*a*a - a*a*b*b; // ey=(x+1)²b²+y²a²–a²b²
-		int exloc = (x)*(x)*b*b + (z-1)*(z-1)*a*a - a*a*b*b;
-		if(exloc+exy<0){
-			x++;
-		}
-		if(eyloc+exy>0){
-			z--;
-		}
-	} while (z >= 0);
-
-// III	
-	x = 7;
-	z = 0;
-	do {
-		int exy = (x0-1)*(x-1)*b*b + (z-1)*(z-1)*a*a - a*a*b*b;
-		int eyloc = (x-1)*(x-1)*b*b + (z)*(z)*a*a - a*a*b*b; // ey=(x+1)²b²+y²a²–a²b²
-		int exloc = (x)*(x)*b*b + (z-1)*(z-1)*a*a - a*a*b*b;
-		if(exloc+exy>0){
-			x--;
-		}
-		if(eyloc+exy<0){
-			z--;
-		}
-	} while (x >= 0);
-
-// IV	
-	x = 0;
-	z = -4;
-	do {
-		int exy = (x0-1)*(x-1)*b*b + (z+1)*(z+1)*a*a - a*a*b*b;
-		int eyloc = (x-1)*(x-1)*b*b + (z)*(z)*a*a - a*a*b*b; // ey=(x+1)²b²+y²a²–a²b²
-		int exloc = (x)*(x)*b*b + (z+1)*(z+1)*a*a - a*a*b*b;
-		if(exloc+exy<0){
-			x--;
-		}
-		if(eyloc+exy>0){
-			z++;
-		}
-	} while (x >= 0);
-	
-*/
-	
-//	while (z++ < b) { /* to early stop of flat ellipses a=1, */
-//			z32 = z;
-			//z32 = z;
-		//setPixel(xm, ym+y); /* -> finish tip of ellipse */
-		//setPixel(xm, ym-y);
-//	}
-
-
+	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+		s->current_task.steps_to_end = 0; // end of arc
+		return;
+	}
+	if(s->current_task.z == 0){ // end of quadrant
+		s->current_task.steps_to_end = 0;
+	}
 }
 
+
+
+void arc_q4_callback(void){
+	state_t *s = &state;
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
+//	do {
+//		setPixel(xm, ym-y);
+		e2 = s->arc_err<<1;
+		if (e2 > s->arc_dx) { 
+			s->current_task.x--; 
+			t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+			s->arc_err += s->arc_dx += s->arc_bb; 
+		} // x step
+		if (e2 < s->arc_dz) { 
+			s->current_task.z--;
+			t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+			s->arc_err += s->arc_dz += s->arc_aa; 
+		} // z step
+//	} while (x>0);
+	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+		s->current_task.steps_to_end = 0; // end of arc
+		return;
+	}
+	if(s->current_task.x == 0){ // end of quadrant
+		s->current_task.steps_to_end = 0;
+	}
+}
+
+
+
+
+void arc_q2_callback(void){
+	state_t *s = &state;
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
+
+	if (e2 >= s->arc_dx) { 
+		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+//			x++; 
+		s->arc_err += s->arc_dx += s->arc_bb; 
+	} // x step
+	if (e2 <= s->arc_dz) { 
+//			z++;
+		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		s->arc_err += s->arc_dz += s->arc_aa; 
+	} // z step
+//	} while (x <= 0);
+}
+
+
+
+void arc_q3_callback(void){
+	state_t *s = &state;
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
+
+	if (e2 >= s->arc_dx) { 
+		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+		s->current_task.x++; 
+		s->arc_err += s->arc_dx += s->arc_bb; 
+	} // x step
+	if (e2 <= s->arc_dz) { 
+		s->current_task.z++;
+		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		s->arc_err += s->arc_dz += s->arc_aa; 
+	} // z step
+
+	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+		s->current_task.steps_to_end = 0; // end of arc
+		return;
+	}
+	if(s->current_task.x == 0){ // end of quadrant
+		while(1); // trap
+		s->current_task.steps_to_end = 0;
+	}
+}
+
+
+
+
+
+
+uint8_t get_quadrant(int x0, int z0){
+	if (x0 >= 0){
+		if(z0>=0){
+			return 1;
+		} else{
+			return 4;
+		}
+	} else {
+		if(z0>0){
+			return 2;
+		} else{
+			return 3;
+		}
+	}
+}
+
+
+// on new task loading callback
+void G03init_callback(void){
+	// set initial delay for pulse
+	state.syncbase->ARR = fixedpt_toint(state.current_task.F) - 1;
+	state.Q824set = state.current_task.F;
+	// set callback iterator for feed speed:
+	state.function = do_fsm_move2; 
+
+	//precalculate variables:
+	state.arc_aa = (uint64_t)state.current_task.a * state.current_task.a<<1;
+	state.arc_bb = (uint64_t)state.current_task.b * state.current_task.b<<1;
+
+	uint8_t q_from 	= get_quadrant(state.current_task.x, state.current_task.z);
+//	uint8_t q_to 		= get_quadrant(state.current_task.x1, state.current_task.z1);
+
+	int cwccw = 0;
+	if(cwccw>0){ //cw
+		switch(q_from){
+			case 1:
+				state.arc_dx =  (2*state.current_task.x+1)*state.arc_bb>>1;
+				state.arc_dz = -(2*state.current_task.z-1)*state.arc_aa>>1;
+	//		x+z-
+				break;
+			case 4:
+				state.arc_dx = -(2*state.current_task.x-1)*state.arc_bb>>1;
+				state.arc_dz = -(2*state.current_task.z-1)*state.arc_aa>>1;
+	//			gt_new_task->x_direction = xdir_backward;
+				break;
+			default: while(1); // impossible case trap
+		}
+		state.arc_err = state.arc_dx+state.arc_dz;
+	} else { //ccw
+		//todo check and correct ccw arc generation
+		switch(q_from){
+			case 2:
+				// Q2
+				state.arc_dx =  (2*state.current_task.x+1)*state.arc_bb>>1;
+				state.arc_dz =  (2*state.current_task.z+1)*state.arc_aa>>1;
+				break;
+			case 3:
+				state.arc_dx = -(2*state.current_task.x-1)*state.arc_bb>>1;
+				state.arc_dz =  (2*state.current_task.z+1)*state.arc_aa>>1;
+				break;
+			default: while(1); // impossible case trap
+		}
+		state.arc_err = state.arc_dx+state.arc_dz;
+	}
+
+	// use this variable as flag, set it in callback when arc is done:
+	state.current_task.steps_to_end = 1; 
+	// init and prepare corresponding output channels to generate first step pulse:
+	state.current_task.callback_ref();
+}
+
+/**
+* @brief  G33 parse to tasks. New version with ellipse
+* @retval void.
+  */
+	int64_t ik;
+void G03parse(char *line, int8_t cwccw){
+/*
+                  ^ Z
+                  |
+                  |
+            ******|******
+         ***      |      ***
+       **         |         **
+      *      2    |   1       *
+     *            |            *
+ -------------------------------------->
+     *            |            *       X
+      *      3    |   4       *
+       **         |         **
+         ***      |      ***
+            ******|******
+                  |
+*/
+	int x0 = init_gp.X & ~1uL<<10; //save pos from prev gcode
+	int z0 = init_gp.Z & ~1uL<<10;
+	G_pipeline *gref = G_parse(line);
+
+	int x0z = -gref->I; //x0+xdelta;
+	int z0z = -gref->K; //z0+zdelta;
+	int x1z = gref->X - x0 - gref->I;
+	int z1z = gref->Z - z0 - gref->K;
+
+
+	ik = (int64_t)gref->I*gref->I + (int64_t)gref->K*gref->K;
+	ik  = SquareRoot64(ik); // ik - radius of circle in 2210 format.
+
+//	int ii 	= gref->I >> 10, kk = gref->K >> 10; //back from 2210 to steps
+//	uint32_t rr = SquareRoot(ii*ii + kk*kk); // find arc radius
+
+/*
+Due to the fact that the configuration of the stepper motor for the X and Z axes may not be equal 
+in the real world, our circle(in steps per/mm) will not be a circle but an ellipse.
+for example, in my config I have 1 mm lead screw 400 steps / mm in Z 
+but since my taig lathe with imperial screw on cross feed
+I have 1.27 * 200 steps / mm with a decrease in the pulley 61/16 = 200 * 61/16 / 1.27 = 600.3937 steps per mm.
+this is about 1.5 more than the Z axis.
+so in the case of transferring the physical circle into a stepped ellipse, 
+we need to multiply the radius of the X axis (steps by / mm) by 1.5.
+*/
+#define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400	todo move to some central point to modify
+
+// xf is X radius corrected by ~1,50097 factor:
+	fixedptu xf, zf;
+	xf = fixedpt_toint2210(fixedpt_xmul2210(ik,z_to_x_factor2210));
+	zf = fixedpt_toint2210(ik);
+
+	G_task *gt_new_task;
+	gt_new_task 		= add_empty_task();
+	gt_new_task->a = xf;
+	gt_new_task->b = zf;
+
+	gt_new_task->x = x0z;
+	gt_new_task->z = z0z;
+
+	gt_new_task->x1 = x1z;
+	gt_new_task->z1 = z1z;
+	
+	
+//	gt_new_task->aa = xf*xf<<1;
+//	gt_new_task->bb = zf*zf<<1;
+
+	uint8_t q_from 	= get_quadrant(x0z, z0z);
+	uint8_t q_to 		= get_quadrant(x1z, z1z);
+	if(cwccw>0){ //cw
+		switch(q_from){
+			case 1:
+				gt_new_task->callback_ref = arc_q1_callback;
+//				gt_new_task->dx =  (2*x0z+1)*gt_new_task->bb>>1;
+//				gt_new_task->dz = -(2*z0z-1)*gt_new_task->aa>>1;
+	//		x+z-
+				break;
+			case 4:
+				gt_new_task->callback_ref = arc_q4_callback;
+//				gt_new_task->dx = -(2*x0z-1)*gt_new_task->bb>>1;
+//				gt_new_task->dz = -(2*z0z-1)*gt_new_task->aa>>1;
+	//			gt_new_task->x_direction = xdir_backward;
+				break;
+			default: while(1); // impossible case trap
+		}
+//		gt_new_task->err = gt_new_task->dx+gt_new_task->dz;
+
+		if(q_to != q_from){ 
+			// two quadrants used, add next quadrant as separated task with changed motor direction flag:
+			gt_new_task 		= add_empty_task();
+
+//			gt_new_task->aa = xf*xf<<1;
+//			gt_new_task->bb = zf*zf<<1;
+
+			if(q_to == 4){
+				gt_new_task->a = xf;
+				gt_new_task->b = zf;
+
+				gt_new_task->x = xf;
+				gt_new_task->z = 0;
+
+				gt_new_task->x1 = x1z;
+				gt_new_task->z1 = z1z;
+				
+				gt_new_task->callback_ref = arc_q4_callback;
+//				gt_new_task->dx = -(2*xf-1)*gt_new_task->bb>>1;
+//				gt_new_task->dz = -(2*0-1)*gt_new_task->aa>>1;
+			} else while(1); // impossible case trap
+		}
+	} 
+	else { //ccw
+		//todo check and correct ccw arc generation
+		switch(q_from){
+			case 2:
+				// Q2
+				gt_new_task->callback_ref = arc_q2_callback;
+//				gt_new_task->dx =  (2*x0z+1)*gt_new_task->bb>>1;
+//				gt_new_task->dz =  (2*z0z+1)*gt_new_task->aa>>1;
+				break;
+			case 3:
+//				gt_new_task->dx = -(2*x0z-1)*gt_new_task->bb>>1;
+//				gt_new_task->dz =  (2*z0z+1)*gt_new_task->aa>>1;
+				gt_new_task->callback_ref = arc_q3_callback;
+				break;
+			default: while(1); // impossible case trap
+		}
+//		gt_new_task->err = gt_new_task->dx+gt_new_task->dz;
+
+		if(q_to != q_from){ 
+			// two quadrants used, add next quadrant as separated task with changed motor direction flag:
+			gt_new_task 		= add_empty_task();
+//			gt_new_task->aa = xf*xf<<1;
+//			gt_new_task->bb = zf*zf<<1;
+
+			if(q_to == 3){
+					gt_new_task->a = xf;
+					gt_new_task->b = zf;
+
+					gt_new_task->x = -xf;
+					gt_new_task->z = 0;
+
+					gt_new_task->x1 = x1z;
+					gt_new_task->z1 = z1z;
+//				gt_new_task->dx = -(2*xf-1)*gt_new_task->bb>>1;
+//				gt_new_task->dz =  (2*0+1)*gt_new_task->aa>>1;
+				gt_new_task->callback_ref = arc_q3_callback;
+			} else while(1); // impossible case trap
+		}
+	}
+
+//	plotOptimizedEllipse(0,0, xf, zf);
+}
+
+/*
 //int64_t x = 0, z = 0;
-void plotOptimizedEllipse(int x0, int z0, int a, int b){
+void plotOptimizedEllipse(int x0, int z0, int x1, int z1, int a, int b){
+
 	x = -a;
-	z = 0; /* II. quadrant from bottom left to top right */
-	int64_t e2, dx; /* error increment */
-	int64_t dz, err; /* error of 1.step */
+	z = 0; // II. quadrant from bottom left to top right
+	int64_t e2, dx; // error increment
+	int64_t dz, err; // error of 1.step
+
 	int64_t aa = a*a<<1;
 	int64_t bb = b*b<<1;
-	// Q2
-	dx = (2*x+1)*bb>>1;
-	dz = (2*z+1)*aa>>1;
-	err = dx+dz;
-	do {
-//		setPixel(xm, ym-y);
-		e2 = err<<1;
-		if (e2 >= dx) { 
-			x++; 
-			err += dx += bb; 
-		} // x step
-		if (e2 <= dz) { 
-			z++;
-			err += dz += aa; 
-		} // z step
-	} while (x <= 0);
-
-///////////////-----------------Q1	
-	//Q1
-	x = 0;
-	z = b;
-	dx = (2*x+1)*bb>>1;
-	dz = -(2*z-1)*aa>>1;
-	err = dx+dz;
-	do {
-//		setPixel(xm, ym-y);
-//		count++;
-		e2 = err<<1;
-		if (e2 < dx) { 
-			x++; 
-			err += dx += bb; 
-		} // x step
-		if (e2 > dz) { 
-			z--;
-			err += dz += aa; 
-		} // z step
-	} while (z>0);
 
 	
-	
-///////////////-----------------Q4	
-	//Q4
-	x = a;
-	z = 0;
-	dx = -(2*x-1)*bb>>1;
-	dz = -(2*z-1)*aa>>1;
-	err = dx+dz;
-	do {
-//		setPixel(xm, ym-y);
-//		count++;
-		e2 = err<<1;
-		if (e2 > dx) { 
-			x--; 
-			err += dx += bb; 
-		} // x step
-		if (e2 < dz) { 
-			z--;
-			err += dz += aa; 
-		} // z step
-	} while (x>0);
+	uint8_t q0 = get_quadrant(x0,z0);
 
+	x = x0;
+	z = z0;
+	switch(q0){
+		case 1:{
+		///////////////-----------------Q1	
+			//Q1
+//			x = 0;
+//			z = b;
+		// init:		
+			dx =  (2*x+1)*bb>>1;
+			dz = -(2*z-1)*aa>>1;
+			err = dx+dz;
 
-
-
-///////////////-----------------Q3	
-	//Q3
-	x = 0;
-	z = -b;
-	dx = -(2*x-1)*bb>>1;
-	dz = (2*z+1)*aa>>1;
-	err = dx+dz;
-	do {
-//		setPixel(xm, ym-y);
-//		count++;
-		e2 = err<<1;
-		if (e2 < dx) { 
-			x--; 
-			err += dx += bb; 
-		} // x step
-		if (e2 > dz) { 
-			z++;
-			err += dz += aa; 
-		} // z step
-	} while (z<0);
-
-	
-/*	
-		if (e2 < ex){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
-			err += (++x*2+1)*(int64_t)b*b;
-			x32 = x;
+		// callback:
+			do {
+				e2 = err<<1;
+				if (e2 < dx) {
+					x++; 
+					err += dx += bb; 
+				} // x step
+				if (e2 > dz) { 
+					z--;
+					err += dz += aa; 
+				} // z step
+				if(x == x1 && z == z1)
+						return;
+			} while (z>0);
+			//prepare to next quadrant:
+			x = a;
+			z = 0;
 		}
-		ey = (z*2-1)*(int64_t)a*a;
-		if (e2 > -ey){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
-			err -= (--z*2-1)*(int64_t)a*a;
-*/
-	
-
-	
-	
-//	while (z++ < b) { /* to early stop for flat ellipses with a=1, */
-//		setPixel(xm, ym+y); /* -> finish tip of ellipse */
-//		setPixel(xm, ym-y);
-//	}
+		case 4:{
+			dx = -(2*x-1)*bb>>1;
+			dz = -(2*z-1)*aa>>1;
+			err = dx+dz;
+			do {
+				e2 = err<<1;
+				if (e2 > dx) { 
+					x--; 
+					err += dx += bb; 
+				} // x step
+				if (e2 < dz) { 
+					z--;
+					err += dz += aa; 
+				} // z step
+				if(x == x1) {
+					if(z == z1){
+						return;
+					}
+				}
+			} while (x>0);
+			x = 0;
+			z = -b;
+		}
+		case 3:{
+			dx = -(2*x-1)*bb>>1;
+			dz =  (2*z+1)*aa>>1;
+			err = dx+dz;
+			do {
+				e2 = err<<1;
+				if (e2 < dx) { 
+					x--; 
+					err += dx += bb; 
+				} // x step
+				if (e2 > dz) { 
+					z++;
+					err += dz += aa; 
+				} // z step
+				if(x == x1 && z == z1)
+						return;
+			} while (z<0);
+			x = -a;
+			z = 0;
+		}
+		case 2:{
+			// Q2
+			dx = (2*x+1)*bb>>1;
+			dz = (2*z+1)*aa>>1;
+			err = dx+dz;
+			do {
+				e2 = err<<1;
+				if (e2 >= dx) { 
+					x++; 
+					err += dx += bb; 
+				} // x step
+				if (e2 <= dz) { 
+					z++;
+					err += dz += aa; 
+				} // z step
+				if(x == x1 && z == z1)
+						return;
+			} while (x <= 0);
+		}
+	}
 }
+*/
+
 // on task load callback
-void G03init_callback(void){
+/*
+void G03init_callback_old(void){
 	state_t *s = &state;
 
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
@@ -358,11 +538,7 @@ uint8_t get_octant(int x0z,int z0z, int octant10){
 
 
 
-/**
-* @brief  G33 parse to tasks
-* @retval void.
-  */
-void G03parse(char *line, int8_t cwccw){ //~130-150us
+void G03parse_old(char *line, int8_t cwccw){ //~130-150us
 	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
 	int z0 = init_gp.Z & ~1uL<<10;
 //	int pos_count; // 1st octant count by X
@@ -399,18 +575,18 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 
 //	pos_count = 0;
 	G_task *gt_new_task;
-/*
-				 ^ Z  
-		 \ 7 | 0 /
-			\  |  /
-			 \ | /       
-			6 \|/ 1
-	 ------0------->X
-			5 /|\ 2
-			 / | \
-			/  |  \      
-		 / 4 | 3 \
-*/
+
+//				 ^ Z  
+//		 \ 7 | 0 /
+//			\  |  /
+//			 \ | /       
+//			6 \|/ 1
+//	 ------0------->X
+//			5 /|\ 2
+//			 / | \
+//			/  |  \      
+//		 / 4 | 3 \
+
 	if(oct0 == oct1){
 		gt_new_task 		= add_empty_task();
 		gt_new_task->init_callback_ref = G03init_callback;
@@ -573,6 +749,9 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 		}
 	}					
 
+}
+*/
+
 /*
   общее число шагов для дуги равно сумме шагов по осям в соответствии с текущей октантой
 	для октант 0,3,4 и 7 основной осью является ось Х, сдвиг по оси Z вычисляется как sqrt(R*R-dx*dx)
@@ -606,4 +785,94 @@ void G03parse(char *line, int8_t cwccw){ //~130-150us
 
 	
 */	
-}
+
+
+
+
+/*
+void plotEllipse(int x0, int z0, int a, int b){
+	x = -a;
+	z = 0;
+	int64_t ex, ey, e2, err;
+
+	e2 = (int64_t)b*b;
+
+
+	// II quadrant
+	err = (x0+1)*(x0+1)*b*b + (z0+1)*(z0+1)*a*a - a*a*b*b;
+	// -373 403 -321632000	
+	do {
+		e2 = 2*err;
+		ex = (x*2+1)*(int64_t)b*b;
+		if (e2 >= ex){ //e_xy+e_x > 0
+			err += (++x*2+1)*(int64_t)b*b;
+//			BIT_BAND_SRAM(&bufx,count) = 1;
+		}
+		ey = (z*2+1)*(int64_t)a*a;
+		if (e2 <= ey){ // e_xy+e_y < 0 
+			err += (++z*2+1)*(int64_t)a*a;
+//			BIT_BAND_SRAM(&bufz,count) = 1;
+		}
+		count++;
+	} while (x <= 0);
+	count_total = --count;
+	x0 = 0;
+	z0 = b;
+	x = x0;
+	z = z0;
+
+
+	// I quadrant:
+	err = (x0+1)*(x0+1)*b*b + (z0-1)*(z0-1)*a*a - a*a*b*b;
+	do {
+		e2 = 2*err;
+		ex = (x*2+1)*(int64_t)b*b;
+		if (e2 < ex){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
+			err += (++x*2+1)*(int64_t)b*b;
+		}
+		ey = (z*2-1)*(int64_t)a*a;
+		if (e2 > -ey){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
+			err -= (--z*2-1)*(int64_t)a*a;
+		}
+	} while (z >0);
+
+
+	// IV quadrant:
+	x0 = a;
+	z0 = 0;
+	x = x0;
+	z = z0;
+
+	err = (x0-1)*(x0-1)*b*b + (z0-1)*(z0-1)*a*a - a*a*b*b;
+	do {
+		e2 = 2*err;
+		ex = (x*2-1)*(int64_t)b*b;
+		if (e2+ex>0){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
+			err -= (--x*2-1)*(int64_t)b*b;
+		}
+		ey = (z*2-1)*(int64_t)a*a;
+		if (e2+ey<0){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
+			err -= (--z*2-1)*(int64_t)a*a;
+		}
+	} while (x>=0);
+
+	
+	// III quadrant:
+	x0 = 0;
+	z0 = -b;
+	x = x0;
+	z = z0;
+
+	err = (x0-1)*(x0-1)*b*b + (z0+1)*(z0+1)*a*a - a*a*b*b;
+	do {
+		e2 = 2*err;
+		ex = (x*2-1)*(int64_t)b*b;
+		if (e2+ex<0){ //if (e2 - ex < 0){ // e_xy+e_x < 0 
+			err -= (--x*2-1)*(int64_t)b*b;
+		}
+		ey = (z*2+1)*(int64_t)a*a;
+		if (e2-ey>0){ //if (e2 + ey > 0){ //e_xy+e_y > 0	
+			err += (++z*2+1)*(int64_t)a*a;
+		}
+	} while (z<=0);
+}*/

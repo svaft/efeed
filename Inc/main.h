@@ -167,7 +167,7 @@ void Error_Handler(void);
 
 // main carriage
 
-
+#define BIT_BAND_SRAM(RAM,BIT) (*(volatile uint32_t*)(SRAM_BB_BASE+32*((uint32_t)((void*)(RAM))-SRAM_BASE)+4*((uint32_t)(BIT))))
 #define BB_PERI(c,d) *((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)( &( c ) - PERIPH_BASE)*32 + ( d*4 ))))
 #define XDIR *((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  0x4001100C - PERIPH_BASE)*32 + ( 15*4 ))))
 
@@ -248,13 +248,18 @@ typedef struct G_pipeline{
 } G_pipeline;
 
 typedef struct G_task{
-	int32_t dx, dz; // delta
+	int32_t dx, dz;
+	int32_t 	x, z, x1, z1; // delta
 	uint32_t steps_to_end;
 	fixedptu F; //Q824
 	callback_func_t callback_ref; //callback ref to iterate line or arc
 	callback_func_t init_callback_ref;
 	uint8_t z_direction, x_direction;
-	int rr, inc_dec;
+
+// arc
+//	int rr, inc_dec;
+	uint32_t a,b;
+//	int64_t err, aa, bb;
 } G_task;
 
 
@@ -266,6 +271,10 @@ typedef struct state
 	uint8_t ramp_step;
 	uint32_t Q824set; // feed rate
 	uint32_t fract_part; // Q8.24 format fract part
+	
+	// arc variables for precalculated in task init callback for current task:	
+	int64_t arc_aa, arc_bb, arc_dx, arc_dz; // error increment
+	int64_t arc_err; // error of 1.step
 	
 	G_task current_task;
 	bool G94G95; // 0 - unit per min, 1 - unit per rev

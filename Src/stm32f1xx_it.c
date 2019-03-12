@@ -253,14 +253,6 @@ void TIM2_IRQHandler(void)
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
 		state.function(&state);
 //	TIM2->EGR |= TIM_EGR_UG;
-		if(state.current_task.steps_to_end == 0){
-//			debug();
-			if(task_cb.count == 0){
-				do_fsm_move_end2(&state);
-				return;
-			}
-			load_next_task();
-		}
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
   /* Check whether update interrupt is pending */
@@ -282,6 +274,14 @@ void TIM3_IRQHandler(void)
   /* USER CODE BEGIN TIM3_IRQn 0 */
 	if(state.current_task.callback_ref){
 		state.current_task.callback_ref();
+	}
+	if(state.current_task.steps_to_end == 0){
+//			debug();
+		if(task_cb.count == 0){
+			do_fsm_move_end2(&state);
+			return;
+		}
+		load_next_task();
 	}
 	TIM3->SR = 0;
 

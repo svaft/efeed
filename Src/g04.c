@@ -12,20 +12,20 @@ void G04parse(char *line){
 
 void G04init_callback(void){
 	state.function = do_fsm_dwell;
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED); // disable pulse generation
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED); // disable pulse generation
+	TIM3->CCER = 0; // disable pulse generation
 	TIM2->ARR = 30;
 }
 
 void do_fsm_dwell(state_t *s){
 	// callback from TIM2
+}
+
+void dwell_callback(void){
+// callback from TIM3
 	state.current_task.steps_to_end--;
 	if(state.current_task.steps_to_end == 0){
 		//restore connection here?
 			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 	}
-
-}
-
-void dwell_callback(void){
-// callback from TIM3
 }

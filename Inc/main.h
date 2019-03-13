@@ -268,7 +268,7 @@ typedef struct G_task{
 
 typedef struct state
 {
-	uint32_t steps_to_end;
+//	uint32_t steps_to_end;
 	uint32_t current_pos;
 	uint32_t end_pos;
 	uint8_t ramp_step;

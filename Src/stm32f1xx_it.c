@@ -251,7 +251,8 @@ void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
-		state.function(&state);
+	state.function(&state);
+	debug();
 //	TIM2->EGR |= TIM_EGR_UG;
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
@@ -275,6 +276,7 @@ void TIM3_IRQHandler(void)
 	if(state.current_task.callback_ref){
 		state.current_task.callback_ref();
 	}
+	debug1();
 	if(state.current_task.steps_to_end == 0){
 //			debug();
 		if(task_cb.count == 0){

@@ -347,46 +347,6 @@ int main(void)
 //	G03parse("X12. Z-4.5 I-1.99 K-2.245");
 //	debug();
 
-	static const char * const garray[] = {
-		"G90 G94 F600",
-		"G3 X12. Z-6 K-6",		
-//		"G1 X2.828 F1",
-//		"G1 X.05 F600",
-"G1 X0.02 Z0.",
-"G4 P.01",
-"G3 X2.3 Z-1.15 I-0.01 K-1.15",
-
-//		"G1 X1.951 Z0. F600",
-//		"Z-0.28",
-//		"G3 X2.81 Z-1.2 I-0.77 K-0.92",
-		
-//"G1 X0. Z-1. F600",
-//"X2.205",
-//"G3 X6.205 Z-3. K-2.",
-		
-		
-//		"G1 X41.507 Z-11.713",
-//		"G2 X41.114 Z-11.945 I7.843 K-6.843",
-
-		"X0. Z-1",
-		"X3.",
-		"G3 X4. Z-6 K-5",
-		"G1 Z-11.056",
-		"G2 Z-26.056 I8.597 K-7.5",
-
-		"G1 X0. Z-2.5 F.3",
-		"G1 X10.", 
-		"G3 X12. Z-4.5 I-1.99 K-2.245" 
-//"G1 X40.279 Z-31.064",
-//"X40.554 Z-31.09",
-//"X40.822 Z-31.132",
-	};
-
-//	LL_mDelay(100);
-	for(int a = 0; a < 2; a++ ){
-//		debug();
-		command_parser((char *)garray[a]);
-	}
 //			debug();
 
 	
@@ -464,12 +424,13 @@ int main(void)
   LL_USART_EnableIT_ERROR(USART2);
 
 
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 // Timers post init:
-	LL_TIM_GenerateEvent_UPDATE(TIM2);
+//	LL_TIM_GenerateEvent_UPDATE(TIM2);
 //  LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH1); // if we need output on leg
-  LL_TIM_ClearFlag_UPDATE(TIM2);
-	LL_TIM_EnableIT_UPDATE(TIM2);
+ // LL_TIM_ClearFlag_UPDATE(TIM2);
+//	LL_TIM_EnableIT_UPDATE(TIM2);
 
 //	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 
@@ -591,7 +552,7 @@ int main(void)
 	do_fsm_menu(&state);
 //	LL_mDelay(5);
 //	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
-	LED_GPIO_Port->BSRR = LED_Pin; // led off
+	LED_GPIO_Port->BRR = LED_Pin; // led off
 	
 }
 //	debug();
@@ -607,11 +568,50 @@ int main(void)
 //debug();
 
 
-//debug();
-	G94(&state);
+	static const char * const garray[] = {
+		"G90 G94 F900",
+		"G1 X0.02 Z0.",
+		"G4 P.01",
+		"G1 X0. Z0.",
+		"G3 X12. Z-6 K-6",		
+//		"G1 X2.828 F1",
+		"G1 X.05 F600",
+		"G1 X0.02 Z0.",
+		"G4 P.01",
+		"G3 X2.3 Z-1.15 I-0.01 K-1.15",
+
+		"X0. Z-1",
+		"X3.",
+		"G3 X4. Z-6 K-5",
+		"G1 Z-11.056",
+		"G2 Z-26.056 I8.597 K-7.5",
+
+		"G1 X0. Z-2.5 F.3",
+		"G1 X10.", 
+		"G3 X12. Z-4.5 I-1.99 K-2.245" 
+	};
+
 //	LL_mDelay(100);
-	do_fsm_move_start2(&state);
+	for(int a = 0; a < 5; a++ ){
+//		debug();
+		command_parser((char *)garray[a]);
+	}
+
+
 	debug();
+// prevent to put TIM3 stepper chanels high on set corresponding CCER-CCxE bit.
+// without this code channel is enabled on set CCER-CCxE ignoring shadow register, thats strange...	
+	LL_TIM_DisableIT_UPDATE(TIM3);
+	LL_TIM_GenerateEvent_UPDATE(TIM3);
+	LL_TIM_ClearFlag_UPDATE(TIM3);
+	LL_TIM_EnableIT_UPDATE(TIM3);
+	
+//	LL_mDelay(100);
+//	debug();
+
+	G94(&state);
+	do_fsm_move_start2(&state);
+//	debug();
 	while (1) {
 		__WFI();
     /* USER CODE END WHILE */

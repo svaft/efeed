@@ -13,11 +13,14 @@ void G01init_callback(void){
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
 	s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
 	dxdz_callback();
+//	s->current_task.steps_to_end = 1; 
+
 }
 
 // called from TIM3 on end of the stepper pulse to set output channel configuration for next pulse
 void dxdz_callback(){
 	state_t *s = &state;
+//			debug();
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int e2 = s->err;
 	if (e2 > -s->current_task.dx)	{ // step X axis
@@ -28,6 +31,13 @@ void dxdz_callback(){
 		s->err += s->current_task.dx;
 		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 	}
+
+//	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+//		s->current_task.steps_to_end = 0; // end of arc
+//		return;
+//	}
+
+	s->current_task.steps_to_end--;
 }
 
 

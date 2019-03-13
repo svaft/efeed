@@ -9,6 +9,7 @@ G_pipeline gp[10];
 
 
 void load_next_task(){
+	debug7();
 	cb_pop_front(&task_cb, &state.current_task);
 	if(state.current_task.init_callback_ref){
 		state.current_task.init_callback_ref(); // task specific init
@@ -34,22 +35,27 @@ void G94(state_t* s){
 
 void do_fsm_move_start2(state_t* s){
 	load_next_task(); // load first task from queue
-	
+
 //	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
-	s->syncbase->ARR = 1;
-	s->syncbase->CNT = 1; // set ARR=CNT to start pulse generation on next count increment after EnableCounter.
+//	s->syncbase->ARR = 1;
+//	s->syncbase->CNT = 1; // set ARR=CNT to start pulse generation on next count increment after EnableCounter.
 	// disclamer: why not to generate	update event by setting in EGR UG bit? with hardware logic analyzer all works fine,
 	// but in simulator this first pulse not generater propertly by UG
-	
+
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
+
+//	LL_mDelay(100);
+//	debug();
+
+	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	LL_TIM_EnableCounter(s->syncbase);
-
-	LL_TIM_DisableIT_UPDATE(TIM2);
+	LL_TIM_EnableIT_UPDATE(s->syncbase);
+//	LL_TIM_DisableIT_UPDATE(TIM2);
 	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
-	LL_TIM_ClearFlag_UPDATE(TIM2);
-	LL_TIM_EnableIT_UPDATE(TIM2);
+//	LL_TIM_ClearFlag_UPDATE(TIM2);
+//	LL_TIM_EnableIT_UPDATE(s->syncbase);
 }
 
 void do_fsm_move2(state_t* s){
@@ -61,6 +67,7 @@ void do_fsm_move2(state_t* s){
 
 
 void do_fsm_move_end2(state_t* s){
+	debug();
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	if (s->sync) {
@@ -112,6 +119,9 @@ void command_parser(char *line){
 						state.G94G95 = 1;
 //						state.sync = 1;
 						break;
+					case 0://G0 command packed into 2210_400 format
+						G01parse(line+char_counter);
+						return;	
 					case 409600://G1 command packed into 2210_400 format
 						G01parse(line+char_counter);
 						return;	

@@ -9,7 +9,7 @@ G_pipeline gp[10];
 
 
 void load_next_task(){
-	debug7();
+//	debug7();
 	cb_pop_front(&task_cb, &state.current_task);
 	if(state.current_task.init_callback_ref){
 		state.current_task.init_callback_ref(); // task specific init

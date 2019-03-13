@@ -18,6 +18,8 @@ void G01init_callback(void){
 }
 
 // called from TIM3 on end of the stepper pulse to set output channel configuration for next pulse
+int lx=0, ly=0, ddz = 0;
+float ff = 0;
 void dxdz_callback(){
 	state_t *s = &state;
 //			debug();
@@ -25,10 +27,19 @@ void dxdz_callback(){
 	int e2 = s->err;
 	if (e2 > -s->current_task.dx)	{ // step X axis
 		s->err -= s->current_task.dz; 
+		lx++;
 		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+	}
+	ddz = e2 - s->current_task.dz;
+	if( ddz < s->current_task.dz &&  ddz > 0){
+
+		ff = (float)ddz*TIM2->PSC * TIM2->ARR/s->current_task.dz;// percent of full step to wait for sub-step in ticks of 72mhz timer
+		// so start timer 1 here and on owerflow start sub-pulse, and on next call skip sub-pulse here but recalculate error, todo
+// next step switch	
 	}
 	if (e2 < s->current_task.dz)	{ // step Z axis
 		s->err += s->current_task.dx;
+		ly++;
 		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 	}
 
@@ -46,6 +57,9 @@ void G01parse(char *line){ //~60-70us
 	int z0 = init_gp.Z & ~1uL<<10;
 	G_pipeline *gref = G_parse(line);
 
+	gref->Z = 6*1024;
+	gref->X = 32*1024;
+	
 	int dx,dz, xdir,zdir;
 	if(gref->Z > z0){ // go from left to right
 		dz = gref->Z - z0;

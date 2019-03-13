@@ -159,7 +159,7 @@
           <Type>0</Type>
           <LineNumber>283</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134225728</Address>
+          <Address>134226554</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -175,7 +175,7 @@
           <Type>0</Type>
           <LineNumber>34</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134226494</Address>
+          <Address>134227314</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -191,7 +191,7 @@
           <Type>0</Type>
           <LineNumber>30</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134226484</Address>
+          <Address>134227304</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -201,6 +201,70 @@
           <Filename>..\Src\g03.c</Filename>
           <ExecCommand></ExecCommand>
           <Expression>\\efeed\../Src/g03.c\30</Expression>
+        </Bp>
+        <Bp>
+          <Number>3</Number>
+          <Type>0</Type>
+          <LineNumber>8</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134219406</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\Src\g01.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\efeed\../Src/g01.c\8</Expression>
+        </Bp>
+        <Bp>
+          <Number>4</Number>
+          <Type>0</Type>
+          <LineNumber>36</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134228862</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\Src\g01.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\efeed\../Src/g01.c\36</Expression>
+        </Bp>
+        <Bp>
+          <Number>5</Number>
+          <Type>0</Type>
+          <LineNumber>34</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134228846</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\Src\g01.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\efeed\../Src/g01.c\34</Expression>
+        </Bp>
+        <Bp>
+          <Number>6</Number>
+          <Type>0</Type>
+          <LineNumber>53</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>0</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>0</BreakIfRCount>
+          <Filename>..\Src\g01.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression></Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -217,7 +281,7 @@
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>gref-&gt;K,0x0A</ItemText>
+          <ItemText>gref-&gt;Z,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
@@ -258,6 +322,46 @@
           <count>10</count>
           <WinNumber>1</WinNumber>
           <ItemText>task_cb</ItemText>
+        </Ww>
+        <Ww>
+          <count>11</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>s-&gt;err,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>12</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>s-&gt;current_task.dz,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>13</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>e2,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>14</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>e2-s-&gt;err,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>15</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>ddz,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>16</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>z0z</ItemText>
+        </Ww>
+        <Ww>
+          <count>17</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>ff</ItemText>
+        </Ww>
+        <Ww>
+          <count>18</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>TIM2-&gt;PSC*TIM2-&gt;ARR,0x0A</ItemText>
         </Ww>
       </WatchWindow1>
       <MemoryWindow1>
@@ -305,12 +409,12 @@
         <AscS3>0</AscS3>
         <aSer3>0</aSer3>
         <eProf>0</eProf>
-        <aLa>0</aLa>
-        <aPa1>1</aPa1>
+        <aLa>1</aLa>
+        <aPa1>0</aPa1>
         <AscS4>0</AscS4>
         <aSer4>0</aSer4>
         <StkLoc>0</StkLoc>
-        <TrcWin>0</TrcWin>
+        <TrcWin>1</TrcWin>
         <newCpu>0</newCpu>
         <uProt>0</uProt>
       </DebugFlag>
@@ -330,13 +434,18 @@
       <LogicAnalyzers>
         <Wi>
           <IntNumber>0</IntNumber>
-          <FirstString>\\efeed\../Src/main.c\state.current_task.x</FirstString>
-          <SecondString>FF0000000000000000000000000000000024AC40000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6D61696E2E635C73746174652E63757272656E745F7461736B2E7800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004100000001000000000000000000E03F12000000000000000000000000000000000000008C210008</SecondString>
+          <FirstString>\\efeed\../Src/g01.c\lx</FirstString>
+          <SecondString>FF00000000000000000000000000000000002A40000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6730312E635C6C780000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004100000001000000565555555555D53F0A00000000000000000000000000000000000000D8270008</SecondString>
         </Wi>
         <Wi>
           <IntNumber>1</IntNumber>
-          <FirstString>\\efeed\../Src/main.c\state.current_task.z</FirstString>
-          <SecondString>008000000000000000000000000000000088A340000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6D61696E2E635C73746174652E63757272656E745F7461736B2E7A00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000002000000000000000000E03F12000000000000000000000000000000000000008C210008</SecondString>
+          <FirstString>\\efeed\../Src/g01.c\ly</FirstString>
+          <SecondString>0080000000000000000000000000000000000040000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6730312E635C6C790000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004100000002000000565555555555D53F0A00000000000000000000000000000000000000D8270008</SecondString>
+        </Wi>
+        <Wi>
+          <IntNumber>2</IntNumber>
+          <FirstString>\\efeed\../Src/g01.c\ddz</FirstString>
+          <SecondString>0000800000000000000018C00000000000003840000000000000000000000000000000005C5C65666565645C2E2E2F5372632F6730312E635C64647A00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004100000003000000555555555555D53F0A0000000000000000000000000000000000000010280008</SecondString>
         </Wi>
       </LogicAnalyzers>
       <SystemViewers>
@@ -577,7 +686,7 @@
       <GroupNumber>3</GroupNumber>
       <FileNumber>17</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
+      <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>../Src/main.c</PathWithFileName>

@@ -21,7 +21,9 @@ void G94(state_t* s){
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	LL_TIM_DisableCounter(TIM2); // pause async timer
+// calibrate timer delay
 	LL_TIM_DisableUpdateEvent(TIM2);
+
 	// connect async timer:
 	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
 //	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
@@ -98,6 +100,7 @@ G_task* get_last_task( void ){
 void command_parser(char *line){
   uint8_t char_counter = 0;  
 	char letter;
+	G_task *g_task;
 //	char *end;
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
     letter = line[char_counter++];
@@ -114,9 +117,13 @@ void command_parser(char *line){
 						break;
 					case 38502400: //G94 Units per Minute Mode
 						state.G94G95 = 0;
+						g_task = add_empty_task();
+						g_task->init_callback_ref = calibrate_init_callback;
 						break;
 					case 38912000: //G95 - is Units per Revolution Mode
 						state.G94G95 = 1;
+						g_task = add_empty_task();
+						g_task->init_callback_ref = calibrate_init_callback;
 //						state.sync = 1;
 						break;
 					case 0://G0 command packed into 2210_400 format

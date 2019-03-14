@@ -4,8 +4,8 @@
 
 int count = 0;
 int count_total = 0;
-uint8_t bufx[2000];
-uint8_t bufz[2000];
+//uint8_t bufx[2000];
+//uint8_t bufz[2000];
 
 //int x=0, z=0;
 
@@ -16,13 +16,13 @@ void arc_q1_callback(void){
 	int64_t e2 = s->arc_err<<1;
 
 	if (e2 < s->arc_dx) { 
-		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+		MOTOR_X_AllowPulse();
 		s->current_task.x++;
 		s->arc_err += s->arc_dx += s->arc_bb; 
 	} // x step
 	if (e2 > s->arc_dz) { 
 		s->current_task.z--;
-		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} // z step
 
@@ -30,6 +30,7 @@ void arc_q1_callback(void){
 		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
+
 	if(s->current_task.z == 0){ // end of quadrant
 		s->current_task.steps_to_end = 0;
 	}
@@ -46,12 +47,12 @@ void arc_q4_callback(void){
 		e2 = s->arc_err<<1;
 		if (e2 > s->arc_dx) { 
 			s->current_task.x--; 
-			t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+			MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 			s->arc_err += s->arc_dx += s->arc_bb; 
 		} // x step
 		if (e2 < s->arc_dz) { 
 			s->current_task.z--;
-			t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+			MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 			s->arc_err += s->arc_dz += s->arc_aa; 
 		} // z step
 //	} while (x>0);
@@ -73,13 +74,13 @@ void arc_q2_callback(void){
 	int64_t e2 = s->arc_err<<1;
 
 	if (e2 >= s->arc_dx) { 
-		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+		MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 //			x++; 
 		s->arc_err += s->arc_dx += s->arc_bb; 
 	} // x step
 	if (e2 <= s->arc_dz) { 
 //			z++;
-		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} // z step
 //	} while (x <= 0);
@@ -93,13 +94,13 @@ void arc_q3_callback(void){
 	int64_t e2 = s->arc_err<<1;
 
 	if (e2 >= s->arc_dx) { 
-		t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+		MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 		s->current_task.x++; 
 		s->arc_err += s->arc_dx += s->arc_bb; 
 	} // x step
 	if (e2 <= s->arc_dz) { 
 		s->current_task.z++;
-		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} // z step
 
@@ -509,10 +510,10 @@ void G03init_callback_old(void){
 void arc_dx_callback(){
 	state_t *s = &state;
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+	MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 	int dz = SquareRoot(s->current_task.rr - s->current_task.dx * s->current_task.dx);
 	if(dz != s->current_task.dz){
-		t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 		s->current_task.dz = dz;
 	}
 	s->current_task.dx += s->current_task.inc_dec;
@@ -521,10 +522,10 @@ void arc_dx_callback(){
 void arc_dz_callback(){
 	state_t *s = &state;
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+	MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 	int dx = SquareRoot(s->current_task.rr - s->current_task.dz * s->current_task.dz);
 	if(dx != s->current_task.dx){
-	t3ccer[TIM_CCER_CC1E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+	MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 		s->current_task.dx = dx;
 	}
 	s->current_task.dz += s->current_task.inc_dec;

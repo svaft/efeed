@@ -552,8 +552,7 @@ int main(void)
 	do_fsm_menu(&state);
 //	LL_mDelay(5);
 //	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
-	LED_GPIO_Port->BRR = LED_Pin; // led off
-	
+		LED_OFF();
 }
 //	debug();
 //	TIM3->ARR = min_pulse;
@@ -598,17 +597,32 @@ int main(void)
 	}
 
 
-	debug();
+//	debug();
 // prevent to put TIM3 stepper chanels high on set corresponding CCER-CCxE bit.
 // without this code channel is enabled on set CCER-CCxE ignoring shadow register, thats strange...	
+
 	LL_TIM_DisableIT_UPDATE(TIM3);
 	LL_TIM_GenerateEvent_UPDATE(TIM3);
 	LL_TIM_ClearFlag_UPDATE(TIM3);
-	LL_TIM_EnableIT_UPDATE(TIM3);
-	
-//	LL_mDelay(100);
-//	debug();
+	LL_TIM_EnableIT_UPDATE(TIM3); // */
 
+	// prepare TIM1 for sub-step:	
+	LL_TIM_ClearFlag_UPDATE(TIM1);
+	LL_TIM_EnableIT_UPDATE(TIM1);
+	LL_TIM_DisableARRPreload(TIM1);
+
+/*	
+	debug();
+	LL_mDelay(10);
+	debug1();
+	G94(&state);
+	//	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+	t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+	LL_TIM_EnableCounter(TIM3);
+	LL_mDelay(15);
+	debug();
+return 0;
+*/
 	G94(&state);
 	do_fsm_move_start2(&state);
 //	debug();
@@ -804,7 +818,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
-  TIM_InitStruct.Prescaler = 720;
+  TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 0;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
@@ -813,7 +827,7 @@ static void MX_TIM1_Init(void)
   LL_TIM_DisableARRPreload(TIM1);
   LL_TIM_SetClockSource(TIM1, LL_TIM_CLOCKSOURCE_INTERNAL);
   LL_TIM_OC_EnablePreload(TIM1, LL_TIM_CHANNEL_CH1);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
+  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.CompareValue = 0;

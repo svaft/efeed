@@ -15,12 +15,15 @@
 
 void command_parser(char *line);
 
+void G94(state_t* s);
+
 void G33parse(char *line);
 void G00parse(char *line);
 
 extern G_task gt[];
 extern G_pipeline gp[];
 extern G_pipeline init_gp;
+
 
 void do_fsm_move_start2(state_t* s);
 void do_fsm_move2(state_t*);

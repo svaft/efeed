@@ -3,45 +3,24 @@
 #include "g01.h"
 
 
-void calibrate_init_callback(void){
-	LL_TIM_DisableCounter(state.syncbase); // pause current timer
-	// reset calibrated value
-	state.async_z = 0;
-	state.function = calibrate_callback;
-	LL_TIM_SetAutoReload(TIM1,0xFFFF);
-	TIM1->CNT = 0;
-
-	state.syncbase->CNT = 1;
-	LL_TIM_EnableIT_UPDATE(state.syncbase);
-	LL_TIM_DisableARRPreload(state.syncbase);
-	LL_TIM_SetAutoReload(state.syncbase,1);
-	LL_TIM_EnableCounter(state.syncbase); // start current timer
-	while(state.async_z==0){
-	
-	}
-	LL_TIM_DisableCounter(state.syncbase); // pause current timer
-	LL_TIM_EnableARRPreload(state.syncbase);
-}
-
-void calibrate_callback(state_t *s){
-	if(TIM1->CNT == 0){
-		LL_TIM_EnableCounter(TIM1);
-	} else {
-		LL_TIM_DisableCounter(TIM1);
-		state.async_z = TIM1->CNT - 110;
-	}
-}
-
-
 // called from load_task
 void G01init_callback(void){
 	state_t *s = &state;
-//1. set state.function
+//	1. set state.function
 //	2. set ARR
 //	3. set channels
 	state.function = do_fsm_move2;
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
-	s->err = (s->current_task.dx > s->current_task.dz ? s->current_task.dx : -s->current_task.dz) >> 1;
+
+	if(s->current_task.dz > s->current_task.dx){
+		s->current_task.steps_to_end = s->current_task.dz;
+		s->substep_axis = SUBSTEP_AXIS_X;
+		s->err = -s->current_task.dz >> 1;
+	} else{
+		s->current_task.steps_to_end = s->current_task.dx;
+		s->err = s->current_task.dx >> 1;
+		s->substep_axis = SUBSTEP_AXIS_Z;
+	}
 	dxdz_callback();
 //	s->current_task.steps_to_end = 1; 
 
@@ -65,21 +44,36 @@ void dxdz_callback(){
 		s->substep_mask = 0;
 		return;
 	}
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+
+	TIM3->CCER = 0;
 	int e2 = s->err;
-	if (e2 > -s->current_task.dx)	{ // step X axis
+	if (e2 >= -s->current_task.dx)	{ // step X axis
+		if(s->err == 0 || s->substep_axis == SUBSTEP_AXIS_Z){
+//			lx++;
+			MOTOR_X_AllowPulse(); 
+		} else {
+			s->substep_mask = MOTOR_X_CHANNEL;
+			MOTOR_X_BlockPulse(); // block pulse on next timer2 tick but set it by substep timer1
+			uint32_t delay = s->prescaler * s->syncbase->ARR;
+			// explanations: prescaler for timer connecter to encoder is unknown because its depend on rotating speed of the encoder,
+			// so we trying to detect it with calibrate_callback and use it here. For async(predefined) timer	we can use TI2->PSC for it. 		
+			delay = delay*(abs(e2))/s->current_task.dx;// + min_pulse;
+			LL_TIM_SetAutoReload(TIM1,delay);
+//			debug1();
+			LL_TIM_EnableCounter(TIM1);
+		}
 		s->err -= s->current_task.dz;
-		lx++;
-		MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 	}
 	if (e2 <= s->current_task.dz)	{ // step Z axis
-		if(s->err == 0){
-			ly++;
-			MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		if(s->err == 0 || s->substep_axis == SUBSTEP_AXIS_X){
+//			ly++;
+			MOTOR_Z_AllowPulse();
 		} else {
 			s->substep_mask = MOTOR_Z_CHANNEL;
 			MOTOR_Z_BlockPulse(); // block pulse on next timer2 tick but set it by substep timer1
-			uint32_t delay = TIM2->PSC * TIM2->ARR; 
+			uint32_t delay = s->prescaler * s->syncbase->ARR;
+			// explanations: prescaler for timer connecter to encoder is unknown because its depend on rotating speed of the encoder,
+			// so we trying to detect it with calibrate_callback and use it here. For async(predefined) timer	we can use TI2->PSC for it. 		
 			delay = delay*(abs(e2))/s->current_task.dz;// + min_pulse;
 			LL_TIM_SetAutoReload(TIM1,delay);
 //			debug1();
@@ -102,8 +96,8 @@ void G01parse(char *line){ //~60-70us
 	int z0 = init_gp.Z & ~1uL<<10;
 	G_pipeline *gref = G_parse(line);
 
-	gref->Z = -6*1024;
-	gref->X = 32*1024;
+//	gref->Z = -32*1024;
+//	gref->X = 6*1024;
 	
 	int dx,dz, xdir,zdir;
 	if(gref->Z > z0){ // go from left to right
@@ -124,7 +118,8 @@ void G01parse(char *line){ //~60-70us
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
 	gt_new_task->dz =  fixedpt_toint2210(dz);
-	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
+		
+//	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
 

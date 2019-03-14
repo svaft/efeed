@@ -24,6 +24,9 @@ extern G_task gt[];
 extern G_pipeline gp[];
 extern G_pipeline init_gp;
 
+void calibrate_callback(state_t *);
+void calibrate_init_callback(void);
+
 
 void do_fsm_move_start2(state_t* s);
 void do_fsm_move2(state_t*);

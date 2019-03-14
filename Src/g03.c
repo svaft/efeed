@@ -9,7 +9,8 @@ int count_total = 0;
 
 //int x=0, z=0;
 
-
+float ff = 0,
+	ffx = 0;
 void arc_q1_callback(void){
 	state_t *s = &state;
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
@@ -17,11 +18,13 @@ void arc_q1_callback(void){
 
 	if (e2 < s->arc_dx) { 
 		MOTOR_X_AllowPulse();
+		ffx = (float)e2 / s->arc_dx;
 		s->current_task.x++;
 		s->arc_err += s->arc_dx += s->arc_bb; 
 	} // x step
 	if (e2 > s->arc_dz) { 
 		s->current_task.z--;
+		ff = (float)e2 / s->arc_dz;
 		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} // z step

@@ -287,6 +287,9 @@ typedef struct state
 	int64_t arc_aa, arc_bb, arc_dx, arc_dz; // error increment
 	int64_t arc_err; // error of 1.step
 	
+	uint32_t prescaler; // used for calculating substep delay
+	int substep_axis;
+	
 	G_task current_task;
 	bool G94G95; // 0 - unit per min, 1 - unit per rev
 	uint32_t substep_mask;
@@ -306,6 +309,8 @@ typedef struct state
 	int err;
 } state_t;
 
+#define SUBSTEP_AXIS_Z 0
+#define SUBSTEP_AXIS_X 1
 
 
 

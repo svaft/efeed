@@ -117,8 +117,9 @@ void command_parser(char *line){
 						break;
 					case 38502400: //G94 Units per Minute Mode
 						state.G94G95 = 0;
-						g_task = add_empty_task();
-						g_task->init_callback_ref = calibrate_init_callback;
+						state.prescaler = TIM2->PSC; //todo
+//						g_task = add_empty_task();
+//						g_task->init_callback_ref = calibrate_init_callback;
 						break;
 					case 38912000: //G95 - is Units per Revolution Mode
 						state.G94G95 = 1;
@@ -205,6 +206,37 @@ G_pipeline* G_parse(char *line){
 	return &init_gp; //gp_cb.top;
 }
 
+void calibrate_init_callback(void){ 
+	// todo not sure if it's working from timer interrupt where load_task is started...
+	if(state.syncbase == TIM2){
+		state.prescaler = state.syncbase->PSC;
+		return;
+	}
+	LL_TIM_DisableCounter(state.syncbase); // pause current timer
+	// reset calibrated value
+	state.prescaler = 0;
+	state.function = calibrate_callback;
+	LL_TIM_SetAutoReload(TIM1,0xFFFF);
+	TIM1->CNT = 0;
+
+	state.syncbase->CNT = 1;
+	LL_TIM_EnableIT_UPDATE(state.syncbase);
+	LL_TIM_DisableARRPreload(state.syncbase);
+	LL_TIM_SetAutoReload(state.syncbase,10);
+	LL_TIM_EnableCounter(state.syncbase); // start current timer
+//	while(state.async_z==0);
+}
+
+void calibrate_callback(state_t *s){
+	if(TIM1->CNT == 0){
+		LL_TIM_EnableCounter(TIM1);
+	} else {
+		LL_TIM_DisableCounter(TIM1);
+		state.prescaler = (TIM1->CNT - 110)/state.syncbase->ARR;
+		LL_TIM_DisableCounter(state.syncbase); // pause current timer
+		LL_TIM_EnableARRPreload(state.syncbase);
+	}
+}
 
 
 

@@ -7,27 +7,45 @@ int count_total = 0;
 //uint8_t bufx[2000];
 //uint8_t bufz[2000];
 
+int subdelay_x=0, subdelay_z=0;
 //int x=0, z=0;
-
-float ff = 0,
-	ffx = 0;
+int acnt = 0, ecnt=0, exx=0, ezz=0;
+float e2e2, edx,edz;
+float ff,
+	ffx;
 void arc_q1_callback(void){
 	state_t *s = &state;
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
+	e2e2 = e2;
+	edx = s->arc_dx;
+	edz = s->arc_dz;
+	ecnt = acnt;
+	exx = s->current_task.x;
+	ezz = s->current_task.z;
+	subdelay_z = 0;
+	subdelay_x = 0;
+	acnt++;
+
+
+	uint32_t delay = s->prescaler * s->syncbase->ARR;
+
 	if (e2 < s->arc_dx) { 
+		subdelay_x = delay*e2/s->arc_dx;
 		MOTOR_X_AllowPulse();
 		ffx = (float)e2 / s->arc_dx;
 		s->current_task.x++;
 		s->arc_err += s->arc_dx += s->arc_bb; 
 	} // x step
 	if (e2 > s->arc_dz) { 
+
+		subdelay_z = delay*e2/s->arc_dz;
 		s->current_task.z--;
-		ff = (float)e2 / s->arc_dz;
 		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} // z step
+
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc
@@ -138,7 +156,7 @@ uint8_t get_quadrant(int x0, int z0){
 	}
 }
 
-
+int64_t dddz=0;
 // on new task loading callback
 void G03init_callback(void){
 	// set initial delay for pulse
@@ -165,7 +183,6 @@ void G03init_callback(void){
 			case 1:
 				state.arc_dx =  (2*state.current_task.x+1)*state.arc_bb>>1;
 				state.arc_dz = -(2*state.current_task.z-1)*state.arc_aa>>1;
-	//		x+z-
 				break;
 			case 4:
 				state.arc_dx = -(2*state.current_task.x-1)*state.arc_bb>>1;

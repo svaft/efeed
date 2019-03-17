@@ -13,11 +13,28 @@ int acnt = 0, ecnt=0, exx=0, ezz=0;
 float e2e2, edx,edz;
 float ff,
 	ffx;
+
 void arc_q1_callback(void){
 	state_t *s = &state;
+	
+	if(s->substep_mask){
+		// sub-step done, restore channel config
+//		debug1();
+		// inverse substep channel activity:
+		if(s->substep_mask == MOTOR_Z_CHANNEL){ 
+			MOTOR_X_OnlyPulse();
+		} else {
+			MOTOR_Z_OnlyPulse();
+		}
+		s->substep_mask = 0;
+		return;
+	}
+
+
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
+	
 	e2e2 = e2;
 	edx = s->arc_dx;
 	edz = s->arc_dz;
@@ -29,22 +46,42 @@ void arc_q1_callback(void){
 	acnt++;
 
 
-	uint32_t delay = s->prescaler * s->syncbase->ARR;
+	uint32_t delay = s->prescaler * s->syncbase->ARR; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 
-	if (e2 < s->arc_dx) { 
-		subdelay_x = delay*e2/s->arc_dx;
+	if (e2 < s->arc_dx) {
+		if(s->substep_axis == SUBSTEP_AXIS_X)
+			subdelay_z = delay*e2/s->arc_dx;
 		MOTOR_X_AllowPulse();
-		ffx = (float)e2 / s->arc_dx;
 		s->current_task.x++;
 		s->arc_err += s->arc_dx += s->arc_bb; 
+	} else {
+		// x is subaxis now
+		s->substep_axis = SUBSTEP_AXIS_X;
 	} // x step
-	if (e2 > s->arc_dz) { 
-
-		subdelay_z = delay*e2/s->arc_dz;
+	if (e2 > s->arc_dz) { // z step 
+		if(s->substep_axis == SUBSTEP_AXIS_Z)
+			subdelay_z = delay*e2/s->arc_dz;
 		s->current_task.z--;
 		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
+	} else { // z axis is subaxis now
+		s->substep_axis = SUBSTEP_AXIS_Z;
 	} // z step
+
+	if(subdelay_z > 0 || subdelay_x > 0){
+		if(s->substep_axis == SUBSTEP_AXIS_Z){
+			MOTOR_Z_BlockPulse();
+			s->substep_mask = MOTOR_Z_CHANNEL;
+		}
+		else {
+			MOTOR_X_BlockPulse();
+			s->substep_mask = MOTOR_X_CHANNEL;
+		}
+
+		LL_TIM_SetAutoReload(TIM1,delay);
+//			debug1();
+		LL_TIM_EnableCounter(TIM1);
+	}
 
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
@@ -85,57 +122,6 @@ void arc_q4_callback(void){
 		s->current_task.steps_to_end = 0;
 	}
 }
-
-
-
-
-void arc_q2_callback(void){
-	state_t *s = &state;
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	int64_t e2 = s->arc_err<<1;
-
-	if (e2 >= s->arc_dx) { 
-		MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
-//			x++; 
-		s->arc_err += s->arc_dx += s->arc_bb; 
-	} // x step
-	if (e2 <= s->arc_dz) { 
-//			z++;
-		MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
-		s->arc_err += s->arc_dz += s->arc_aa; 
-	} // z step
-//	} while (x <= 0);
-}
-
-
-
-void arc_q3_callback(void){
-	state_t *s = &state;
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	int64_t e2 = s->arc_err<<1;
-
-	if (e2 >= s->arc_dx) { 
-		MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
-		s->current_task.x++; 
-		s->arc_err += s->arc_dx += s->arc_bb; 
-	} // x step
-	if (e2 <= s->arc_dz) { 
-		s->current_task.z++;
-		MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
-		s->arc_err += s->arc_dz += s->arc_aa; 
-	} // z step
-
-	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
-		s->current_task.steps_to_end = 0; // end of arc
-		return;
-	}
-	if(s->current_task.x == 0){ // end of quadrant
-		while(1); // trap
-		s->current_task.steps_to_end = 0;
-	}
-}
-
-
 
 
 
@@ -240,7 +226,7 @@ void G03parse(char *line, int8_t cwccw){
 */
 	int x0 = init_gp.X & ~1uL<<10; //save pos from prev gcode
 	int z0 = init_gp.Z & ~1uL<<10;
-	G_pipeline *gref = G_parse(line);
+	G_pipeline_t *gref = G_parse(line);
 
 	int x0z = -gref->I; //x0+xdelta;
 	int z0z = -gref->K; //z0+zdelta;
@@ -270,7 +256,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 	xf = fixedpt_toint2210(fixedpt_xmul2210(ik,z_to_x_factor2210));
 	zf = fixedpt_toint2210(ik);
 
-	G_task *gt_new_task;
+	G_task_t *gt_new_task;
 	gt_new_task 		= add_empty_task();
 
 //feed:
@@ -927,3 +913,55 @@ void plotEllipse(int x0, int z0, int a, int b){
 		}
 	} while (z<=0);
 }*/
+
+
+
+
+
+
+
+void arc_q2_callback(void){
+	state_t *s = &state;
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
+
+	if (e2 >= s->arc_dx) { 
+		MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+//			x++; 
+		s->arc_err += s->arc_dx += s->arc_bb; 
+	} // x step
+	if (e2 <= s->arc_dz) { 
+//			z++;
+		MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		s->arc_err += s->arc_dz += s->arc_aa; 
+	} // z step
+//	} while (x <= 0);
+}
+
+
+
+void arc_q3_callback(void){
+	state_t *s = &state;
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
+
+	if (e2 >= s->arc_dx) { 
+		MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
+		s->current_task.x++; 
+		s->arc_err += s->arc_dx += s->arc_bb; 
+	} // x step
+	if (e2 <= s->arc_dz) { 
+		s->current_task.z++;
+		MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
+		s->arc_err += s->arc_dz += s->arc_aa; 
+	} // z step
+
+	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+		s->current_task.steps_to_end = 0; // end of arc
+		return;
+	}
+	if(s->current_task.x == 0){ // end of quadrant
+		while(1); // trap
+		s->current_task.steps_to_end = 0;
+	}
+}

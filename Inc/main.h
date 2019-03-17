@@ -204,7 +204,7 @@ void Error_Handler(void);
 
 #define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400	todo move to some central point to modify
 
-
+/*
 typedef enum {
 	fsm_menu,										//0 . menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
 	fsm_menu_lps, 							//10. long_press_start: end_pos = current_pos = 0, идем в п. fsm_first_cut_lps
@@ -226,7 +226,7 @@ typedef enum {
 //стратегии врезания(infeed): 0: radial infeed, 1: incremental infeed, 2: modifyed flank infeed
 	fsm_main_cut_infeed,				//56. infeed для резьбы: в зависимости от номера прохода сдвигаем каретку на определенное количество шагов для облегчения резания+основной путь, далее в п. 30
 } fsm_t;
-
+*/
 /*
 typedef struct
 {
@@ -251,14 +251,21 @@ struct state;
 typedef void (*state_func_t)( struct state* );
 
 
-typedef struct G_pipeline{
-	int X,Z,F,P; //general registers
-	int I,K; //for arc
-	bool sync;
-	uint8_t code;
-} G_pipeline;
+typedef struct G_pipeline_t{
+	int 
+		X, // x axis
+		Z, // z axis
+		F, // feed
+		P; // dwell
 
-typedef struct G_task{
+	int 
+		I, // arc X axis delta
+		K; // arc Z axis delta
+//	bool sync; // wtf?
+//	uint8_t code; // wtf?
+} G_pipeline_t;
+
+typedef struct G_task_t{
 	int32_t dx, dz;
 	int32_t 	x, z, x1, z1; // delta
 	uint32_t steps_to_end;
@@ -271,7 +278,7 @@ typedef struct G_task{
 //	int rr, inc_dec;
 	uint32_t a,b;
 //	int64_t err, aa, bb;
-} G_task;
+} G_task_t;
 
 
 typedef struct state
@@ -290,7 +297,7 @@ typedef struct state
 	uint32_t prescaler; // used for calculating substep delay
 	int substep_axis;
 	
-	G_task current_task;
+	G_task_t current_task;
 	bool G94G95; // 0 - unit per min, 1 - unit per rev
 	uint32_t substep_mask;
   state_func_t function;

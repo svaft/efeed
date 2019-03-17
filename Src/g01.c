@@ -55,8 +55,8 @@ void dxdz_callback(){
 			s->substep_mask = MOTOR_X_CHANNEL;
 			MOTOR_X_BlockPulse(); // block pulse on next timer2 tick but set it by substep timer1
 			uint32_t delay = s->prescaler * s->syncbase->ARR;
-			// explanations: prescaler for timer connecter to encoder is unknown because its depend on rotating speed of the encoder,
-			// so we trying to detect it with calibrate_callback and use it here. For async(predefined) timer	we can use TI2->PSC for it. 		
+			// explanations: prescaler value for timer connected to encoder is unknown because its depend on rotating speed of the spindle,
+			// so we trying to detect it with calibrate_callback and use it here. For an async(predefined) timer	we can use TI2->PSC. 		
 			delay = delay*(abs(e2))/s->current_task.dx;// + min_pulse;
 			LL_TIM_SetAutoReload(TIM1,delay);
 //			debug1();
@@ -94,7 +94,7 @@ void dxdz_callback(){
 void G01parse(char *line){ //~60-70us
 	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
 	int z0 = init_gp.Z & ~1uL<<10;
-	G_pipeline *gref = G_parse(line);
+	G_pipeline_t *gref = G_parse(line);
 
 //	gref->Z = -32*1024;
 //	gref->X = 6*1024;
@@ -114,7 +114,7 @@ void G01parse(char *line){ //~60-70us
 		dx = x0 - gref->X;
 		xdir = xdir_backward;
 	}
-	G_task *gt_new_task = add_empty_task();
+	G_task_t *gt_new_task = add_empty_task();
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
 	gt_new_task->dz =  fixedpt_toint2210(dz);

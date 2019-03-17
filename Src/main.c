@@ -290,7 +290,7 @@ int main(void)
 
   /* System interrupt init*/
 
-  /**NOJTAG: JTAG-DP Disabled and SW-DP Enabled 
+  /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled 
   */
   LL_GPIO_AF_Remap_SWJ_NOJTAG();
 
@@ -306,8 +306,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-
-	MX_DMA_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
@@ -337,8 +336,8 @@ int main(void)
 //	char *end;
 
 
-	cb_init_ref(&task_cb, 100, sizeof(G_task), &gt);
-	cb_init_ref(&gp_cb, 100, sizeof(G_pipeline),&gp);
+	cb_init_ref(&task_cb, 100, sizeof(G_task_t), &gt);
+	cb_init_ref(&gp_cb, 100, sizeof(G_pipeline_t),&gp);
 
 //	int size = 10;
 //	cb_init(&gp_cb, size, sizeof(G_pipeline));
@@ -350,7 +349,7 @@ int main(void)
 //			debug();
 
 	
-	
+/*	
 	static const char * shape1[] = {
 		"G1 X2.828 F1",
 		"X0. Z-1",
@@ -410,7 +409,7 @@ int main(void)
 		"G1 X50.828 Z-99.659",
 		"X55.068"
 	};
-
+*/
 //	return 0;
 
 {
@@ -559,7 +558,7 @@ int main(void)
 //	LL_TIM_DisableIT_UPDATE(TIM3);
 //	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
 //	plotOptimizedEllipse(0,0,460,690);
-	int a = 7000, b = 4000;
+//	int a = 7000, b = 4000;
 //debug();
 //	plotEllipse(0, 0, a,b);
 //debug();
@@ -608,6 +607,11 @@ int main(void)
 
 	// prepare TIM1 for sub-step:	
 	LL_TIM_ClearFlag_UPDATE(TIM1);
+	LL_TIM_CC_DisablePreload(TIM1);
+
+//	LL_TIM_EnableIT_CC1(TIM1);
+//	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
+//	TIM1->CCR1 = 50;
 	LL_TIM_EnableIT_UPDATE(TIM1);
 	LL_TIM_DisableARRPreload(TIM1);
 
@@ -773,7 +777,7 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 1 */
 
   /* USER CODE END I2C2_Init 1 */
-  /**I2C Initialization 
+  /** I2C Initialization 
   */
   LL_I2C_DisableOwnAddress2(I2C2);
   LL_I2C_DisableGeneralCall(I2C2);
@@ -814,6 +818,8 @@ static void MX_TIM1_Init(void)
   /* TIM1 interrupt Init */
   NVIC_SetPriority(TIM1_UP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
   NVIC_EnableIRQ(TIM1_UP_IRQn);
+  NVIC_SetPriority(TIM1_CC_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(TIM1_CC_IRQn);
 
   /* USER CODE BEGIN TIM1_Init 1 */
 
@@ -878,7 +884,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
-  TIM_InitStruct.Prescaler = 2400; //for 30kHz  //720 //;
+  TIM_InitStruct.Prescaler = 2400;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 50;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;

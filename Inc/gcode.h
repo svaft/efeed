@@ -20,9 +20,9 @@ void G94(state_t* s);
 void G33parse(char *line);
 void G00parse(char *line);
 
-extern G_task gt[];
-extern G_pipeline gp[];
-extern G_pipeline init_gp;
+extern G_task_t gt[];
+extern G_pipeline_t gp[];
+extern G_pipeline_t init_gp;
 
 void calibrate_callback(state_t *);
 void calibrate_init_callback(void);
@@ -35,15 +35,15 @@ void load_next_task(void);
 
 
 void process_G_pipeline(void);
-G_pipeline* G_parse(char *line);
+G_pipeline_t* G_parse(char *line);
 __STATIC_INLINE 
-G_task * add_empty_task(){
+G_task_t * add_empty_task(){
 	cb_push_back_empty(&task_cb);
 	return task_cb.top;
 }
 
 //G_task* add_empty_task(void);
 void add_task(int dx, int dz, int feed, int inc_dec, void *ref, uint32_t rr, uint8_t x_dir, uint8_t z_dir );
-G_task* get_last_task( void );
+G_task_t* get_last_task( void );
 
 #endif /* GCODE_H_ */

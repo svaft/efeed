@@ -2,10 +2,10 @@
 #include "fsm.h"
 
 fixedpt command;
-G_pipeline init_gp={0,0,0,0,0};
+G_pipeline_t init_gp={0,0,0,0,0};
 
-G_task gt[30];
-G_pipeline gp[10];
+G_task_t gt[30];
+G_pipeline_t gp[10];
 
 
 void load_next_task(){
@@ -91,8 +91,8 @@ void do_fsm_move_end2(state_t* s){
 //}
 
 //__STATIC_INLINE 
-G_task* get_last_task( void ){
-	return (G_task *)task_cb.top;
+G_task_t* get_last_task( void ){
+	return (G_task_t *)task_cb.top;
 }
 
 
@@ -100,7 +100,7 @@ G_task* get_last_task( void ){
 void command_parser(char *line){
   uint8_t char_counter = 0;  
 	char letter;
-	G_task *g_task;
+	G_task_t *g_task;
 //	char *end;
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
     letter = line[char_counter++];
@@ -168,7 +168,7 @@ void command_parser(char *line){
 
 }
 
-G_pipeline* G_parse(char *line){
+G_pipeline_t* G_parse(char *line){
   uint8_t char_counter = 0;  
 //	cb_init_by_top(&gp_cb,&init_gp);
 

@@ -46,10 +46,6 @@
 
 /* USER CODE END Includes */
 
-#include "stm32f1xx.h"
-#include "stm32f1xx_ll_system.h"
-#include "stm32f1xx_ll_gpio.h"
-#include "stm32f1xx_ll_exti.h"
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
@@ -72,6 +68,7 @@ void SysTick_Handler(void);
 void DMA1_Channel4_IRQHandler(void);
 void DMA1_Channel7_IRQHandler(void);
 void TIM1_UP_IRQHandler(void);
+void TIM1_CC_IRQHandler(void);
 void TIM2_IRQHandler(void);
 void TIM3_IRQHandler(void);
 void TIM4_IRQHandler(void);

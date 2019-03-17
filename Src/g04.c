@@ -3,8 +3,8 @@
 #include "g04.h"
 
 void G04parse(char *line){
-	G_pipeline *gref = G_parse(line);
-	G_task *gt_new_task = add_empty_task();
+	G_pipeline_t *gref = G_parse(line);
+	G_task_t *gt_new_task = add_empty_task();
 	gt_new_task->steps_to_end = (gref->P * 1000) >> 10;
 	gt_new_task->callback_ref = dwell_callback;
 	gt_new_task->init_callback_ref = G04init_callback;

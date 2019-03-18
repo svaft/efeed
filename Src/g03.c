@@ -7,20 +7,98 @@ int count_total = 0;
 //uint8_t bufx[2000];
 //uint8_t bufz[2000];
 
-int subdelay_x=0, subdelay_z=0;
+int subdelay_x=0, subdelay_z=0, subdelay_zfast = 0;
 //int x=0, z=0;
 int acnt = 0, ecnt=0, exx=0, ezz=0;
 float e2e2, edx,edz;
-float ff,
-	ffx;
+float ff, ffx;
+bool brk=0;
+
 
 void arc_q1_callback(void){
 	state_t *s = &state;
+
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
+
+	MOTOR_X_AllowPulse();
+	s->current_task.x++;
+	s->arc_err += s->arc_dx += s->arc_bb; 
+
+	if (e2 > s->arc_dx) {
+		return;
+	}
+
+	if (e2 > s->arc_dz) { // z step 
+		s->substep_mask = MOTOR_Z_CHANNEL;
+//		s->substep_axis = SUBSTEP_AXIS_Z;
+// quick subdelay detection, depend on given precision, for x16 about ~1us, for x32 about ~2,5us		
+		#define subdelay_precision 4
+		int32_t delay = s->prescaler * s->syncbase->ARR; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+
+		int64_t edz_delta = s->arc_dz >> subdelay_precision;
+		int64_t edz_tmp = s->arc_dz;// -(edz_delta<<1);
+		while(edz_tmp < e2){
+			edz_tmp -= edz_delta;
+			delay -= 9600 >> subdelay_precision; // 300 = 9600>>5
+		}
+
+		s->current_task.z--;
+		s->arc_err += s->arc_dz += s->arc_aa; 
+
+		if(TIM1->CR1 == 0){
+			if(delay <= 0) {
+				if(delay < 0){
+					brk = true;
+				}	
+
+				TIM1->CCR1 = 0;
+				TIM1->ARR = min_pulse;
+				LL_TIM_DisableIT_CC1(TIM1);
+				LL_GPIO_SetOutputPin(GPIOB,LL_GPIO_PIN_0); 
+			} else {
+				TIM1->CCR1 = delay+1;
+				TIM1->ARR = TIM1->CCR1+min_pulse;
+				LL_TIM_EnableIT_CC1(TIM1);
+			}
+
+			LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
+//		LL_TIM_SetAutoReload(TIM1,delay+1);
+//			debug1();
+			LL_TIM_EnableCounter(TIM1);
+		}
+	} // z step
+
+//*/
+
+	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+		s->current_task.steps_to_end = 0; // end of arc
+		return;
+	}
+
+	if(s->current_task.z == 0){ // end of quadrant
+		s->current_task.steps_to_end = 0;
+	}
+
+	
+}
+
+
+
+
+void arc_q1_callback_mod(void){
+	state_t *s = &state;
+
+//	if(s->current_task.x == 1709){
+//		brk = true;
+//	}
+	
 	
 	if(s->substep_mask){
 		// sub-step done, restore channel config
 //		debug1();
 		// inverse substep channel activity:
+
 		if(s->substep_mask == MOTOR_Z_CHANNEL){ 
 			MOTOR_X_OnlyPulse();
 		} else {
@@ -34,7 +112,7 @@ void arc_q1_callback(void){
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
-	
+/*
 	e2e2 = e2;
 	edx = s->arc_dx;
 	edz = s->arc_dz;
@@ -43,14 +121,23 @@ void arc_q1_callback(void){
 	ezz = s->current_task.z;
 	subdelay_z = 0;
 	subdelay_x = 0;
+	subdelay_zfast = 0;
 	acnt++;
+*/
 
-
+	#define subdelay_precision 6
 	uint32_t delay = s->prescaler * s->syncbase->ARR; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 
 	if (e2 < s->arc_dx) {
-		if(s->substep_axis == SUBSTEP_AXIS_X)
-			subdelay_z = delay*e2/s->arc_dx;
+		if(s->substep_axis == SUBSTEP_AXIS_X) {
+			int64_t edz_delta = s->arc_dx >> subdelay_precision;
+			int64_t edz_tmp = s->arc_dx -(edz_delta<<1);
+			while(edz_tmp > e2){
+				edz_tmp -= edz_delta;
+				delay -= 9600 >> subdelay_precision; // 300 = 9600>>5
+			}
+//			subdelay_x = delay*e2/s->arc_dx;
+		}
 		MOTOR_X_AllowPulse();
 		s->current_task.x++;
 		s->arc_err += s->arc_dx += s->arc_bb; 
@@ -59,8 +146,28 @@ void arc_q1_callback(void){
 		s->substep_axis = SUBSTEP_AXIS_X;
 	} // x step
 	if (e2 > s->arc_dz) { // z step 
-		if(s->substep_axis == SUBSTEP_AXIS_Z)
-			subdelay_z = delay*e2/s->arc_dz;
+		if(s->substep_axis == SUBSTEP_AXIS_Z){
+			debug7();
+//			subdelay_z = delay*e2/s->arc_dz; // ~44us
+//			if(subdelay_z > 9000 || subdelay_z < 100)
+//				subdelay_z = 0;
+			
+// quick subdelay detection, depend on given precision, for x16 about ~1us, for x32 about ~2,5us		
+			int64_t edz_delta = s->arc_dz >> subdelay_precision;
+			int64_t edz_tmp = s->arc_dz;// -(edz_delta<<1);
+			while(edz_tmp < e2){
+				edz_tmp -= edz_delta;
+				delay -= 9600 >> subdelay_precision; // 300 = 9600>>5
+			}
+//			else 
+//				debug7();
+
+			
+			//			subdelay_zfast = delay; // ~44us
+//			subdelay_z = delay; // ~44us
+			
+			//*/
+		}
 		s->current_task.z--;
 		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
@@ -68,7 +175,12 @@ void arc_q1_callback(void){
 		s->substep_axis = SUBSTEP_AXIS_Z;
 	} // z step
 
-	if(subdelay_z > 0 || subdelay_x > 0){
+	if(delay >= 0 && delay < 9600) {
+		if(delay<160){
+			brk = 1;
+		}
+
+//	if(subdelay_z > 0 || subdelay_x > 0){
 		if(s->substep_axis == SUBSTEP_AXIS_Z){
 			MOTOR_Z_BlockPulse();
 			s->substep_mask = MOTOR_Z_CHANNEL;
@@ -78,11 +190,13 @@ void arc_q1_callback(void){
 			s->substep_mask = MOTOR_X_CHANNEL;
 		}
 
-		LL_TIM_SetAutoReload(TIM1,delay);
+		LL_TIM_SetAutoReload(TIM1,delay+1);
 //			debug1();
 		LL_TIM_EnableCounter(TIM1);
+//		debug7();
+//	}
 	}
-
+//*/
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc
@@ -92,6 +206,38 @@ void arc_q1_callback(void){
 	if(s->current_task.z == 0){ // end of quadrant
 		s->current_task.steps_to_end = 0;
 	}
+
+	
+}
+
+
+void arc_q1_callback_old(void){
+	state_t *s = &state;
+
+	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
+
+	if (e2 < s->arc_dx) {
+		MOTOR_X_AllowPulse();
+		s->current_task.x++;
+		s->arc_err += s->arc_dx += s->arc_bb; 
+	}// x step
+	if (e2 > s->arc_dz) { // z step 
+		s->current_task.z--;
+		MOTOR_Z_AllowPulse();
+		s->arc_err += s->arc_dz += s->arc_aa; 
+	}// z step
+
+	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+		s->current_task.steps_to_end = 0; // end of arc
+		return;
+	}
+
+	if(s->current_task.z == 0){ // end of quadrant
+		s->current_task.steps_to_end = 0;
+	}
+
+	
 }
 
 
@@ -194,7 +340,7 @@ void G03init_callback(void){
 		}
 		state.arc_err = state.arc_dx+state.arc_dz;
 	}
-
+	state.substep_axis = -1;
 	// use this variable as flag, set it in callback when arc is done:
 	state.current_task.steps_to_end = 1; 
 	// init and prepare corresponding output channels to generate first step pulse:

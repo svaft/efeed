@@ -605,12 +605,16 @@ int main(void)
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3); // */
 
+		LL_GPIO_SetPinMode(GPIOB,LL_GPIO_PIN_0,LL_GPIO_MODE_OUTPUT);
+
+	
 	// prepare TIM1 for sub-step:	
 	LL_TIM_ClearFlag_UPDATE(TIM1);
 	LL_TIM_CC_DisablePreload(TIM1);
+  LL_TIM_OC_DisablePreload(TIM1, LL_TIM_CHANNEL_CH1);
 
-//	LL_TIM_EnableIT_CC1(TIM1);
-//	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
+	LL_TIM_EnableIT_CC1(TIM1);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
 //	TIM1->CCR1 = 50;
 	LL_TIM_EnableIT_UPDATE(TIM1);
 	LL_TIM_DisableARRPreload(TIM1);
@@ -816,7 +820,7 @@ static void MX_TIM1_Init(void)
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_TIM1);
 
   /* TIM1 interrupt Init */
-  NVIC_SetPriority(TIM1_UP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
+  NVIC_SetPriority(TIM1_UP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(TIM1_UP_IRQn);
   NVIC_SetPriority(TIM1_CC_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(TIM1_CC_IRQn);

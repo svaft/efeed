@@ -233,8 +233,45 @@ void DMA1_Channel7_IRQHandler(void)
 void TIM1_UP_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_IRQn 0 */
+	//	debug7();
+	// enable corresponding channel for sub-step:
+	LL_TIM_DisableCounter(TIM1);
+	LL_GPIO_ResetOutputPin(GPIOB,LL_GPIO_PIN_0); 
+
+	LL_TIM_SetCounter(TIM1,0);
+
+//	LL_GPIO_ResetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
+
+	TIM1->SR = 0;
+	return;
+	
+	TIM3->CCER = state.substep_mask;
+	// start pulse:
+	LL_TIM_EnableCounter(TIM3); 
+	// stop sub-step timer:
+	LL_TIM_DisableCounter(TIM1);
+	LL_TIM_SetCounter(TIM1,0);
+	TIM1->SR = 0;
+	return;
+  /* USER CODE END TIM1_UP_IRQn 0 */
+  /* USER CODE BEGIN TIM1_UP_IRQn 1 */
+  if(LL_TIM_IsActiveFlag_UPDATE(TIM1) == 1)
+  {
+    /* Clear the update interrupt flag*/
+    LL_TIM_ClearFlag_UPDATE(TIM1);
+  }
+
+  /* USER CODE END TIM1_UP_IRQn 1 */
+}
+
+
+
+void TIM1_UP_IRQHandler_old(void)
+{
+  /* USER CODE BEGIN TIM1_UP_IRQn 0 */
 //	debug7();
 	// enable corresponding channel for sub-step:
+	debug1();
 	TIM3->CCER = state.substep_mask;
 	// start pulse:
 	LL_TIM_EnableCounter(TIM3); 
@@ -260,7 +297,14 @@ void TIM1_UP_IRQHandler(void)
 void TIM1_CC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_CC_IRQn 0 */
-	LL_TIM_DisableCounter(TIM1);
+	LL_GPIO_SetOutputPin(GPIOB,LL_GPIO_PIN_0); 
+
+	LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
+//	LL_GPIO_SetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
+	TIM1->SR = 0;
+	//	TIM3->CCER = state.substep_mask;
+//	B0 on
+//	LL_TIM_DisableCounter(TIM1);
 
   /* USER CODE END TIM1_CC_IRQn 0 */
   /* USER CODE BEGIN TIM1_CC_IRQn 1 */
@@ -276,7 +320,7 @@ void TIM2_IRQHandler(void)
   /* USER CODE BEGIN TIM2_IRQn 0 */
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
 	state.function(&state);
-//	debug1();
+
 //	TIM2->EGR |= TIM_EGR_UG;
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */

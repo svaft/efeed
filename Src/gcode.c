@@ -4,8 +4,9 @@
 fixedpt command;
 G_pipeline_t init_gp={0,0,0,0,0};
 
-G_task_t gt[30];
-G_pipeline_t gp[10];
+G_task_t gt[task_size];
+G_pipeline_t gp[gp_size];
+//substep[substep_size];
 
 
 void load_next_task(){

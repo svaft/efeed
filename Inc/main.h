@@ -150,8 +150,6 @@ void Error_Handler(void);
 //#endif /* _SIMU */
 
 
-
-
 #define t3cr1			((uint32_t *)((0x42000000  + ((0x40000400)-0x40000000)*32)))
 
 #define t4cr1			((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
@@ -272,6 +270,7 @@ typedef struct G_task_t{
 	fixedptu F; //Q824
 	callback_func_t callback_ref; //callback ref to iterate line or arc
 	callback_func_t init_callback_ref;
+	callback_func_t precalculate_callback_ref;
 	uint8_t z_direction, x_direction;
 
 // arc
@@ -315,6 +314,9 @@ typedef struct state
 	//	bresenham
 	int err;
 } state_t;
+
+extern state_t state_precalc;
+
 
 #define SUBSTEP_AXIS_Z 0
 #define SUBSTEP_AXIS_X 1

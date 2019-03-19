@@ -12,6 +12,10 @@
 #include "g03.h"
 #include "g04.h"
 
+#define task_size 30
+#define gp_size 10
+#define substep_size 2000
+
 
 void command_parser(char *line);
 
@@ -23,6 +27,7 @@ void G00parse(char *line);
 extern G_task_t gt[];
 extern G_pipeline_t gp[];
 extern G_pipeline_t init_gp;
+extern uint16_t substep_delay[];
 
 void calibrate_callback(state_t *);
 void calibrate_init_callback(void);
@@ -32,6 +37,12 @@ void do_fsm_move_start2(state_t* s);
 void do_fsm_move2(state_t*);
 void do_fsm_move_end2(state_t* );
 void load_next_task(void);
+
+typedef struct substep{
+	uint16_t delay;
+	uint16_t skip;
+} substep_t;
+
 
 
 void process_G_pipeline(void);

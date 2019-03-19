@@ -83,6 +83,7 @@
 
 //axis z_axis;
 state_t state;
+state_t state_precalc;
 
 /* Private variables ---------------------------------------------------------*/
 //int count;
@@ -336,8 +337,10 @@ int main(void)
 //	char *end;
 
 
-	cb_init_ref(&task_cb, 100, sizeof(G_task_t), &gt);
-	cb_init_ref(&gp_cb, 100, sizeof(G_pipeline_t),&gp);
+	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
+	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
+	cb_init_ref(&substep_cb, substep_size, sizeof(G_pipeline_t),&gp);
+
 
 //	int size = 10;
 //	cb_init(&gp_cb, size, sizeof(G_pipeline));
@@ -605,7 +608,7 @@ int main(void)
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3); // */
 
-		LL_GPIO_SetPinMode(GPIOB,LL_GPIO_PIN_0,LL_GPIO_MODE_OUTPUT);
+//		LL_GPIO_SetPinMode(GPIOB,LL_GPIO_PIN_0,LL_GPIO_MODE_OUTPUT);
 
 	
 	// prepare TIM1 for sub-step:	
@@ -631,11 +634,32 @@ int main(void)
 	debug();
 return 0;
 */
+	G_task_t *precalculating_task = task_cb.tail;
+
 	G94(&state);
 	do_fsm_move_start2(&state);
 //	debug();
 	while (1) {
-		__WFI();
+		// recalc substep delays
+		if(substep_cb.count < substep_cb.capacity && precalculating_task){
+			// get pointer to last processed task
+			if(precalculating_task->precalculate_callback_ref) {
+				precalculating_task->precalculate_callback_ref();
+				if(state_precalc.current_task.steps_to_end == 0){
+				precalculating_task++; // danger todo
+				// load next task
+				}
+			} else {
+				precalculating_task++; // danger todo
+			}
+			// call task recalculate callback until task is fully precalculated
+			
+			// get next task and repeat unitl all task recalculated on precalculater buffer is full
+			
+		} else {
+			// if buffer is full so to sleep
+			__WFI();
+		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

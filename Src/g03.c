@@ -15,6 +15,94 @@ float ff, ffx;
 bool brk=0;
 
 
+
+#define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
+
+substep_t substep[substep_size];
+
+
+
+void arc_q1_callback_precalculate(void){
+	state_t *s = &state_precalc;
+
+	int64_t e2 = s->arc_err<<1;
+
+//	MOTOR_X_AllowPulse();
+	s->current_task.x++;
+	s->arc_err += s->arc_dx += s->arc_bb; 
+
+	if (e2 > s->arc_dx) {
+		while(1); // trap
+		return;
+	}
+	substep_t *sb;
+//	cb_push_back_empty(&substep_cb);
+
+	if (e2 > s->arc_dz) { // z step 
+		int32_t delay = s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+		if(e2<0){
+			int32_t delay_delta = delay >> subdelay_precision;
+			int64_t edz_delta = s->arc_dz >> subdelay_precision;
+			// do binary search for delta:
+			int64_t r = s->arc_dz - (edz_delta <<(subdelay_precision-1)); // start from half
+			delay -= delay_delta<<(subdelay_precision-1);
+
+			for(int a =subdelay_precision-2;a>=0; a--){
+				if(r > e2){
+					r 		+= edz_delta	<< a;
+					delay	+= delay_delta<< a;
+				}	else {
+					r 		-= edz_delta 	<< a;
+					delay	-=delay_delta	<< a;
+				}
+			}
+//			delay -= 1520;
+		} else { //backward delay
+//			debug1();
+			delay = 0;
+		}
+		
+		cb_push_back_empty(&substep_cb);
+		sb = substep_cb.top;
+		sb->delay = delay;
+
+		s->current_task.z--;
+		s->arc_err += s->arc_dz += s->arc_aa; 
+	} else {
+		sb = substep_cb.top;
+		if(substep_cb.count == 0){
+			cb_push_back_empty(&substep_cb);
+			sb = substep_cb.top;
+			sb->skip++;
+			return;
+		}
+		if(sb->skip > 0){
+			sb = substep_cb.top;
+			sb->skip++;
+		}	else{
+			cb_push_back_empty(&substep_cb);
+			sb = substep_cb.top;
+			sb->skip++;
+		}
+	} // z step
+
+	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+		s->current_task.steps_to_end = 0; // end of arc
+		return;
+	}
+
+	if(s->current_task.z == 0){ // end of quadrant
+		s->current_task.steps_to_end = 0;
+	}
+}
+
+
+
+
+
+
+
+
 void arc_q1_callback(void){
 	state_t *s = &state;
 
@@ -32,18 +120,46 @@ void arc_q1_callback(void){
 	if (e2 > s->arc_dz) { // z step 
 		s->substep_mask = MOTOR_Z_CHANNEL;
 //		s->substep_axis = SUBSTEP_AXIS_Z;
-// quick subdelay detection, depend on given precision, for x16 about ~1us, for x32 about ~2,5us		
-		#define subdelay_precision 4
-		int32_t delay = s->prescaler * s->syncbase->ARR; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+// quick subdelay detection, depend on given precision, for x256 about ~6,41us, for x128 about ~5,58us		
+		LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin); //debug
+		int32_t delay = s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+		if(e2<0){
+			int32_t delay_delta = delay >> subdelay_precision;
+			int64_t edz_delta = s->arc_dz >> subdelay_precision;
+			// do binary search for delta:
+			int64_t r = s->arc_dz - (edz_delta <<(subdelay_precision-1)); // start from half
+			delay -= delay_delta<<(subdelay_precision-1);
 
-		int64_t edz_delta = s->arc_dz >> subdelay_precision;
-		int64_t edz_tmp = s->arc_dz;// -(edz_delta<<1);
-		while(edz_tmp < e2){
-			edz_tmp -= edz_delta;
-			delay -= 9600 >> subdelay_precision; // 300 = 9600>>5
+			for(int a =subdelay_precision-2;a>=0; a--){
+				if(r > e2){
+					r 		+= edz_delta	<< a;
+					delay	+= delay_delta<< a;
+				}	else {
+					r 		-= edz_delta 	<< a;
+					delay	-=delay_delta	<< a;
+				}
+			}
+	//		acnt++;
+	//		subdelay_z = s->prescaler * (s->syncbase->ARR+1)*e2/s->arc_dz; // very precise but very slow, ~44us
+	//		subdelay_zfast = delay;
+			delay -= 1520;
+		} else {
+			debug1();
+			delay = 0;
 		}
+//		if(s->current_task.z > 2390)
+//			delay = s->prescaler * (s->syncbase->ARR+1) - 1520;
+
+		LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin); //debug
+
+// 		// linear search for delta, slow, deprecated
+//		while(edz_tmp < e2){
+//			edz_tmp -= edz_delta;
+//			delay -= 9600 >> subdelay_precision; // 300 = 9600>>5
+//		}
 
 		s->current_task.z--;
+		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
 
 		if(TIM1->CR1 == 0){
@@ -53,19 +169,23 @@ void arc_q1_callback(void){
 				}	
 
 				TIM1->CCR1 = 0;
+//				TIM1->CNT = 0;
 				TIM1->ARR = min_pulse;
 				LL_TIM_DisableIT_CC1(TIM1);
-				LL_GPIO_SetOutputPin(GPIOB,LL_GPIO_PIN_0); 
+				LL_GPIO_SetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin); 
+//				LL_GPIO_SetOutputPin(GPIOB,LL_GPIO_PIN_0); 
 			} else {
+				LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 				TIM1->CCR1 = delay+1;
 				TIM1->ARR = TIM1->CCR1+min_pulse;
 				LL_TIM_EnableIT_CC1(TIM1);
 			}
 
-			LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 //		LL_TIM_SetAutoReload(TIM1,delay+1);
 //			debug1();
 			LL_TIM_EnableCounter(TIM1);
+		} else {
+			brk = true;
 		}
 	} // z step
 
@@ -85,7 +205,7 @@ void arc_q1_callback(void){
 
 
 
-
+/*
 void arc_q1_callback_mod(void){
 	state_t *s = &state;
 
@@ -112,20 +232,6 @@ void arc_q1_callback_mod(void){
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
-/*
-	e2e2 = e2;
-	edx = s->arc_dx;
-	edz = s->arc_dz;
-	ecnt = acnt;
-	exx = s->current_task.x;
-	ezz = s->current_task.z;
-	subdelay_z = 0;
-	subdelay_x = 0;
-	subdelay_zfast = 0;
-	acnt++;
-*/
-
-	#define subdelay_precision 6
 	uint32_t delay = s->prescaler * s->syncbase->ARR; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 
 	if (e2 < s->arc_dx) {
@@ -166,7 +272,6 @@ void arc_q1_callback_mod(void){
 			//			subdelay_zfast = delay; // ~44us
 //			subdelay_z = delay; // ~44us
 			
-			//*/
 		}
 		s->current_task.z--;
 		MOTOR_Z_AllowPulse();
@@ -196,7 +301,6 @@ void arc_q1_callback_mod(void){
 //		debug7();
 //	}
 	}
-//*/
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc
@@ -206,10 +310,8 @@ void arc_q1_callback_mod(void){
 	if(s->current_task.z == 0){ // end of quadrant
 		s->current_task.steps_to_end = 0;
 	}
-
-	
 }
-
+*/
 
 void arc_q1_callback_old(void){
 	state_t *s = &state;
@@ -432,6 +534,8 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 		switch(q_from){
 			case 1:
 				gt_new_task->callback_ref = arc_q1_callback;
+				gt_new_task->precalculate_callback_ref = arc_q1_callback_precalculate;
+
 //				gt_new_task->dx =  (2*x0z+1)*gt_new_task->bb>>1;
 //				gt_new_task->dz = -(2*z0z-1)*gt_new_task->aa>>1;
 	//		x+z-

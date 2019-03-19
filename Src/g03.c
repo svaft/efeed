@@ -311,7 +311,6 @@ void arc_q1_callback_mod(void){
 		s->current_task.steps_to_end = 0;
 	}
 }
-*/
 
 void arc_q1_callback_old(void){
 	state_t *s = &state;
@@ -343,6 +342,7 @@ void arc_q1_callback_old(void){
 }
 
 
+*/
 
 void arc_q4_callback(void){
 	state_t *s = &state;

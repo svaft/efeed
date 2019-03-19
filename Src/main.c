@@ -316,104 +316,9 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-//	LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
-//	debug();
-//	ZDIR = 1;
-//	TIMER_B0 = 1;
-/*
-// perfomance measurement block
-	debug();
-	for (int a = 0; a<6680;a++){
-		y1+=a;
-//		x1 = sqrt(rr - y1*y1); //37us
-		x1 = SquareRoot(rr - y1*y1); //3,22us
-	}
-	debug();
-*/
-	//	return 0;
-	
-//	z_axis.Q824set = Thread_Info[Menu_Step].Q824;
-
-//	char *end;
-
-
 	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
 	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
 	cb_init_ref(&substep_cb, substep_size, sizeof(G_pipeline_t),&gp);
-
-
-//	int size = 10;
-//	cb_init(&gp_cb, size, sizeof(G_pipeline));
-//	G01parse("X1. Z-2.5 F.3");
-//	G01parse("X10.");
-//	G03parse("X12. Z-4.5 I-1.99 K-2.245");
-//	debug();
-
-//			debug();
-
-	
-/*	
-	static const char * shape1[] = {
-		"G1 X2.828 F1",
-		"X0. Z-1",
-		"X30.",
-		"G3 X40. Z-6 K-5",
-		"G1 Z-11.056",
-		"G2 Z-26.056 I8.597 K-7.5",
-		"G1 Z-31.056",
-		"X40.279 Z-31.064",
-		"X40.554 Z-31.09",
-		"X40.822 Z-31.132",
-		"X41.078 Z-31.188",
-		"X41.322 Z-31.258",
-		"X41.553 Z-31.34",
-		"X41.771 Z-31.431",
-		"X41.976 Z-31.53",
-		"X42.347 Z-31.744",
-		"X42.688 Z-31.983",
-		"X43.012 Z-32.251",
-		"X43.321 Z-32.548",
-		"X43.614 Z-32.87",
-		"X43.893 Z-33.215",
-		"X44.157 Z-33.583",
-		"X44.408 Z-33.97",
-		"X44.648 Z-34.379",
-		"X44.877 Z-34.808",
-		"X45.302 Z-35.72",
-		"X45.688 Z-36.698",
-		"X46.035 Z-37.732",
-		"X46.347 Z-38.812",
-		"X46.626 Z-39.928",
-		"X46.874 Z-41.071",
-		"X47.094 Z-42.234",
-		"X47.292 Z-43.436",
-		"X47.471 Z-44.68",
-		"X47.63 Z-45.962",
-		"X47.771 Z-47.28",
-		"X47.895 Z-48.631",
-		"X48.001 Z-50.011",
-		"X48.092 Z-51.418",
-		"X48.167 Z-52.849",
-		"X48.227 Z-54.301",
-		"X48.273 Z-55.771",
-		"X48.306 Z-57.255",
-		"X48.326 Z-58.751",
-		"X48.335 Z-60.256",
-		"X48.333 Z-61.767",
-		"X48.32 Z-63.28",
-		"X48.297 Z-64.794",
-		"X48.266 Z-66.304",
-		"X48.226 Z-67.808",
-		"X48.179 Z-69.304",
-		"X48.125 Z-70.787",
-		"X48.065 Z-72.255",
-		"X48. Z-73.705",
-		"G3 Z-101.073 I-15.839 K-13.684",
-		"G1 X50.828 Z-99.659",
-		"X55.068"
-	};
-*/
-//	return 0;
 
 {
   /* Enable DMA TX Interrupt */
@@ -425,44 +330,10 @@ int main(void)
   LL_USART_EnableIT_RXNE(USART2);
   LL_USART_EnableIT_ERROR(USART2);
 
-
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-
-// Timers post init:
-//	LL_TIM_GenerateEvent_UPDATE(TIM2);
-//  LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH1); // if we need output on leg
- // LL_TIM_ClearFlag_UPDATE(TIM2);
-//	LL_TIM_EnableIT_UPDATE(TIM2);
-
-//	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
-
-
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-//  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
-//	TIM3->SR = 0;
-//	TIM2->SR = 0;
-
-
-/*
-	TIM3->ARR = 0;
-	LL_TIM_GenerateEvent_UPDATE(TIM3);
-	LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	TIM3->SR = 0;
-	LL_TIM_EnableIT_UPDATE(TIM3);
-*/
-
-
-
-//	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
-
-
-
 	if(LL_GPIO_IsInputPinSet(BUTTON_1_GPIO_Port, BUTTON_1_Pin)){
 		demo = true;
 	}
-//	MOTOR_Z_Disable();
-//	MOTOR_X_Disable();
-// инициализация дисплея
+	// инициализация дисплея:
 #ifndef _SIMU
 	Activate_I2C_Master();
 	init_screen(I2C2);
@@ -478,96 +349,13 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-
-///// from STM examples:
-//  /**************************/
-//  /* Start pulse generation */
-//  /**************************/
-//  /* Enable channel 1 */
-//  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
-//  
-//  /* Enable TIM3 outputs */
-//  LL_TIM_EnableAllOutputs(TIM3);
-//  
-//  /* Enable auto-reload register preload */
-//  LL_TIM_EnableARRPreload(TIM3);
-
-//  /* Force update generation */
-//  LL_TIM_GenerateEvent_UPDATE(TIM3);  
-
-
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-
-
-
-
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-//  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by TIM2(async mode)
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-//  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by spindle encoder timer TIM4(sync mode)
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-
-
-//	MOTOR_X_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
-//	MOTOR_Z_BlockPulse(); // LL_TIM_OC_SetCompareCH3(TIM3, 0);
-
-//LL_TIM_EnableCounter(TIM3);
-
-
-//TIM3->SR = 0;
-//TIM3->EGR |= TIM_EGR_UG;
-//		LL_TIM_GenerateEvent_UPDATE(TIM3); /* Force update generation */
-
-//  LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1);
-	//GPIOB->BSRR
-//	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_0);
-//	LL_mDelay(50);
-//	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_0);
-//	LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3);
-	
-//	LL_TIM_EnableAllOutputs(TIM3);
-//MOTOR_X_AllowPulse();
-//MOTOR_Z_AllowPulse();
-//		LL_mDelay(50);
-//	LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
   LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
   LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
-//	enable_encoder_ticks(); 														// enable interrup for encoder ticks
 	TIM4->SR = 0; 																			// reset interrup flags
 
-//	LL_TIM_EnableIT_UPDATE(TIM1);
-//	LL_TIM_EnableIT_UPDATE(TIM2);
-//	LL_TIM_EnableCounter(TIM2);
-	
-//	do_fsm_move_start(&state);
-
-	
-  /* Enable counter */
-//  LL_TIM_EnableCounter(TIM2);
-  /* Force update generation */
-//  LL_TIM_GenerateEvent_UPDATE(TIM2);
-
-// init buttons
-//	LL_mDelay(5);
 	do_fsm_menu(&state);
-//	LL_mDelay(5);
-//	LL_GPIO_TogglePin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
-		LED_OFF();
+	LED_OFF();
 }
-//	debug();
-//	TIM3->ARR = min_pulse;
-//	LL_TIM_DisableIT_UPDATE(TIM3);
-//	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
-//	plotOptimizedEllipse(0,0,460,690);
-//	int a = 7000, b = 4000;
-//debug();
-//	plotEllipse(0, 0, a,b);
-//debug();
-//	plotOptimizedEllipse(500, 3990, 944,-3963, a,b);
-//debug();
-
 
 	static const char * const garray[] = {
 		"G90 G94 F900",
@@ -592,9 +380,7 @@ int main(void)
 		"G3 X12. Z-4.5 I-1.99 K-2.245" 
 	};
 
-//	LL_mDelay(100);
 	for(int a = 0; a < 5; a++ ){
-//		debug();
 		command_parser((char *)garray[a]);
 	}
 
@@ -622,20 +408,7 @@ int main(void)
 	LL_TIM_EnableIT_UPDATE(TIM1);
 	LL_TIM_DisableARRPreload(TIM1);
 
-/*	
-	debug();
-	LL_mDelay(10);
-	debug1();
-	G94(&state);
-	//	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-	t3ccer[TIM_CCER_CC3E_Pos] = 1; //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
-	LL_TIM_EnableCounter(TIM3);
-	LL_mDelay(15);
-	debug();
-return 0;
-*/
 	G_task_t *precalculating_task = task_cb.tail;
-
 	G94(&state);
 	do_fsm_move_start2(&state);
 //	debug();

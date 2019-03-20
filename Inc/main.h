@@ -242,14 +242,12 @@ typedef struct
 } axis;
 extern axis z_axis;
 */
-
-typedef void (*callback_func_t)(void);
-
-struct state;
-typedef void (*state_func_t)( struct state* );
+struct state_s;
+typedef void (*state_func_t)( struct state_s* );
+typedef void (*callback_func_t)(struct state_s*);
 
 
-typedef struct G_pipeline_t{
+typedef struct G_pipeline{
 	int 
 		X, // x axis
 		Z, // z axis
@@ -263,14 +261,17 @@ typedef struct G_pipeline_t{
 //	uint8_t code; // wtf?
 } G_pipeline_t;
 
-typedef struct G_task_t{
+typedef struct G_task{
 	int32_t dx, dz;
 	int32_t 	x, z, x1, z1; // delta
 	uint32_t steps_to_end;
 	fixedptu F; //Q824
 	callback_func_t callback_ref; //callback ref to iterate line or arc
 	callback_func_t init_callback_ref;
+
+	callback_func_t precalculate_init_callback_ref;
 	callback_func_t precalculate_callback_ref;
+
 	uint8_t z_direction, x_direction;
 
 // arc
@@ -280,7 +281,7 @@ typedef struct G_task_t{
 } G_task_t;
 
 
-typedef struct state
+typedef struct state_s
 {
 //	uint32_t steps_to_end;
 	uint32_t current_pos;
@@ -316,6 +317,7 @@ typedef struct state
 } state_t;
 
 extern state_t state_precalc;
+extern state_t state_hw;
 
 
 #define SUBSTEP_AXIS_Z 0

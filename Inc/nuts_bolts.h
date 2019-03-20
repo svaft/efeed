@@ -20,10 +20,12 @@ typedef struct circular_buffer{
     void *buffer_end; // end of data buffer
     size_t capacity;  // maximum number of items in the buffer
     size_t count;     // number of items in the buffer
+    size_t count2;     // number of items in the buffer
     size_t sz;        // size of each item in the buffer
     void *head;       // pointer to head
 		void *top;				// pointer to last added item
     void *tail;       // pointer to tail
+    void *tail2;       // pointer to read-only tail
 } circular_buffer;
 extern circular_buffer gp_cb;
 extern circular_buffer task_cb;
@@ -39,11 +41,13 @@ __STATIC_INLINE void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
         }
     cb->buffer_end = (char *)cb->buffer + capacity * sz;
     cb->capacity = capacity;
-    cb->count = 0;
-    cb->sz = sz;
-    cb->head = cb->buffer;
-    cb->tail = cb->buffer;
-		cb->top  = cb->buffer;
+    cb->count 	= 0;
+    cb->count2 	= 0;
+    cb->sz 			= sz;
+    cb->head 		= cb->buffer;
+    cb->tail 		= cb->buffer;
+		cb->tail2 	= cb->buffer;
+		cb->top  		= cb->buffer;
 }
 
 __STATIC_INLINE void cb_free(circular_buffer *cb){
@@ -62,6 +66,7 @@ __STATIC_INLINE void cb_push_back(circular_buffer *cb, const void *item){
     if(cb->head == cb->buffer_end)
         cb->head = cb->buffer;
     cb->count++;
+    cb->count2++;
 }
 
 __STATIC_INLINE void cb_push_back_empty(circular_buffer *cb){
@@ -75,6 +80,7 @@ __STATIC_INLINE void cb_push_back_empty(circular_buffer *cb){
     if(cb->head == cb->buffer_end)
         cb->head = cb->buffer;
     cb->count++;
+    cb->count2++;
 }
 
 
@@ -110,5 +116,21 @@ __STATIC_INLINE void* cb_pop_front_ref(circular_buffer *cb){
     cb->count--;
     return ref;
 }
+
+
+__STATIC_INLINE void* cb_pop_front_ref2(circular_buffer *cb){
+    if(cb->count2 == 0){
+        return 0;
+        // handle error
+    }
+    void *ref = cb->tail2;
+//  memcpy(item, cb->tail, cb->sz);
+    cb->tail2 = (char*)cb->tail2 + cb->sz;
+    if(cb->tail2 == cb->buffer_end)
+        cb->tail2 = cb->buffer;
+    cb->count2--;
+    return ref;
+}
+
 
 #endif

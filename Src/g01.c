@@ -3,15 +3,9 @@
 #include "g01.h"
 
 
-// called from load_task
-void G01init_callback(void){
-	state_t *s = &state;
-//	1. set state.function
-//	2. set ARR
-//	3. set channels
-	state.function = do_fsm_move2;
-	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
 
+// called from load_task
+void G01init_callback_precalculate(state_t* s){
 	if(s->current_task.dz > s->current_task.dx){
 		s->current_task.steps_to_end = s->current_task.dz;
 		s->substep_axis = SUBSTEP_AXIS_X;
@@ -21,16 +15,149 @@ void G01init_callback(void){
 		s->err = s->current_task.dx >> 1;
 		s->substep_axis = SUBSTEP_AXIS_Z;
 	}
-	dxdz_callback();
+	dxdz_callback_precalculate(s);
 //	s->current_task.steps_to_end = 1; 
-
 }
+
+
+
+void dxdz_callback_precalculate(state_t* s){
+	substep_t *sb;
+	int e2 = s->err;
+	int32_t delay = -1;
+
+	if (e2 >= -s->current_task.dx)	{ // step X axis
+		s->err -= s->current_task.dz;
+		if(s->substep_axis == SUBSTEP_AXIS_X){
+			delay = s->prescaler * (s->syncbase->ARR+1)*(abs(e2))/s->current_task.dx;
+		}
+	}
+	if (e2 <= s->current_task.dz)	{ // step Z axis
+		s->err += s->current_task.dx;
+		if(s->substep_axis == SUBSTEP_AXIS_Z){
+			delay = s->prescaler * (s->syncbase->ARR+1)*(abs(e2))/s->current_task.dz;
+		}
+	}
+
+	if(delay >=0){
+		cb_push_back_empty(&substep_cb);
+		sb = substep_cb.top;
+		sb->delay = delay;
+	} else {
+		sb = substep_cb.top;
+		if(substep_cb.count == 0 || sb->skip == 0){
+			cb_push_back_empty(&substep_cb);
+			sb = substep_cb.top;
+			sb->skip++;
+			return;
+		}
+		if(sb->skip > 0){
+			sb = substep_cb.top;
+			sb->skip++;
+		}
+	}
+	s->current_task.steps_to_end--;
+}
+
+
+
+
+
+
+
+
+// called from load_task
+void G01init_callback(state_t* s){
+//	1. set state.function
+//	2. set ARR
+//	3. set channels
+	s->function = do_fsm_move2;
+	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
+	TIM3->CCER = 0;
+
+	if(s->current_task.dz > s->current_task.dx){
+		s->current_task.steps_to_end = s->current_task.dz;
+		s->substep_axis = SUBSTEP_AXIS_X;
+		s->err = -s->current_task.dz >> 1;
+		MOTOR_Z_AllowPulse(); 
+	} else{
+		s->current_task.steps_to_end = s->current_task.dx;
+		s->err = s->current_task.dx >> 1;
+		s->substep_axis = SUBSTEP_AXIS_Z;
+		MOTOR_X_AllowPulse(); 
+	}
+
+//	dxdz_callback(s);
+//	s->current_task.steps_to_end = 1; 
+}
+
+
+
 
 // called from TIM3 on end of the stepper pulse to set output channel configuration for next pulse
 int lx=0, ly=0;
 uint32_t st = 0, st1 = 0;
-void dxdz_callback(){
-	state_t *s = &state;
+void dxdz_callback(state_t* s){
+	int e2 = s->err;
+	if (e2 >= -s->current_task.dx)	{ // step X axis
+		s->err -= s->current_task.dz;
+	}
+	if (e2 <= s->current_task.dz)	{ // step Z axis
+		s->err += s->current_task.dx;
+	}
+	s->current_task.steps_to_end--;
+}
+
+
+void G01parse(char *line){ //~60-70us
+	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
+	int z0 = init_gp.Z & ~1uL<<10;
+	G_pipeline_t *gref = G_parse(line);
+
+//	gref->Z = -32*1024;
+//	gref->X = 6*1024;
+	
+	int dx,dz, xdir,zdir;
+	if(gref->Z > z0){ // go from left to right
+		dz = gref->Z - z0;
+		zdir = zdir_forward;
+	} else { // go back from right to left
+		dz = z0 - gref->Z;
+		zdir = zdir_backward;
+	}
+	if(gref->X > x0){ // go forward
+		dx = gref->X - x0;
+		xdir = xdir_forward;
+	} else { // go back
+		dx = x0 - gref->X;
+		xdir = xdir_backward;
+	}
+	G_task_t *gt_new_task = add_empty_task();
+	gt_new_task->callback_ref = dxdz_callback;
+	gt_new_task->dx =  fixedpt_toint2210(dx);
+	gt_new_task->dz =  fixedpt_toint2210(dz);
+		
+//	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
+	gt_new_task->x_direction = xdir;
+	gt_new_task->z_direction = zdir;
+
+//		bool G94G95; // 0 - unit per min, 1 - unit per rev
+	if(state_hw.G94G95 == 1){ 	// unit(mm) per rev
+		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+	} else { 											// unit(mm) per min
+		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+	}
+	gt_new_task->init_callback_ref = G01init_callback;
+	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
+	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
+//	gref->code = 1;
+}
+
+
+
+
+/*
+void dxdz_callback(state_t* s){
 	debug();
 	if(s->substep_mask){
 		// sub-step done, restore channel config
@@ -89,46 +216,4 @@ void dxdz_callback(){
 
 	s->current_task.steps_to_end--;
 }
-
-
-void G01parse(char *line){ //~60-70us
-	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
-	int z0 = init_gp.Z & ~1uL<<10;
-	G_pipeline_t *gref = G_parse(line);
-
-//	gref->Z = -32*1024;
-//	gref->X = 6*1024;
-	
-	int dx,dz, xdir,zdir;
-	if(gref->Z > z0){ // go from left to right
-		dz = gref->Z - z0;
-		zdir = zdir_forward;
-	} else { // go back from right to left
-		dz = z0 - gref->Z;
-		zdir = zdir_backward;
-	}
-	if(gref->X > x0){ // go forward
-		dx = gref->X - x0;
-		xdir = xdir_forward;
-	} else { // go back
-		dx = x0 - gref->X;
-		xdir = xdir_backward;
-	}
-	G_task_t *gt_new_task = add_empty_task();
-	gt_new_task->callback_ref = dxdz_callback;
-	gt_new_task->dx =  fixedpt_toint2210(dx);
-	gt_new_task->dz =  fixedpt_toint2210(dz);
-		
-//	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
-	gt_new_task->x_direction = xdir;
-	gt_new_task->z_direction = zdir;
-
-//		bool G94G95; // 0 - unit per min, 1 - unit per rev
-	if(state.G94G95 == 1){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
-	} else { 											// unit(mm) per min
-		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
-	}
-	gt_new_task->init_callback_ref = G01init_callback;
-//	gref->code = 1;
-}
+*/

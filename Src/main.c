@@ -82,7 +82,7 @@
 /* USER CODE BEGIN PV */
 
 //axis z_axis;
-state_t state;
+state_t state_hw;
 state_t state_precalc;
 
 /* Private variables ---------------------------------------------------------*/
@@ -271,9 +271,9 @@ int main(void)
 //	gt[0].z_direction = zdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
 //	gt[0].x_direction = xdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
 //	zdir = gt[0].z_direction;
-	memset(&state,0,sizeof(state));
+	memset(&state_hw,0,sizeof(state_hw));
 //	memset(&z_axis,0,sizeof(z_axis));
-	state.function = do_fsm_menu_lps;
+	state_hw.function = do_fsm_menu_lps;
 //	state.callback = dxdz_callback;
 
 
@@ -318,7 +318,7 @@ int main(void)
 
 	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
 	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
-	cb_init_ref(&substep_cb, substep_size, sizeof(G_pipeline_t),&gp);
+	cb_init_ref(&substep_cb, substep_size, sizeof(substep_t),&substep_delay);
 
 {
   /* Enable DMA TX Interrupt */
@@ -353,9 +353,34 @@ int main(void)
   LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
 	TIM4->SR = 0; 																			// reset interrup flags
 
-	do_fsm_menu(&state);
+	do_fsm_menu(&state_hw);
 	LED_OFF();
 }
+
+//	debug();
+// prevent to put TIM3 stepper chanels high on set corresponding CCER-CCxE bit.
+// without this code channel is enabled on set CCER-CCxE ignoring shadow register, thats strange...	
+
+	LL_TIM_DisableIT_UPDATE(TIM3);
+	LL_TIM_GenerateEvent_UPDATE(TIM3);
+	LL_TIM_ClearFlag_UPDATE(TIM3);
+	LL_TIM_EnableIT_UPDATE(TIM3); // */
+
+//		LL_GPIO_SetPinMode(GPIOB,LL_GPIO_PIN_0,LL_GPIO_MODE_OUTPUT);
+
+
+	// prepare TIM1 for sub-step:	
+	LL_TIM_ClearFlag_UPDATE(TIM1);
+	LL_TIM_CC_DisablePreload(TIM1);
+  LL_TIM_OC_DisablePreload(TIM1, LL_TIM_CHANNEL_CH1);
+
+	LL_TIM_EnableIT_CC1(TIM1);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
+//	TIM1->CCR1 = 50;
+	LL_TIM_EnableIT_UPDATE(TIM1);
+	LL_TIM_DisableARRPreload(TIM1);
+
+
 
 	static const char * const garray[] = {
 		"G90 G94 F900",
@@ -380,53 +405,51 @@ int main(void)
 		"G3 X12. Z-4.5 I-1.99 K-2.245" 
 	};
 
+
+	// start gcode parsing, emulate receive it by usart interrupt(bluetooth) 
 	for(int a = 0; a < 5; a++ ){
 		command_parser((char *)garray[a]);
 	}
 
 
-//	debug();
-// prevent to put TIM3 stepper chanels high on set corresponding CCER-CCxE bit.
-// without this code channel is enabled on set CCER-CCxE ignoring shadow register, thats strange...	
+// todo need refactor this code how to g-code parsing, precalculation and execution going to start and work together
+	G_task_t *precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
+  memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
 
-	LL_TIM_DisableIT_UPDATE(TIM3);
-	LL_TIM_GenerateEvent_UPDATE(TIM3);
-	LL_TIM_ClearFlag_UPDATE(TIM3);
-	LL_TIM_EnableIT_UPDATE(TIM3); // */
+	// init precalc
+	if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
+		precalculating_task->precalculate_init_callback_ref(&state_precalc);
+	// do first step precalc
+	if(precalculating_task->precalculate_callback_ref) {
+		precalculating_task->precalculate_callback_ref(&state_precalc);
 
-//		LL_GPIO_SetPinMode(GPIOB,LL_GPIO_PIN_0,LL_GPIO_MODE_OUTPUT);
+	// start gcode execution
+	G94(&state_hw);
+	do_fsm_move_start2(&state_hw);
 
-	
-	// prepare TIM1 for sub-step:	
-	LL_TIM_ClearFlag_UPDATE(TIM1);
-	LL_TIM_CC_DisablePreload(TIM1);
-  LL_TIM_OC_DisablePreload(TIM1, LL_TIM_CHANNEL_CH1);
-
-	LL_TIM_EnableIT_CC1(TIM1);
-	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
-//	TIM1->CCR1 = 50;
-	LL_TIM_EnableIT_UPDATE(TIM1);
-	LL_TIM_DisableARRPreload(TIM1);
-
-	G_task_t *precalculating_task = task_cb.tail;
-	G94(&state);
-	do_fsm_move_start2(&state);
 //	debug();
 	while (1) {
 		// recalc substep delays
 		if(substep_cb.count < substep_cb.capacity && precalculating_task){
 			// get pointer to last processed task
 			if(precalculating_task->precalculate_callback_ref) {
-				precalculating_task->precalculate_callback_ref();
+				precalculating_task->precalculate_callback_ref(&state_precalc);
 				if(state_precalc.current_task.steps_to_end == 0){
-				precalculating_task++; // danger todo
+					precalculating_task = cb_pop_front_ref2(&task_cb);
+					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
+
+					if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
+						precalculating_task->precalculate_init_callback_ref(&state_precalc);
+					
 				// load next task
 				}
 			} else {
-				precalculating_task++; // danger todo
+				precalculating_task = cb_pop_front_ref2(&task_cb);
+				memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
+				if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
+					precalculating_task->precalculate_init_callback_ref(&state_precalc);
 			}
 			// call task recalculate callback until task is fully precalculated
-			
 			// get next task and repeat unitl all task recalculated on precalculater buffer is full
 			
 		} else {

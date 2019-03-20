@@ -12,11 +12,13 @@ void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref){
         }
     cb->buffer_end = (char *)cb->buffer + capacity * sz;
     cb->capacity = capacity;
-    cb->count = 0;
-    cb->sz = sz;
-    cb->head = cb->buffer;
-    cb->tail = cb->buffer;
-		cb->top  = cb->buffer;
+    cb->count 	= 0;
+    cb->count2 	= 0;
+    cb->sz 			= sz;
+    cb->head 		= cb->buffer;
+    cb->tail2 	= cb->buffer;
+    cb->tail 		= cb->buffer;
+		cb->top  		= cb->buffer;
 }
 
 

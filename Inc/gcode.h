@@ -27,21 +27,22 @@ void G00parse(char *line);
 extern G_task_t gt[];
 extern G_pipeline_t gp[];
 extern G_pipeline_t init_gp;
-extern uint16_t substep_delay[];
 
 void calibrate_callback(state_t *);
-void calibrate_init_callback(void);
+void calibrate_init_callback(state_t* s);
 
 
 void do_fsm_move_start2(state_t* s);
 void do_fsm_move2(state_t*);
 void do_fsm_move_end2(state_t* );
-void load_next_task(void);
+void load_next_task(state_t* s);
 
 typedef struct substep{
 	uint16_t delay;
 	uint16_t skip;
 } substep_t;
+
+extern substep_t substep_delay[];
 
 
 

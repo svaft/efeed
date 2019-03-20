@@ -14,10 +14,6 @@
 
 struct state;
 
-
-
-extern state_t state;
-
 void do_fsm_menu(state_t*);										//0 . menu mode, if long_press_start event: go to sub-menu or up-menu, DOUBLE_CLICK: initial direction change
 void do_fsm_menu_lps(state_t*);							//10. long_press_start: end_pos = current_pos = 0, идем в п. fsm_first_cut_lps
 void z_move(uint32_t , uint32_t  , bool, bool);
@@ -33,8 +29,8 @@ void do_fsm_move_end(state_t* );
 void do_long_press_end_callback(state_t* );
 
 
-void dwell_callback(void);
-void P04init_callback(void);
+void dwell_callback(state_t* s);
+void P04init_callback(state_t* s);
 
 
 void do_fsm_dwell(state_t*);

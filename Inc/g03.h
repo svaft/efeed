@@ -11,15 +11,17 @@
 
 void plotOptimizedEllipse(int x0, int z0, int x1, int z1, int a, int b);
 void plotEllipse(int x0, int z0, int a, int b);
-void G03init_callback(void);
-void arc_dx_callback(void);// arc movement callback
-void arc_dz_callback(void); // arc movement callback
+void G03init_callback(state_t* s);
+void G03init_callback_precalculate(state_t* s);
+
+	//void arc_dx_callback(void);// arc movement callback
+//void arc_dz_callback(void); // arc movement callback
 
 
-void arc_q1_callback(void);
-void arc_q2_callback(void);
-void arc_q3_callback(void);
-void arc_q4_callback(void);
+void arc_q1_callback(state_t* s);
+void arc_q2_callback(state_t* s);
+void arc_q3_callback(state_t* s);
+void arc_q4_callback(state_t* s);
 
 #define CW 1
 #define CCW -1

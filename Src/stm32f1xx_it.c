@@ -256,7 +256,7 @@ void TIM1_UP_IRQHandler_old(void)
 //	debug7();
 	// enable corresponding channel for sub-step:
 	debug1();
-	TIM3->CCER = state.substep_mask;
+	TIM3->CCER = state_hw.substep_mask;
 	// start pulse:
 	LL_TIM_EnableCounter(TIM3); 
 	// stop sub-step timer:
@@ -286,7 +286,7 @@ void TIM1_CC_IRQHandler(void)
 	LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 //	LL_GPIO_SetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
 	TIM1->SR = 0;
-	//	TIM3->CCER = state.substep_mask;
+	//	TIM3->CCER = state_hw.substep_mask;
 //	B0 on
 //	LL_TIM_DisableCounter(TIM1);
 
@@ -303,13 +303,13 @@ void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
-	state.function(&state);
+	state_hw.function(&state_hw);
 
 //	TIM2->EGR |= TIM_EGR_UG;
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
   /* Check whether update interrupt is pending */
-	state.syncbase->SR = 0;
+	state_hw.syncbase->SR = 0;
 
 //  if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == 1)
 //  {
@@ -325,17 +325,17 @@ void TIM2_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
-	if(state.current_task.callback_ref){
-		state.current_task.callback_ref();
+	if(state_hw.current_task.callback_ref){
+		state_hw.current_task.callback_ref(&state_hw);
 	}
 //	debug1();
-	if(state.current_task.steps_to_end == 0){
+	if(state_hw.current_task.steps_to_end == 0){
 //			debug();
 		if(task_cb.count == 0){
-			do_fsm_move_end2(&state);
+			do_fsm_move_end2(&state_hw);
 			return;
 		}
-		load_next_task();
+		load_next_task(&state_hw);
 	}
 	TIM3->SR = 0;
 
@@ -356,14 +356,14 @@ void TIM4_IRQHandler(void)
 //		do_fsm_wait_tacho(&state);
 //	}
 //	if(TIM3->SMCR == 0x36) { // TIM3 connected to TIM4 as SLAVE
-	if (state.sync == true) {
-//		state.spindle_dir = t4cr1[TIM_CR1_DIR_Pos];
-//		state.f_encoder = encoder;
-//		state.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
-		state.function(&state);
-//		state.syncbase->ARR = state.z_period;
-//		TIM4->ARR = state.z_period;
-//		state.syncbase->EGR |= TIM_EGR_UG;
+	if (state_hw.sync == true) {
+//		state_hw.spindle_dir = t4cr1[TIM_CR1_DIR_Pos];
+//		state_hw.f_encoder = encoder;
+//		state_hw.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
+		state_hw.function(&state_hw);
+//		state_hw.syncbase->ARR = state_hw.z_period;
+//		TIM4->ARR = state_hw.z_period;
+//		state_hw.syncbase->EGR |= TIM_EGR_UG;
 		
 	}
 //	TIM4->SR &= ~TIM_SR_UIF; //Сбрасываем бит вызова прерывания. 
@@ -374,7 +374,7 @@ void TIM4_IRQHandler(void)
 //	if(LL_TIM_IsActiveFlag_CC2OVR(TIM4) == 1){
 //		TIM4->SR = 0;
 //	}
-	state.syncbase->SR = 0;
+	state_hw.syncbase->SR = 0;
 /*
 	if(LL_TIM_IsActiveFlag_CC2(TIM4) == 1)
     LL_TIM_ClearFlag_CC2(TIM4);

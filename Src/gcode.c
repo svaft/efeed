@@ -6,16 +6,16 @@ G_pipeline_t init_gp={0,0,0,0,0};
 
 G_task_t gt[task_size];
 G_pipeline_t gp[gp_size];
-//substep[substep_size];
+substep_t substep_delay[substep_size];
 
 
-void load_next_task(){
+void load_next_task(state_t* s){
 //	debug7();
-	cb_pop_front(&task_cb, &state.current_task);
-	if(state.current_task.init_callback_ref){
-		state.current_task.init_callback_ref(); // task specific init
+	cb_pop_front(&task_cb, &s->current_task);
+	if(s->current_task.init_callback_ref){
+		s->current_task.init_callback_ref(s); // task specific init
 	}
-	state.Q824set = state.current_task.F; // load feed value
+	s->Q824set = s->current_task.F; // load feed value
 }
 
 void G94(state_t* s){
@@ -37,7 +37,7 @@ void G94(state_t* s){
 }
 
 void do_fsm_move_start2(state_t* s){
-	load_next_task(); // load first task from queue
+	load_next_task(s); // load first task from queue
 
 //	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
 //	s->syncbase->ARR = 1;
@@ -62,6 +62,18 @@ void do_fsm_move_start2(state_t* s){
 }
 
 void do_fsm_move2(state_t* s){
+/*	
+	substep_t *sb = substep_cb.tail; //cb_pop_front_ref(&substep_cb);
+	if(!sb->skip){
+		TIM1->CCR1 = sb->delay;
+		TIM1->ARR = sb->delay + min_pulse;
+		LL_TIM_EnableIT_CC1(TIM1);
+	} else {
+		sb->skip--;
+		if(sb->skip == 0)
+			cb_pop_front_ref(&substep_cb);
+	}
+*/
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;
 	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
@@ -99,7 +111,8 @@ G_task_t* get_last_task( void ){
 
 
 void command_parser(char *line){
-  uint8_t char_counter = 0;  
+  state_t *s = &state_hw;
+	uint8_t char_counter = 0;  
 	char letter;
 	G_task_t *g_task;
 //	char *end;
@@ -117,16 +130,16 @@ void command_parser(char *line){
 						
 						break;
 					case 38502400: //G94 Units per Minute Mode
-						state.G94G95 = 0;
-						state.prescaler = TIM2->PSC; //todo
+						s->G94G95 = 0;
+						s->prescaler = TIM2->PSC; //todo
 //						g_task = add_empty_task();
 //						g_task->init_callback_ref = calibrate_init_callback;
 						break;
 					case 38912000: //G95 - is Units per Revolution Mode
-						state.G94G95 = 1;
+						s->G94G95 = 1;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = calibrate_init_callback;
-//						state.sync = 1;
+//						s->sync = 1;
 						break;
 					case 0://G0 command packed into 2210_400 format
 						G01parse(line+char_counter);
@@ -207,25 +220,25 @@ G_pipeline_t* G_parse(char *line){
 	return &init_gp; //gp_cb.top;
 }
 
-void calibrate_init_callback(void){ 
+void calibrate_init_callback(state_t *s){ 
 	// todo not sure if it's working from timer interrupt where load_task is started...
-	if(state.syncbase == TIM2){
-		state.prescaler = state.syncbase->PSC;
+	if(s->syncbase == TIM2){
+		s->prescaler = s->syncbase->PSC;
 		return;
 	}
-	LL_TIM_DisableCounter(state.syncbase); // pause current timer
+	LL_TIM_DisableCounter(s->syncbase); // pause current timer
 	// reset calibrated value
-	state.prescaler = 0;
-	state.function = calibrate_callback;
+	s->prescaler = 0;
+	s->function = calibrate_callback;
 	LL_TIM_SetAutoReload(TIM1,0xFFFF);
 	TIM1->CNT = 0;
 
-	state.syncbase->CNT = 1;
-	LL_TIM_EnableIT_UPDATE(state.syncbase);
-	LL_TIM_DisableARRPreload(state.syncbase);
-	LL_TIM_SetAutoReload(state.syncbase,10);
-	LL_TIM_EnableCounter(state.syncbase); // start current timer
-//	while(state.async_z==0);
+	s->syncbase->CNT = 1;
+	LL_TIM_EnableIT_UPDATE(s->syncbase);
+	LL_TIM_DisableARRPreload(s->syncbase);
+	LL_TIM_SetAutoReload(s->syncbase,10);
+	LL_TIM_EnableCounter(s->syncbase); // start current timer
+//	while(s->async_z==0);
 }
 
 void calibrate_callback(state_t *s){
@@ -233,9 +246,9 @@ void calibrate_callback(state_t *s){
 		LL_TIM_EnableCounter(TIM1);
 	} else {
 		LL_TIM_DisableCounter(TIM1);
-		state.prescaler = (TIM1->CNT - 110)/state.syncbase->ARR;
-		LL_TIM_DisableCounter(state.syncbase); // pause current timer
-		LL_TIM_EnableARRPreload(state.syncbase);
+		s->prescaler = (TIM1->CNT - 110)/s->syncbase->ARR;
+		LL_TIM_DisableCounter(s->syncbase); // pause current timer
+		LL_TIM_EnableARRPreload(s->syncbase);
 	}
 }
 

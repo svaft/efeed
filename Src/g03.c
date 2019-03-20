@@ -22,12 +22,8 @@ substep_t substep[substep_size];
 
 
 
-void arc_q1_callback_precalculate(void){
-	state_t *s = &state_precalc;
-
+void arc_q1_callback_precalculate(state_t* s){
 	int64_t e2 = s->arc_err<<1;
-
-//	MOTOR_X_AllowPulse();
 	s->current_task.x++;
 	s->arc_err += s->arc_dx += s->arc_bb; 
 
@@ -103,9 +99,7 @@ void arc_q1_callback_precalculate(void){
 
 
 
-void arc_q1_callback(void){
-	state_t *s = &state;
-
+void arc_q1_callback(state_t* s){
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
@@ -344,8 +338,7 @@ void arc_q1_callback_old(void){
 
 */
 
-void arc_q4_callback(void){
-	state_t *s = &state;
+void arc_q4_callback(state_t* s){
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 //	do {
@@ -392,62 +385,125 @@ uint8_t get_quadrant(int x0, int z0){
 
 int64_t dddz=0;
 // on new task loading callback
-void G03init_callback(void){
+void G03init_callback(state_t* s){
 	// set initial delay for pulse
-	state.syncbase->ARR = fixedpt_toint(state.current_task.F) - 1;
-	state.Q824set = state.current_task.F;
+	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
+	s->Q824set = s->current_task.F;
 	// set callback iterator for feed speed:
-	state.function = do_fsm_move2; 
+	s->function = do_fsm_move2; 
 
 	//precalculate variables:
-	state.arc_aa = (uint64_t)state.current_task.a * state.current_task.a<<1;
-	state.arc_bb = (uint64_t)state.current_task.b * state.current_task.b<<1;
+	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
+	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;
 
-	state.current_task.z  = fixedpt_toint2210(state.current_task.z);
-	state.current_task.x  = fixedpt_toint2210(state.current_task.x);
-	state.current_task.z1 = fixedpt_toint2210(state.current_task.z1);
-	state.current_task.x1 = fixedpt_toint2210(state.current_task.x1);
+	s->current_task.z  = fixedpt_toint2210(s->current_task.z);
+	s->current_task.x  = fixedpt_toint2210(s->current_task.x);
+	s->current_task.z1 = fixedpt_toint2210(s->current_task.z1);
+	s->current_task.x1 = fixedpt_toint2210(s->current_task.x1);
 
-	uint8_t q_from 	= get_quadrant(state.current_task.x, state.current_task.z);
-//	uint8_t q_to 		= get_quadrant(state.current_task.x1, state.current_task.z1);
+	uint8_t q_from 	= get_quadrant(s->current_task.x, s->current_task.z);
+//	uint8_t q_to 		= get_quadrant(s->current_task.x1, s->current_task.z1);
 
 	int cwccw = 1;
 	if(cwccw>0){ //cw
 		switch(q_from){
 			case 1:
-				state.arc_dx =  (2*state.current_task.x+1)*state.arc_bb>>1;
-				state.arc_dz = -(2*state.current_task.z-1)*state.arc_aa>>1;
+				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
+				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
 				break;
 			case 4:
-				state.arc_dx = -(2*state.current_task.x-1)*state.arc_bb>>1;
-				state.arc_dz = -(2*state.current_task.z-1)*state.arc_aa>>1;
+				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
+				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
 	//			gt_new_task->x_direction = xdir_backward;
 				break;
 			default: while(1); // impossible case trap
 		}
-		state.arc_err = state.arc_dx+state.arc_dz;
+		s->arc_err = s->arc_dx+s->arc_dz;
 	} else { //ccw
 		//todo check and correct ccw arc generation
 		switch(q_from){
 			case 2:
 				// Q2
-				state.arc_dx =  (2*state.current_task.x+1)*state.arc_bb>>1;
-				state.arc_dz =  (2*state.current_task.z+1)*state.arc_aa>>1;
+				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
+				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
 				break;
 			case 3:
-				state.arc_dx = -(2*state.current_task.x-1)*state.arc_bb>>1;
-				state.arc_dz =  (2*state.current_task.z+1)*state.arc_aa>>1;
+				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
+				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
 				break;
 			default: while(1); // impossible case trap
 		}
-		state.arc_err = state.arc_dx+state.arc_dz;
+		s->arc_err = s->arc_dx+s->arc_dz;
 	}
-	state.substep_axis = -1;
+	s->substep_axis = -1;
 	// use this variable as flag, set it in callback when arc is done:
-	state.current_task.steps_to_end = 1; 
+	s->current_task.steps_to_end = 1; 
 	// init and prepare corresponding output channels to generate first step pulse:
-	state.current_task.callback_ref();
+	s->current_task.callback_ref(s);
 }
+
+
+
+void G03init_callback_precalculate(state_t* s){
+	//precalculate variables:
+	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
+	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;
+
+	s->current_task.z  = fixedpt_toint2210(s->current_task.z);
+	s->current_task.x  = fixedpt_toint2210(s->current_task.x);
+	s->current_task.z1 = fixedpt_toint2210(s->current_task.z1);
+	s->current_task.x1 = fixedpt_toint2210(s->current_task.x1);
+
+	uint8_t q_from 	= get_quadrant(s->current_task.x, s->current_task.z);
+//	uint8_t q_to 		= get_quadrant(s->current_task.x1, s->current_task.z1);
+
+	int cwccw = 1;
+	if(cwccw>0){ //cw
+		switch(q_from){
+			case 1:
+				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
+				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
+				break;
+			case 4:
+				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
+				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
+	//			gt_new_task->x_direction = xdir_backward;
+				break;
+			default: while(1); // impossible case trap
+		}
+		s->arc_err = s->arc_dx+s->arc_dz;
+	} else { //ccw
+		//todo check and correct ccw arc generation
+		switch(q_from){
+			case 2:
+				// Q2
+				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
+				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
+				break;
+			case 3:
+				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
+				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
+				break;
+			default: while(1); // impossible case trap
+		}
+		s->arc_err = s->arc_dx+s->arc_dz;
+	}
+	s->substep_axis = -1;
+	// use this variable as flag, set it in callback when arc is done:
+	s->current_task.steps_to_end = 1; 
+	// init and prepare corresponding output channels to generate first step pulse:
+	s->current_task.precalculate_callback_ref(s);
+	
+}
+
+
+
+
+
+
+
+
+
 
 /**
 * @brief  G33 parse to tasks. New version with ellipse
@@ -472,6 +528,7 @@ void G03parse(char *line, int8_t cwccw){
             ******|******
                   |
 */
+	state_t *s = &state_hw;
 	int x0 = init_gp.X & ~1uL<<10; //save pos from prev gcode
 	int z0 = init_gp.Z & ~1uL<<10;
 	G_pipeline_t *gref = G_parse(line);
@@ -480,7 +537,6 @@ void G03parse(char *line, int8_t cwccw){
 	int z0z = -gref->K; //z0+zdelta;
 	int x1z = gref->X - x0 - gref->I;
 	int z1z = gref->Z - z0 - gref->K;
-
 
 	ik = (int64_t)gref->I*gref->I + (int64_t)gref->K*gref->K;
 	ik  = SquareRoot64(ik); // ik - radius of circle in 2210 format.
@@ -508,12 +564,13 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 	gt_new_task 		= add_empty_task();
 
 //feed:
-	if(state.G94G95 == 1){ 	// unit(mm) per rev
+	if(s->G94G95 == 1){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 	} else { 											// unit(mm) per min
 		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 	}
 
+	gt_new_task->precalculate_init_callback_ref =  G03init_callback_precalculate;
 	gt_new_task->init_callback_ref = G03init_callback;
 	gt_new_task->a = xf;
 	gt_new_task->b = zf;
@@ -523,8 +580,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 
 	gt_new_task->x1 = x1z;
 	gt_new_task->z1 = z1z;
-	
-	
+
 //	gt_new_task->aa = xf*xf<<1;
 //	gt_new_task->bb = zf*zf<<1;
 
@@ -554,13 +610,14 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 			// two quadrants used, add next quadrant as separated task with changed motor direction flag:
 			gt_new_task 		= add_empty_task();
 		//feed:
-			if(state.G94G95 == 1){ 	// unit(mm) per rev
+			if(s->G94G95 == 1){ 	// unit(mm) per rev
 				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 			} else { 											// unit(mm) per min
 				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 			}
 			
 			gt_new_task->init_callback_ref = G03init_callback;
+			gt_new_task->precalculate_init_callback_ref =  G03init_callback_precalculate;
 
 //			gt_new_task->aa = xf*xf<<1;
 //			gt_new_task->bb = zf*zf<<1;
@@ -603,13 +660,14 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 			// two quadrants used, add next quadrant as separated task with changed motor direction flag:
 			gt_new_task 		= add_empty_task();
 		//feed:
-			if(state.G94G95 == 1){ 	// unit(mm) per rev
+			if(s->G94G95 == 1){ 	// unit(mm) per rev
 				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 			} else { 											// unit(mm) per min
 				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 			}
 			
 			gt_new_task->init_callback_ref = G03init_callback;
+			gt_new_task->precalculate_init_callback_ref =  G03init_callback_precalculate;
 
 //			gt_new_task->aa = xf*xf<<1;
 //			gt_new_task->bb = zf*zf<<1;
@@ -752,7 +810,7 @@ void G03init_callback_old(void){
 
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
 	s->Q824set = s->current_task.F;
-	state.function = do_fsm_move2;
+	s->function = do_fsm_move2;
 	if(s->current_task.callback_ref == arc_dx_callback){
 		s->current_task.dz = SquareRoot(s->current_task.rr - s->current_task.dx * s->current_task.dx);
 		
@@ -913,7 +971,7 @@ void G03parse_old(char *line, int8_t cwccw){ //~130-150us
 		gt_new_task->z_direction = zdir_forward;
 		
 		//feed:
-		if(state.G94G95 == 1){ 	// unit(mm) per rev
+		if(s->G94G95 == 1){ 	// unit(mm) per rev
 			gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 		} else { 											// unit(mm) per min
 			gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
@@ -1020,7 +1078,7 @@ void G03parse_old(char *line, int8_t cwccw){ //~130-150us
 				}
 			}
 			//feed:
-			if(state.G94G95 == 1){ 	// unit(mm) per rev
+			if(s->G94G95 == 1){ 	// unit(mm) per rev
 				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 			} else { 											// unit(mm) per min
 				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
@@ -1170,8 +1228,7 @@ void plotEllipse(int x0, int z0, int a, int b){
 
 
 
-void arc_q2_callback(void){
-	state_t *s = &state;
+void arc_q2_callback(state_t* s){
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
@@ -1190,8 +1247,7 @@ void arc_q2_callback(void){
 
 
 
-void arc_q3_callback(void){
-	state_t *s = &state;
+void arc_q3_callback(state_t* s){
 	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 

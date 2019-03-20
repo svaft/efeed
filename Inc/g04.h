@@ -9,8 +9,8 @@
 #include "main.h"
 #include "nuts_bolts.h"
 
-void G04init_callback(void);
-void dwell_callback(void);
+void G04init_callback(state_t* s);
+void dwell_callback(state_t* s);
 void G04parse(char *line);
 void do_fsm_dwell(state_t *s);
 

@@ -349,9 +349,9 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
-  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
-	TIM4->SR = 0; 																			// reset interrup flags
+//  LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
+//  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
+//	TIM4->SR = 0; 																			// reset interrup flags
 
 	do_fsm_menu(&state_hw);
 	LED_OFF();
@@ -411,7 +411,36 @@ int main(void)
 		command_parser((char *)garray[a]);
 	}
 
+// calibration test
+	LL_TIM_DisableARRPreload(TIM4);
+	TIM4->ARR = 1;
+	
+	G95(&state_hw);
+	TIM2->PSC = 0; // reset prescaler and set tim2 to max speed to use it as delay measure
+	TIM2->ARR = 0xFFFF;
 
+//	TIM4->DIER = 1;
+//	LL_TIM_DisableIT_UPDATE(TIM3); // to set prescaler register we need to generate update event, 
+	LL_TIM_DisableIT_UPDATE(TIM2); // to set prescaler register we need to generate update event, 
+	//so disable IT first to prevent call of IT routine 
+	LL_TIM_GenerateEvent_UPDATE(TIM2); // generate UPDATE event
+	
+	
+	
+//	LL_mDelay(100);
+//	debug();
+	state_t *s = &state_hw;
+	LL_TIM_ClearFlag_UPDATE(s->syncbase);
+	LL_TIM_EnableUpdateEvent(s->syncbase);
+	LL_TIM_EnableCounter(s->syncbase);
+	LL_TIM_EnableCounter(TIM2);
+	LL_TIM_EnableIT_UPDATE(s->syncbase);
+//	LL_TIM_DisableIT_UPDATE(TIM2);
+//	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
+	
+	while(1);
+	
+	
 // todo need refactor this code how to g-code parsing, precalculation and execution going to start and work together
 	G_task_t *precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
   memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
@@ -420,9 +449,12 @@ int main(void)
 	if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
 		precalculating_task->precalculate_init_callback_ref(&state_precalc);
 	// do first step precalc
-	if(precalculating_task->precalculate_callback_ref) {
+	if(precalculating_task->precalculate_callback_ref)
 		precalculating_task->precalculate_callback_ref(&state_precalc);
 
+	
+	
+	
 	// start gcode execution
 	G94(&state_hw);
 	do_fsm_move_start2(&state_hw);
@@ -849,26 +881,28 @@ static void MX_TIM4_Init(void)
   /* USER CODE END TIM4_Init 1 */
   TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 8;
+  TIM_InitStruct.Autoreload = 1;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM4, &TIM_InitStruct);
   LL_TIM_DisableARRPreload(TIM4);
-  LL_TIM_SetEncoderMode(TIM4, LL_TIM_ENCODERMODE_X2_TI1);
+  LL_TIM_SetEncoderMode(TIM4, LL_TIM_ENCODERMODE_X4_TI12);//LL_TIM_ENCODERMODE_X2_TI1);
   LL_TIM_IC_SetActiveInput(TIM4, LL_TIM_CHANNEL_CH1, LL_TIM_ACTIVEINPUT_DIRECTTI);
   LL_TIM_IC_SetPrescaler(TIM4, LL_TIM_CHANNEL_CH1, LL_TIM_ICPSC_DIV1);
-  LL_TIM_IC_SetFilter(TIM4, LL_TIM_CHANNEL_CH1, LL_TIM_IC_FILTER_FDIV32_N8);
+  LL_TIM_IC_SetFilter(TIM4, LL_TIM_CHANNEL_CH1,LL_TIM_IC_FILTER_FDIV32_N8);
   LL_TIM_IC_SetPolarity(TIM4, LL_TIM_CHANNEL_CH1, LL_TIM_IC_POLARITY_RISING);
   LL_TIM_IC_SetActiveInput(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_ACTIVEINPUT_DIRECTTI);
   LL_TIM_IC_SetPrescaler(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_ICPSC_DIV1);
   LL_TIM_IC_SetFilter(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_IC_FILTER_FDIV32_N8);
-  LL_TIM_IC_SetPolarity(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_IC_POLARITY_RISING);
-  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
+  LL_TIM_IC_SetPolarity(TIM4, LL_TIM_CHANNEL_CH2, LL_TIM_IC_POLARITY_RISING); //LL_TIM_IC_POLARITY_RISING);
+
+ LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
   LL_TIM_EnableMasterSlaveMode(TIM4);
   LL_TIM_IC_SetActiveInput(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_ACTIVEINPUT_DIRECTTI);
   LL_TIM_IC_SetPrescaler(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_ICPSC_DIV1);
   LL_TIM_IC_SetFilter(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_IC_FILTER_FDIV32_N8);
   LL_TIM_IC_SetPolarity(TIM4, LL_TIM_CHANNEL_CH3, LL_TIM_IC_POLARITY_RISING);
-  /* USER CODE BEGIN TIM4_Init 2 */
+
+/* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
 

@@ -322,9 +322,14 @@ void TIM2_IRQHandler(void)
 /**
   * @brief This function handles TIM3 global interrupt.
   */
+int cnt33 = 0;
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
+	TIM3->SR = 0;
+	cnt33++;
+//			__dsb(0);
+	return;
 	if(state_hw.current_task.callback_ref){
 		state_hw.current_task.callback_ref(&state_hw);
 	}
@@ -348,43 +353,53 @@ void TIM3_IRQHandler(void)
 /**
   * @brief This function handles TIM4 global interrupt.
   */
+__IO uint32_t cnt2 = 0;
+__IO uint32_t cnt3 = 0;
+__IO uint32_t cnt4 = 0;
+uint16_t cntbuf[1000];
+int cnt2div=0;
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
+	// at 400 rpm i got ~5800 in timer count for one encoder tick with 3600 encoder resolution
+//	if(TIM4->SR !=0){
+	TIM4->SR = 0;
+	cnt4++;
+	cnt2 = 2400000 / TIM2->CNT; // speed in RPM
+	TIM2->CNT = 0;
+//		__dsb(0);
+//	}
+	
+//	cnt3++;
+//	if(TIM2->CNT > 50){
+//		cnt2 = TIM2->CNT; // measure current spindle speed to use as prescaler value for substep smoothing
+	//	cnt2div = cnt2/TIM4->ARR;
+//		TIM2->CNT = 0; // reset timer count to start measure next
+//	if(cnt2 > 1500)
+//	}
+	
 //	_Bool dir = t4cr1[TIM_CR1_DIR_Pos];
 //	if(t4sr[TIM_SR_CC3IF_Pos]){
 //		do_fsm_wait_tacho(&state);
 //	}
 //	if(TIM3->SMCR == 0x36) { // TIM3 connected to TIM4 as SLAVE
-	if (state_hw.sync == true) {
+
 //		state_hw.spindle_dir = t4cr1[TIM_CR1_DIR_Pos];
 //		state_hw.f_encoder = encoder;
 //		state_hw.f_tacho = t4sr[TIM_SR_CC3IF_Pos];
-		state_hw.function(&state_hw);
-//		state_hw.syncbase->ARR = state_hw.z_period;
+
+
+//	state_hw.function(&state_hw);
+
+	
+	
+	//		state_hw.syncbase->ARR = state_hw.z_period;
 //		TIM4->ARR = state_hw.z_period;
 //		state_hw.syncbase->EGR |= TIM_EGR_UG;
 		
-	}
-//	TIM4->SR &= ~TIM_SR_UIF; //Сбрасываем бит вызова прерывания. 
-
   /* USER CODE END TIM4_IRQn 0 */
   /* USER CODE BEGIN TIM4_IRQn 1 */
-  /* Check whether update interrupt is pending */
-//	if(LL_TIM_IsActiveFlag_CC2OVR(TIM4) == 1){
-//		TIM4->SR = 0;
-//	}
-	state_hw.syncbase->SR = 0;
-/*
-	if(LL_TIM_IsActiveFlag_CC2(TIM4) == 1)
-    LL_TIM_ClearFlag_CC2(TIM4);
-	if(LL_TIM_IsActiveFlag_CC3(TIM4) == 1)
-    LL_TIM_ClearFlag_CC3(TIM4);
-	if(LL_TIM_IsActiveFlag_UPDATE(TIM4) == 1)
-  {
-    LL_TIM_ClearFlag_UPDATE(TIM4); //Clear the update interrupt flag
-  }
-*/
+//	TIM4->SR = 0;
   /* USER CODE END TIM4_IRQn 1 */
 }
 

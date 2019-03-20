@@ -18,6 +18,31 @@ void load_next_task(state_t* s){
 	s->Q824set = s->current_task.F; // load feed value
 }
 
+
+
+void G95(state_t* s){
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+	LL_TIM_DisableCounter(TIM2); // pause async timer
+// calibrate timer delay
+//	LL_TIM_DisableUpdateEvent(TIM2);
+
+	
+	LL_TIM_DisableCounter(TIM4); // pause sync timer
+// calibrate timer delay
+	LL_TIM_DisableUpdateEvent(TIM4);
+
+	// connect async timer:
+	s->syncbase = TIM4; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+//	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
+
+	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by snyc timer TIM4(spindle sync mode)
+	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+//	TIM3->ARR = min_pulse;
+//	LL_TIM_DisableIT_UPDATE(TIM3);
+//	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
+}
+
+
 void G94(state_t* s){
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 

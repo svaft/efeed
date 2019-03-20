@@ -95,16 +95,9 @@ void G01init_callback(state_t* s){
 
 
 // called from TIM3 on end of the stepper pulse to set output channel configuration for next pulse
-int lx=0, ly=0;
-uint32_t st = 0, st1 = 0;
+//int lx=0, ly=0;
+//uint32_t st = 0, st1 = 0;
 void dxdz_callback(state_t* s){
-	int e2 = s->err;
-	if (e2 >= -s->current_task.dx)	{ // step X axis
-		s->err -= s->current_task.dz;
-	}
-	if (e2 <= s->current_task.dz)	{ // step Z axis
-		s->err += s->current_task.dx;
-	}
 	s->current_task.steps_to_end--;
 }
 

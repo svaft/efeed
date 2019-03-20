@@ -14,12 +14,13 @@
 
 #define task_size 30
 #define gp_size 10
-#define substep_size 2000
+#define substep_size 20
 
 
 void command_parser(char *line);
 
 void G94(state_t* s);
+void G95(state_t* s);
 
 void G33parse(char *line);
 void G00parse(char *line);

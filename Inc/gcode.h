@@ -14,7 +14,7 @@
 
 #define task_size 30
 #define gp_size 10
-#define substep_size 20
+#define substep_size 2000
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
 
 
@@ -40,8 +40,8 @@ void do_fsm_move_end2(state_t* );
 void load_next_task(state_t* s);
 
 typedef struct substep{
-	uint16_t delay;
-	uint16_t skip;
+	uint8_t delay;
+	uint8_t skip;
 } substep_t;
 
 extern substep_t substep_delay[];

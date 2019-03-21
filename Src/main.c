@@ -412,23 +412,12 @@ int main(void)
 	}
 
 // calibration test
+/*
 	LL_TIM_DisableARRPreload(TIM4);
 	TIM4->ARR = 1;
-	
-	G95(&state_hw);
-	TIM2->PSC = 0; // reset prescaler and set tim2 to max speed to use it as delay measure
-	TIM2->ARR = 0xFFFF;
 
-//	TIM4->DIER = 1;
-//	LL_TIM_DisableIT_UPDATE(TIM3); // to set prescaler register we need to generate update event, 
-	LL_TIM_DisableIT_UPDATE(TIM2); // to set prescaler register we need to generate update event, 
-	//so disable IT first to prevent call of IT routine 
-	LL_TIM_GenerateEvent_UPDATE(TIM2); // generate UPDATE event
-	
-	
-	
-//	LL_mDelay(100);
-//	debug();
+	G95(&state_hw);
+
 	state_t *s = &state_hw;
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
@@ -437,10 +426,10 @@ int main(void)
 	LL_TIM_EnableIT_UPDATE(s->syncbase);
 //	LL_TIM_DisableIT_UPDATE(TIM2);
 //	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
-	
+
 	while(1);
-	
-	
+*/
+
 // todo need refactor this code how to g-code parsing, precalculation and execution going to start and work together
 	G_task_t *precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
   memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);

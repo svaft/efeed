@@ -14,10 +14,6 @@ float e2e2, edx,edz;
 float ff, ffx;
 bool brk=0;
 
-
-
-#define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
-
 substep_t substep[substep_size];
 
 
@@ -35,9 +31,9 @@ void arc_q1_callback_precalculate(state_t* s){
 //	cb_push_back_empty(&substep_cb);
 
 	if (e2 > s->arc_dz) { // z step 
-		int32_t delay = s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+		int16_t delay = 1<<subdelay_precision; //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 		if(e2<0){
-			int32_t delay_delta = delay >> subdelay_precision;
+			int16_t delay_delta = delay >> subdelay_precision;
 			int64_t edz_delta = s->arc_dz >> subdelay_precision;
 			// do binary search for delta:
 			int64_t r = s->arc_dz - (edz_delta <<(subdelay_precision-1)); // start from half
@@ -93,97 +89,27 @@ void arc_q1_callback_precalculate(state_t* s){
 }
 
 
-
-
-
-
-
-
 void arc_q1_callback(state_t* s){
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+//	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
-	MOTOR_X_AllowPulse();
-	s->current_task.x++;
-	s->arc_err += s->arc_dx += s->arc_bb; 
-
-	if (e2 > s->arc_dx) {
-		return;
+	if (e2 < s->arc_dx) {
+		s->arc_err += s->arc_dx += s->arc_bb; 
+		s->current_task.x++;
+	} else {
+		// x is subaxis now
+//	if (e2 > s->arc_dx) {
+//		return;
+//	}
+		s->substep_axis = SUBSTEP_AXIS_X;
 	}
 
 	if (e2 > s->arc_dz) { // z step 
-		s->substep_mask = MOTOR_Z_CHANNEL;
-//		s->substep_axis = SUBSTEP_AXIS_Z;
-// quick subdelay detection, depend on given precision, for x256 about ~6,41us, for x128 about ~5,58us		
-		LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin); //debug
-		int32_t delay = s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
-		if(e2<0){
-			int32_t delay_delta = delay >> subdelay_precision;
-			int64_t edz_delta = s->arc_dz >> subdelay_precision;
-			// do binary search for delta:
-			int64_t r = s->arc_dz - (edz_delta <<(subdelay_precision-1)); // start from half
-			delay -= delay_delta<<(subdelay_precision-1);
-
-			for(int a =subdelay_precision-2;a>=0; a--){
-				if(r > e2){
-					r 		+= edz_delta	<< a;
-					delay	+= delay_delta<< a;
-				}	else {
-					r 		-= edz_delta 	<< a;
-					delay	-=delay_delta	<< a;
-				}
-			}
-	//		acnt++;
-	//		subdelay_z = s->prescaler * (s->syncbase->ARR+1)*e2/s->arc_dz; // very precise but very slow, ~44us
-	//		subdelay_zfast = delay;
-			delay -= 1520;
-		} else {
-			debug1();
-			delay = 0;
-		}
-//		if(s->current_task.z > 2390)
-//			delay = s->prescaler * (s->syncbase->ARR+1) - 1520;
-
-		LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin); //debug
-
-// 		// linear search for delta, slow, deprecated
-//		while(edz_tmp < e2){
-//			edz_tmp -= edz_delta;
-//			delay -= 9600 >> subdelay_precision; // 300 = 9600>>5
-//		}
-
 		s->current_task.z--;
-		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
-
-		if(TIM1->CR1 == 0){
-			if(delay <= 0) {
-				if(delay < 0){
-					brk = true;
-				}	
-
-				TIM1->CCR1 = 0;
-//				TIM1->CNT = 0;
-				TIM1->ARR = min_pulse;
-				LL_TIM_DisableIT_CC1(TIM1);
-				LL_GPIO_SetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin); 
-//				LL_GPIO_SetOutputPin(GPIOB,LL_GPIO_PIN_0); 
-			} else {
-				LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
-				TIM1->CCR1 = delay+1;
-				TIM1->ARR = TIM1->CCR1+min_pulse;
-				LL_TIM_EnableIT_CC1(TIM1);
-			}
-
-//		LL_TIM_SetAutoReload(TIM1,delay+1);
-//			debug1();
-			LL_TIM_EnableCounter(TIM1);
-		} else {
-			brk = true;
-		}
-	} // z step
-
-//*/
+	} else {
+		s->substep_axis = SUBSTEP_AXIS_Z;
+	}
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc

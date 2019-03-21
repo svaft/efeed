@@ -234,6 +234,7 @@ void TIM1_UP_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_IRQn 0 */
 	// enable corresponding channel for sub-step:
+	TIM1->SR = 0;
 	LL_TIM_DisableCounter(TIM1);
 	LL_GPIO_ResetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin); 
 //	LL_GPIO_ResetOutputPin(GPIOB,LL_GPIO_PIN_0); 
@@ -241,7 +242,6 @@ void TIM1_UP_IRQHandler(void)
 
 //	LL_GPIO_ResetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
 
-	TIM1->SR = 0;
 	return;
   /* USER CODE END TIM1_UP_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_IRQn 1 */
@@ -282,10 +282,10 @@ void TIM1_CC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_CC_IRQn 0 */
 //	LL_GPIO_SetOutputPin(GPIOB,LL_GPIO_PIN_0); 
+	TIM1->SR = 0;
 	LL_GPIO_SetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin); 
 	LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 //	LL_GPIO_SetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
-	TIM1->SR = 0;
 	//	TIM3->CCER = state_hw.substep_mask;
 //	B0 on
 //	LL_TIM_DisableCounter(TIM1);
@@ -303,13 +303,13 @@ void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
+	TIM2->SR = 0;
 	state_hw.function(&state_hw);
 
 //	TIM2->EGR |= TIM_EGR_UG;
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
   /* Check whether update interrupt is pending */
-	state_hw.syncbase->SR = 0;
 
 //  if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == 1)
 //  {
@@ -322,14 +322,11 @@ void TIM2_IRQHandler(void)
 /**
   * @brief This function handles TIM3 global interrupt.
   */
-int cnt33 = 0;
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
 	TIM3->SR = 0;
-	cnt33++;
-//			__dsb(0);
-	return;
+
 	if(state_hw.current_task.callback_ref){
 		state_hw.current_task.callback_ref(&state_hw);
 	}
@@ -342,11 +339,11 @@ void TIM3_IRQHandler(void)
 		}
 		load_next_task(&state_hw);
 	}
-	TIM3->SR = 0;
 
   /* USER CODE END TIM3_IRQn 0 */
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
+//	__dsb(0);
   /* USER CODE END TIM3_IRQn 1 */
 }
 
@@ -361,10 +358,8 @@ int cnt2div=0;
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-	// at 400 rpm i got ~5800 in timer count for one encoder tick with 3600 encoder resolution
-//	if(TIM4->SR !=0){
-	TIM4->SR = 0;
-	cnt4++;
+	TIM4->SR = 0; // clear SR at the beginning of the interrupt to avoid false call it twice, http://www.keil.com/support/docs/3928.htm 
+	state_hw.prescaler = TIM2->CNT;
 	cnt2 = 2400000 / TIM2->CNT; // speed in RPM
 	TIM2->CNT = 0;
 //		__dsb(0);

@@ -29,13 +29,16 @@ void dxdz_callback_precalculate(state_t* s){
 	if (e2 >= -s->current_task.dx)	{ // step X axis
 		s->err -= s->current_task.dz;
 		if(s->substep_axis == SUBSTEP_AXIS_X){
-			delay = s->prescaler * (s->syncbase->ARR+1)*(abs(e2))/s->current_task.dx;
+			
+//			delay = s->prescaler * (s->syncbase->ARR+1)*(abs(e2))/s->current_task.dx;
+			delay = (1<<subdelay_precision)*(abs(e2))/s->current_task.dx;
 		}
 	}
 	if (e2 <= s->current_task.dz)	{ // step Z axis
 		s->err += s->current_task.dx;
 		if(s->substep_axis == SUBSTEP_AXIS_Z){
-			delay = s->prescaler * (s->syncbase->ARR+1)*(abs(e2))/s->current_task.dz;
+//			delay = s->prescaler * (s->syncbase->ARR+1)*(abs(e2))/s->current_task.dz;
+			delay = (1<<subdelay_precision)*(abs(e2))/s->current_task.dz;
 		}
 	}
 

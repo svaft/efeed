@@ -21,30 +21,30 @@ void load_next_task(state_t* s){
 
 
 void G95(state_t* s){
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+
+	// reconfigure async timer:
 	LL_TIM_DisableCounter(TIM2); // pause async timer
-// calibrate timer delay
-//	LL_TIM_DisableUpdateEvent(TIM2);
+	TIM2->PSC = 0; // reset prescaler and set tim2 to max speed to use it as delay measure
+	TIM2->ARR = 0xFFFF;
+	// to set prescaler register we need to generate update event, so disable IT first to prevent call of IT routine:
+	LL_TIM_DisableIT_UPDATE(TIM2); 
+	// and then generate UPDATE event:
+	LL_TIM_GenerateEvent_UPDATE(TIM2); 
 
-	
 	LL_TIM_DisableCounter(TIM4); // pause sync timer
-// calibrate timer delay
-	LL_TIM_DisableUpdateEvent(TIM4);
+//	LL_TIM_DisableUpdateEvent(TIM4);
 
-	// connect async timer:
-	s->syncbase = TIM4; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
-//	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
+	// connect sync timer:
+	s->syncbase = TIM4; 									// sync with main spindle encoder
 
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by snyc timer TIM4(spindle sync mode)
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-//	TIM3->ARR = min_pulse;
-//	LL_TIM_DisableIT_UPDATE(TIM3);
-//	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
 }
 
 
 void G94(state_t* s){
-//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	LL_TIM_DisableCounter(TIM2); // pause async timer
 // calibrate timer delay
@@ -52,13 +52,9 @@ void G94(state_t* s){
 
 	// connect async timer:
 	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
-//	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
 
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-//	TIM3->ARR = min_pulse;
-//	LL_TIM_DisableIT_UPDATE(TIM3);
-//	LL_TIM_GenerateEvent_UPDATE(TIM3); // load arr without calling interrupt. maybe disable arr preload here too?
 }
 
 void do_fsm_move_start2(state_t* s){
@@ -87,18 +83,20 @@ void do_fsm_move_start2(state_t* s){
 }
 
 void do_fsm_move2(state_t* s){
-/*	
+
 	substep_t *sb = substep_cb.tail; //cb_pop_front_ref(&substep_cb);
 	if(!sb->skip){
-		TIM1->CCR1 = sb->delay;
-		TIM1->ARR = sb->delay + min_pulse;
+		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+		TIM1->CCR1	= delay;
+		TIM1->ARR 	= delay + min_pulse;
 		LL_TIM_EnableIT_CC1(TIM1);
+		cb_pop_front_ref(&substep_cb);
 	} else {
 		sb->skip--;
 		if(sb->skip == 0)
 			cb_pop_front_ref(&substep_cb);
 	}
-*/
+
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;
 	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step

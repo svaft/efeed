@@ -9,6 +9,12 @@ G_pipeline_t gp[gp_size];
 substep_t substep_delay[substep_size];
 
 
+substep_t* cb_push_back_empty_ref(void){
+	cb_push_back_empty(&substep_cb);
+	return substep_cb.top;
+}
+
+
 void load_next_task(state_t* s){
 //	debug7();
 	cb_pop_front(&task_cb, &s->current_task);

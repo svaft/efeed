@@ -446,7 +446,7 @@ int main(void)
 	
 	// start gcode execution
 	G94(&state_hw);
-	do_fsm_move_start2(&state_hw);
+//	do_fsm_move_start2(&state_hw);
 
 //	debug();
 	while (1) {
@@ -455,7 +455,7 @@ int main(void)
 			// get pointer to last processed task
 			if(precalculating_task->precalculate_callback_ref) {
 				precalculating_task->precalculate_callback_ref(&state_precalc);
-				if(state_precalc.current_task.steps_to_end == 0){
+				if(state_precalc.precalculate_end == true){
 					precalculating_task = cb_pop_front_ref2(&task_cb);
 					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
 
@@ -498,7 +498,7 @@ int main(void)
 //		}
 
 		if(buttons_flag_set) {
-			do_fsm_menu(&state);
+			do_fsm_menu(&state_hw);
 			buttons_flag_set = 0; // reset button flags
 		}
 

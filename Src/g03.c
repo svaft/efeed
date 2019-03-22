@@ -22,69 +22,81 @@ void arc_q1_callback_precalculate(state_t* s){
 	int64_t e2 = s->arc_err<<1;
 	s->current_task.x++;
 	s->arc_err += s->arc_dx += s->arc_bb; 
-
+	s->current_task.steps_to_end++;
+	
 	if (e2 > s->arc_dx) {
 		while(1); // trap
 		return;
 	}
-	substep_t *sb;
-//	cb_push_back_empty(&substep_cb);
+	substep_t *sb = substep_cb.top;//	cb_push_back_empty(&substep_cb);
 
 	if (e2 > s->arc_dz) { // z step 
 		int16_t delay = 1<<subdelay_precision; //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
-		if(e2<0){
-			int16_t delay_delta = delay >> subdelay_precision;
-			int64_t edz_delta = s->arc_dz >> subdelay_precision;
-			// do binary search for delta:
-			int64_t r = s->arc_dz - (edz_delta <<(subdelay_precision-1)); // start from half
-			delay -= delay_delta<<(subdelay_precision-1);
 
-			for(int a =subdelay_precision-2;a>=0; a--){
-				if(r > e2){
-					r 		+= edz_delta	<< a;
-					delay	+= delay_delta<< a;
-				}	else {
-					r 		-= edz_delta 	<< a;
-					delay	-=delay_delta	<< a;
-				}
+///		e2 = labs(e2);
+		bool step_back = false;
+		if(e2>0){
+			step_back = true;
+			e2 = -e2;
+		}
+		int16_t delay_delta = delay >> subdelay_precision;
+		int64_t edz_delta = s->arc_dz >> subdelay_precision;
+		// do binary search for delta:
+		int64_t r = s->arc_dz - (edz_delta <<(subdelay_precision-1)); // start from half
+		delay -= delay_delta<<(subdelay_precision-1);
+
+		for(int a =subdelay_precision-2;a>=0; a--){
+			if(r > e2){
+				r 		+= edz_delta	<< a;
+				delay	+= delay_delta<< a;
+			}	else {
+				r 		-= edz_delta 	<< a;
+				delay	-=delay_delta	<< a;
 			}
-//			delay -= 1520;
-		} else { //backward delay
-//			debug1();
-			delay = 0;
 		}
 		
-		cb_push_back_empty(&substep_cb);
-		sb = substep_cb.top;
-		sb->delay = delay;
-
+		if(!step_back){
+			cb_push_back_empty_ref()->delay = delay;
+		} else { // delay in negative, so we need to step back and modify previous step
+			delay = (1 << subdelay_precision) - delay;
+			sb = substep_cb.top;
+			if(sb->skip > 0){
+				sb->skip--; // 1 step back
+				if(sb->skip > 0){ // if we stil have some to skip add new substep, if not - just modify current substep
+					sb = cb_push_back_empty_ref();
+				}
+				sb->delay = delay;
+				cb_push_back_empty_ref()->skip = 1;
+			} else {
+				// in this case we need to do two substeps in one main step  :( 
+				while(1);
+				cb_push_back_empty_ref()->delay = delay;
+				cb_push_back_empty_ref()->skip = 1;
+			}
+		}
 		s->current_task.z--;
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} else {
+		if(substep_cb.count == 0 || sb->skip == 0){
+			cb_push_back_empty(&substep_cb);
+		} else {
+			if(sb->skip == 255){
+				cb_push_back_empty(&substep_cb);
+			}
+		}
 		sb = substep_cb.top;
-		if(substep_cb.count == 0){
-			cb_push_back_empty(&substep_cb);
-			sb = substep_cb.top;
-			sb->skip++;
-			return;
-		}
-		if(sb->skip > 0){
-			sb = substep_cb.top;
-			sb->skip++;
-		}	else{
-			cb_push_back_empty(&substep_cb);
-			sb = substep_cb.top;
-			sb->skip++;
-		}
+		sb->skip++;
 	} // z step
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
-		s->current_task.steps_to_end = 0; // end of arc
+		s->precalculate_end = true;
+//		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
 
 	if(s->current_task.z == 0){ // end of quadrant
-		s->current_task.steps_to_end = 0;
+		s->precalculate_end = true;
+//		s->current_task.steps_to_end = 0;
 	}
 }
 
@@ -371,6 +383,7 @@ void G03init_callback(state_t* s){
 
 
 void G03init_callback_precalculate(state_t* s){
+	s->precalculate_end = false;
 	//precalculate variables:
 	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
 	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;

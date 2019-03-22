@@ -298,6 +298,8 @@ typedef struct state_s
 	int substep_axis;
 	
 	G_task_t current_task;
+	bool precalculate_end;
+	
 	bool G94G95; // 0 - unit per min, 1 - unit per rev
 	uint32_t substep_mask;
   state_func_t function;

@@ -22,14 +22,16 @@ void G01init_callback_precalculate(state_t* s){
 
 
 void dxdz_callback_precalculate(state_t* s){
-	substep_t *sb;
+	s->precalculate_end = false;
+
+	substep_t *sb = substep_cb.top;
 	int e2 = s->err;
 	int32_t delay = -1;
 
 	if (e2 >= -s->current_task.dx)	{ // step X axis
 		s->err -= s->current_task.dz;
 		if(s->substep_axis == SUBSTEP_AXIS_X){
-			
+
 //			delay = s->prescaler * (s->syncbase->ARR+1)*(abs(e2))/s->current_task.dx;
 			delay = (1<<subdelay_precision)*(abs(e2))/s->current_task.dx;
 		}
@@ -43,31 +45,22 @@ void dxdz_callback_precalculate(state_t* s){
 	}
 
 	if(delay >=0){
-		cb_push_back_empty(&substep_cb);
-		sb = substep_cb.top;
-		sb->delay = delay;
+		cb_push_back_empty_ref()->delay = delay;
 	} else {
-		sb = substep_cb.top;
 		if(substep_cb.count == 0 || sb->skip == 0){
 			cb_push_back_empty(&substep_cb);
-			sb = substep_cb.top;
-			sb->skip++;
-			return;
+		} else {
+			if(sb->skip == 255){
+				cb_push_back_empty(&substep_cb);
+			}
 		}
-		if(sb->skip > 0){
-			sb = substep_cb.top;
-			sb->skip++;
-		}
+		sb = substep_cb.top;
+		sb->skip++;
 	}
 	s->current_task.steps_to_end--;
+	if(s->current_task.steps_to_end == 0)
+		s->precalculate_end = true;
 }
-
-
-
-
-
-
-
 
 // called from load_task
 void G01init_callback(state_t* s){

@@ -14,9 +14,8 @@
 
 #define task_size 30
 #define gp_size 10
-#define substep_size 2000
+#define substep_size 4000
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
-
 
 void command_parser(char *line);
 
@@ -45,6 +44,7 @@ typedef struct substep{
 } substep_t;
 
 extern substep_t substep_delay[];
+substep_t* cb_push_back_empty_ref(void);
 
 
 

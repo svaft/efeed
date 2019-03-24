@@ -154,7 +154,7 @@ THREAD_INFO;
 // основное меню. Считаем по формуле:
 // Enc_Line/(Step_Per_Revolution/Feed_Screw*Thread_mm)
 // перегенерация есть в excel файле
-THREAD_INFO Thread_Info[] ={
+const THREAD_INFO Thread_Info[] ={
 { 0x12000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
 //{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
 { 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 1 },
@@ -537,8 +537,8 @@ void redraw_screen(){
 // first line
         SSD1306_GotoXY(0, 16*0);
         feed_direction == feed_direction_left ? SSD1306_Putc2big(left_arrow, &consolas_18ptFontInfo) : SSD1306_Putc2big(right_arrow, &consolas_18ptFontInfo);
-        SSD1306_Puts2(Thread_Info[Menu_Step].Unit, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
-        SSD1306_Puts2(Thread_Info[Menu_Step].infeed_inch, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // infeed recommendation
+        SSD1306_Puts2((char *)Thread_Info[Menu_Step].Unit, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE);
+        SSD1306_Puts2((char *)Thread_Info[Menu_Step].infeed_inch, &microsoftSansSerif_12ptFontInfo, SSD1306_COLOR_WHITE); // infeed recommendation
 
         
         char text_buffer[11];
@@ -558,7 +558,7 @@ void redraw_screen(){
 // second line   
         
         SSD1306_GotoXY(0, 16*1); //Устанавливаем курсор в позицию 0;16. Сначала по горизонтали, потом вертикали.
-        SSD1306_Puts2(Thread_Info[Menu_Step].Text, &microsoftSansSerif_20ptFontInfo, SSD1306_COLOR_WHITE);
+        SSD1306_Puts2((char *)Thread_Info[Menu_Step].Text, &microsoftSansSerif_20ptFontInfo, SSD1306_COLOR_WHITE);
 
 
 

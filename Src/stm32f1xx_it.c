@@ -236,7 +236,7 @@ void TIM1_UP_IRQHandler(void)
 	// enable corresponding channel for sub-step:
 	TIM1->SR = 0;
 	LL_TIM_DisableCounter(TIM1);
-	LL_GPIO_ResetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin); 
+	LL_GPIO_ResetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin);
 //	LL_GPIO_ResetOutputPin(GPIOB,LL_GPIO_PIN_0); 
 	LL_TIM_SetCounter(TIM1,0);
 

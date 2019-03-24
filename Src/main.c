@@ -158,7 +158,7 @@ THREAD_INFO Thread_Info[] ={
 { 0x12000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
 //{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
 { 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 1 },
-{ 0x04800000, 0, "2.00", "mm", 0, "1.26", ".050", 2 },
+{ 0x038B162C, 0, "10", "tpi", 0, "", "", 0 },
 { 0x06000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
 { 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
 { 0x00000000, 20, "F", "mm", 0, "", "", 0 },
@@ -970,7 +970,7 @@ static void MX_TIM3_Init(void)
         _Error_Handler(__FILE__, __LINE__);
     }
 
-    sConfigOC.OCMode = TIM_OCMODE_PWM2;
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
     sConfigOC.Pulse = 1;
     sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;

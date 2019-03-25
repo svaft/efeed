@@ -54,6 +54,7 @@ NVIC.BusFault_IRQn=true\:0\:0\:false\:false\:false\:true
 NVIC.DMA1_Channel4_IRQn=true\:0\:0\:false\:false\:true\:true
 NVIC.DebugMonitor_IRQn=true\:0\:0\:false\:false\:false\:true
 NVIC.HardFault_IRQn=true\:0\:0\:false\:false\:false\:true
+NVIC.I2C2_EV_IRQn=true\:0\:0\:false\:false\:true\:true
 NVIC.MemoryManagement_IRQn=true\:0\:0\:false\:false\:false\:true
 NVIC.NonMaskableInt_IRQn=true\:0\:0\:false\:false\:false\:true
 NVIC.PendSV_IRQn=true\:0\:0\:false\:false\:false\:true

@@ -68,7 +68,7 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 #include "fixedptc.h"
-
+#include "ssd1306.h"
 
 #if	defined ( _SIMU )
 #define tacho tacho_debug
@@ -229,18 +229,18 @@ uint32_t tacho_debug = 0;
 /* USER CODE END EV */
 
 /******************************************************************************/
-/*           Cortex-M3 Processor Interruption and Exception Handlers          */
+/*           Cortex-M3 Processor Interruption and Exception Handlers          */ 
 /******************************************************************************/
 /**
   * @brief This function handles System tick timer.
   */
 void SysTick_Handler(void)
 {
-	/* USER CODE BEGIN SysTick_IRQn 0 */
+  /* USER CODE BEGIN SysTick_IRQn 0 */
 
-	/* USER CODE END SysTick_IRQn 0 */
-
-	/* USER CODE BEGIN SysTick_IRQn 1 */
+  /* USER CODE END SysTick_IRQn 0 */
+  
+  /* USER CODE BEGIN SysTick_IRQn 1 */
 
 
 #if	defined ( _SIMU )
@@ -262,7 +262,7 @@ void SysTick_Handler(void)
 //							auto_mode_delay--;
 	if( buttons_mstick > 0 )
 		buttons_mstick++;
-	/* USER CODE END SysTick_IRQn 1 */
+  /* USER CODE END SysTick_IRQn 1 */
 }
 
 /******************************************************************************/
@@ -277,13 +277,23 @@ void SysTick_Handler(void)
   */
 void DMA1_Channel4_IRQHandler(void)
 {
-	/* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
+  if(LL_DMA_IsActiveFlag_TC4(DMA1))
+  {
+    LL_DMA_ClearFlag_GI4(DMA1);
+    Transfer_Complete_Callback();
+//    DMA1_Transfer_Complete_Callback();
+  }
+  else if(LL_DMA_IsActiveFlag_TE4(DMA1))
+  {
+    Transfer_Error_Callback();
+  }
 
-	/* USER CODE END DMA1_Channel4_IRQn 0 */
+  /* USER CODE END DMA1_Channel4_IRQn 0 */
+  
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
 
-	/* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
-
-	/* USER CODE END DMA1_Channel4_IRQn 1 */
+  /* USER CODE END DMA1_Channel4_IRQn 1 */
 }
 
 /**
@@ -291,7 +301,7 @@ void DMA1_Channel4_IRQHandler(void)
   */
 void TIM4_IRQHandler(void)
 {
-	/* USER CODE BEGIN TIM4_IRQn 0 */
+  /* USER CODE BEGIN TIM4_IRQn 0 */
 	uint32_t t4flags = TIM4->SR;
 	TIM4->SR = 0;
 	_Bool dir = t4flags & TIM_CR1_DIR_Msk; // t4cr1[TIM_CR1_DIR_Pos];
@@ -491,10 +501,39 @@ void TIM4_IRQHandler(void)
 		}
 	}
 
-	/* USER CODE END TIM4_IRQn 0 */
-	/* USER CODE BEGIN TIM4_IRQn 1 */
+  /* USER CODE END TIM4_IRQn 0 */
+  /* USER CODE BEGIN TIM4_IRQn 1 */
 
-	/* USER CODE END TIM4_IRQn 1 */
+  /* USER CODE END TIM4_IRQn 1 */
+}
+
+/**
+  * @brief This function handles I2C2 event interrupt.
+  */
+void I2C2_EV_IRQHandler(void)
+{
+  /* USER CODE BEGIN I2C2_EV_IRQn 0 */
+  /* Check SB flag value in ISR register */
+  if(LL_I2C_IsActiveFlag_SB(I2C2))
+  {
+    /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a write request */
+    LL_I2C_TransmitData8(I2C2, SSD1306_I2C_ADDR);
+  }
+  /* Check ADDR flag value in ISR register */
+  else if(LL_I2C_IsActiveFlag_ADDR(I2C2))
+  {
+    /* Enable DMA transmission requests */
+    LL_I2C_EnableDMAReq_TX(I2C2);
+
+    /* Clear ADDR flag value in ISR register */
+    LL_I2C_ClearFlag_ADDR(I2C2);
+  }
+
+  /* USER CODE END I2C2_EV_IRQn 0 */
+  
+  /* USER CODE BEGIN I2C2_EV_IRQn 1 */
+
+  /* USER CODE END I2C2_EV_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

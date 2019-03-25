@@ -250,7 +250,7 @@ S_WORK_SETUP work_setup;
 const fixedptud enc_setup = 0x9000000000000;
 
 
-
+/*
 void recalculate_setup()  // todo: not ready yet
 {
 	work_setup.Q824      = Thread_Info[Menu_Step].Q824;
@@ -277,7 +277,7 @@ void recalculate_setup()  // todo: not ready yet
 		work_setup.deltap_inch[step]        = fixedptu_div( work_setup.deltap_mm[step], 426141286 );
 	}
 }
-
+*/
 // реализация конечного автомата обработки событий кнопки
 inline void process_button(void)
 {
@@ -511,10 +511,10 @@ int main(void)
 	MX_TIM2_Init();
 	/* USER CODE BEGIN 2 */
 // инициализация дисплея
-//#if !defined ( _SIMU )
+#ifndef _SIMU
 	SSD1306_Init(I2C2);
 	redraw_screen();
-//#endif
+#endif
 
 	uint32_t p = 2500;
 	while(p>0)

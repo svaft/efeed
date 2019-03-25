@@ -75,8 +75,8 @@
 bool encoder;
 
 #else
-#define tacho						t4sr[TIM_SR_CC3IF_Pos]
-#define encoder t4sr[TIM_SR_UIF_Pos]
+//#define tacho						t4sr[TIM_SR_CC3IF_Pos]
+//#define encoder t4sr[TIM_SR_UIF_Pos]
 #endif
 
 
@@ -129,9 +129,43 @@ uint16_t infeed_map[]= {
 };
 
 
-uint32_t ramp[]= {
+const uint8_t ramp[]= {
+	0x1E,
+	0x15,
+	0x11,
+	0x0E,
+	0x0C,
+	0x0B,
+	0x0A,
+	0x09,
+	0x09,
+	0x08,
+	0x08,
+	0x07,
+	0x07,
+	0x07,
+	0x07,
+	0x06,
+	0x06,
+	0x06,
+	0x06,
+	0x06,
+	0x05,
+	0x05,
+	0x05,
+	0x05,
+	0x05,
+	0x05,
+	0x05,
+	0x05,
+	0x05,
+	0x04,
+};
+/*
+const uint32_t ramp[]= {
 	0x1E000000,
 //			0x00000000, // zero delay to disable ramp up
+
 	0x15E353F7,
 	0x110624DD,
 	0x0E67A909,
@@ -178,8 +212,9 @@ uint32_t ramp[]= {
 	0x040B7F1D,
 	0x04000DF9,
 };
+*/
 extern uint32_t ramp_step; // = 0;
-#define ramp_map 50
+#define ramp_map 30
 
 extern bool auto_mode;
 extern int32_t auto_mode_delay;
@@ -257,8 +292,10 @@ void DMA1_Channel4_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
 	/* USER CODE BEGIN TIM4_IRQn 0 */
-	_Bool dir = t4cr1[TIM_CR1_DIR_Pos];
-	if(encoder) {
+	uint32_t t4flags = TIM4->SR;
+	TIM4->SR = 0;
+	_Bool dir = t4flags & TIM_CR1_DIR_Msk; // t4cr1[TIM_CR1_DIR_Pos];
+	if(t4flags & TIM_SR_UIF_Msk) {
 		if ( dir != Spindle_Direction ) {
 // direction changed, count not updated and no pulse to motor
 			Spindle_Direction		= dir;
@@ -405,7 +442,7 @@ void TIM4_IRQHandler(void)
 		}
 	}
 // tacho event found!
-	if( tacho ) {
+	if( t4flags & TIM_SR_CC3IF_Msk ) {
 //	if( TIM4->SR & TIM_SR_CC3IF ) {
 		tacho_debug = 0;
 		if (dir == Spindle_Direction_CW ) {
@@ -463,45 +500,34 @@ void TIM4_IRQHandler(void)
 /* USER CODE BEGIN 1 */
 _Bool ramp_up(void)
 {
-//	move();
-//	return true;
-	const fixedptu	set_with_fract = ramp[ramp_step];
-	if(Q824set > set_with_fract || ramp_step == ramp_map ) { // reach desired speed or end of ramp map
+	uint8_t	set_without_fract = ramp[ramp_step];
+	if(Q824set > ((uint32_t)set_without_fract<< FIXEDPT_FBITS) || ramp_step == ramp_map ) { // reach desired speed or end of ramp map
 		Q824count = 0;
 		TIM4->ARR = fixedpt_toint(Q824set) - 1; // update register ARR
-//					TIM4->CNT = 0;
 		Q824count = fixedpt_fracpart(Q824set); // save fract part for future use on next step
 		return true;
 	}		else {
 		ramp_step++;
-		TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-//					TIM4->CNT = 0;
+		TIM4->ARR = set_without_fract - 1; // update register ARR
 	}
 	return false;
 }
 
 inline _Bool ramp_down(void)
 {
-//	move();
-//	return true;
 	if (ramp_step == 0)
 		return true;
-	const fixedptu	set_with_fract = ramp[--ramp_step];
-//	set_with_fract = fixedpt_add(set_with_fract, Q824count);
-	TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-//	TIM4->CNT = 0;
-//	Q824count = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	uint8_t	set_without_fract = ramp[--ramp_step];
+	TIM4->ARR = set_without_fract - 1; // update register ARR
 	if(ramp_step == 0)
 		return true;
 	return false;
-
 }
 
 void move(void)
 {
 	const fixedptu set_with_fract = fixedpt_add(Q824set, Q824count); // calculate new step delay with fract from previous step
 	TIM4->ARR = fixedpt_toint(set_with_fract) - 1; // update register ARR
-//	TIM4->CNT = 0;
 	Q824count = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
 }
 

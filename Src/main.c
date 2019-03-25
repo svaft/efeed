@@ -78,9 +78,9 @@ void process_button(void);
 //sample_log_t i2c_device_logging;
 
 uint32_t current_pos = 0, cpv = 0, thread_limit = 0, mode = 10, mode_prev = 10, clk_mode = 10, buttons_flag_set_prev = 0;
-
-uint32_t buttons_flag_set __attribute__((at(0x20000900)));
-#define buttons_flag_setbb ((uint32_t *)((0x22000000    + ((0x20004000)-0x20000000)*32)))
+#define BB_ADDR 0x20000900
+uint32_t buttons_flag_set __attribute__((at(BB_ADDR)));
+#define buttons_flag_setbb ((uint32_t *)((0x22000000    + ((BB_ADDR)-0x20000000)*32)))
 
 // ***** Stepper Motor *****
 #define auto_symbol 0
@@ -298,7 +298,7 @@ inline void process_button(void)
 //          uint32_t tmp_buttons = 0;
 	uint32_t tmp_buttons = GPIOA->IDR & GPIO_PIN_8;
 #else
-	uint32_t tmp_buttons = GPIOA->IDR & LL_GPIO_PIN_8;
+	uint32_t tmp_buttons = GPIOA->IDR & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS;
 #endif
 
 
@@ -312,7 +312,7 @@ inline void process_button(void)
 	if( buttons_mstick > debounce ) {
 		switch(clk_mode) {
 		case 10: {
-			if ( tmp_buttons & LL_GPIO_PIN_8 ) {   // released
+			if ( tmp_buttons & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS ) {   // released
 			} else { // pressed
 //                                          buttons_mstick = 1;
 				clk_mode = 20;
@@ -320,7 +320,7 @@ inline void process_button(void)
 			break;
 		}
 		case 20: {
-			if ( tmp_buttons & LL_GPIO_PIN_8 ) { // released
+			if ( tmp_buttons & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS ) { // released
 				clk_mode = 50;
 			} else {
 				downTime = buttons_mstick;
@@ -336,7 +336,7 @@ inline void process_button(void)
 			break;
 		}
 		case 40: {
-			if ( tmp_buttons & LL_GPIO_PIN_8 ) { //released
+			if ( tmp_buttons & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS ) { //released
 				clk_mode = 50;
 			} else {
 				downTime = buttons_mstick;
@@ -358,7 +358,7 @@ inline void process_button(void)
 			break;
 		}
 		case 70: { //70. тиков меньше 200, это может быть дабл-клик, ждем нажатия еще 100, если ничего идем в 60, если клик идем в 80
-			if ( tmp_buttons & LL_GPIO_PIN_8 ) {
+			if ( tmp_buttons & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS ) {
 				downTime = buttons_mstick;
 				if( downTime > DCgap ) {
 					clk_mode = 60;
@@ -370,7 +370,7 @@ inline void process_button(void)
 			break;
 		}
 		case 80: {
-			if ( tmp_buttons & LL_GPIO_PIN_8 ) { // released
+			if ( tmp_buttons & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS ) { // released
 				clk_mode = 90;
 			} else {
 				downTime = buttons_mstick;
@@ -402,6 +402,8 @@ char * utoa_builtin_div(uint32_t value, char *buffer)
 
 void redraw_screen()
 {
+	if(ubTransferComplete == 0)
+		return;
 	SSD1306_Fill(SSD1306_COLOR_BLACK);
 // first line
 	SSD1306_GotoXY(0, 16*0);
@@ -512,14 +514,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
 // инициализация дисплея
 #ifndef _SIMU
+	Activate_I2C_Master();
 	SSD1306_Init(I2C2);
+	while(ubTransferComplete ==0);
 	redraw_screen();
 #endif
 
-	uint32_t p = 2500;
-	while(p>0)
-		p--;
-
+	LL_SYSTICK_EnableIT();
 //	i2c_device_init(I2C2);
 //	fixedptud prolong_fract = 0;
   /* USER CODE END 2 */
@@ -529,11 +530,12 @@ int main(void)
 
 
 	TIM3->CCER = TIM_CCER_CC1E; /* Enable the Compare output channel 1 */
-	TIM4->CNT = 0;
 
+TIM4->CNT = 0;
 	TIM4->SR = 0; // reset interrup flags
   LL_TIM_EnableIT_CC3(TIM4);		// enable interrupts for TACHO events from encoder
-  LL_TIM_EnableIT_UPDATE(TIM4);	// enable interrupts for ticks(update) events from encoder
+  LL_TIM_CC_EnableChannel(TIM4,LL_TIM_CHANNEL_CH3);
+	LL_TIM_EnableIT_UPDATE(TIM4);	// enable interrupts for ticks(update) events from encoder
 	LL_TIM_EnableCounter(TIM4); 												//Enable timer 4	
 
 	// init buttons
@@ -542,7 +544,8 @@ int main(void)
 //  buttons_mask = buttons = GPIO_PIN_8;        //button pressed by default
 	buttons_mask = buttons = GPIOA->IDR & GPIO_PIN_8;
 #else
-	buttons_mask = buttons = GPIOA->IDR & LL_GPIO_PIN_8;
+//LL_GPIO_IsInputPinSet(GPIOA,LL_GPIO_PIN_8);
+	buttons_mask = buttons = GPIOA->IDR & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS;
 #endif
 
 	LED_GPIO_Port->BSRR = LED_Pin; // led off

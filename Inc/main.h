@@ -129,7 +129,7 @@ void Error_Handler(void);
 //#define _SIMU
 #endif /* __MAIN_H */
 
-#define t4cr1       ((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
+//#define t4cr1       ((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
 #define t4sr        ((uint32_t *)((0x42000000  + ((0x40000810)-0x40000000)*32)))
 #define t4dier  ((uint32_t *)((0x42000000  + ((0x4000080C)-0x40000000)*32)))
 #define disable_encoder_ticks() t4dier[TIM_DIER_UIE_Pos] = 0    

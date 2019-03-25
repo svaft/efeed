@@ -395,6 +395,7 @@ void TIM4_IRQHandler(void)
 
 			case 55:				{ // direct movement: ramp up: accel by ramp map
 				MOTOR_Z_SetPulse();
+				
 				current_pos++;
 				if(ramp_up()) {
 					LED_GPIO_Port->BSRR = LED_Pin;	 // led off

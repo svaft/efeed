@@ -1,14 +1,12 @@
 /**
   ******************************************************************************
-  * @file    system_stm32f10x.h
+  * @file    stm32f1xx_ll_pwr.c
   * @author  MCD Application Team
-  * @version V4.2.0
-  * @date    31-March-2017
-  * @brief   CMSIS Cortex-M3 Device Peripheral Access Layer System Header File.
+  * @brief   PWR LL module driver.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -34,83 +32,70 @@
   *
   ******************************************************************************
   */
+#if defined(USE_FULL_LL_DRIVER)
 
-/** @addtogroup CMSIS
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f1xx_ll_pwr.h"
+#include "stm32f1xx_ll_bus.h"
+
+/** @addtogroup STM32F1xx_LL_Driver
   * @{
   */
 
-/** @addtogroup stm32f10x_system
-  * @{
-  */  
-  
-/**
-  * @brief Define to prevent recursive inclusion
-  */
-#ifndef __SYSTEM_STM32F10X_H
-#define __SYSTEM_STM32F10X_H
+#if defined(PWR)
 
-#ifdef __cplusplus
- extern "C" {
-#endif 
-
-/** @addtogroup STM32F10x_System_Includes
+/** @defgroup PWR_LL PWR
   * @{
   */
 
-/**
-  * @}
-  */
+/* Private types -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Private constants ---------------------------------------------------------*/
+/* Private macros ------------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
 
-
-/** @addtogroup STM32F10x_System_Exported_types
+/* Exported functions --------------------------------------------------------*/
+/** @addtogroup PWR_LL_Exported_Functions
   * @{
   */
 
-extern uint32_t SystemCoreClock;          /*!< System Clock Frequency (Core Clock) */
-extern const uint8_t  AHBPrescTable[16U];  /*!< AHB prescalers table values */
-extern const uint8_t  APBPrescTable[8U];   /*!< APB prescalers table values */
-
-/**
-  * @}
-  */
-
-/** @addtogroup STM32F10x_System_Exported_Constants
+/** @addtogroup PWR_LL_EF_Init
   * @{
   */
 
 /**
-  * @}
+  * @brief  De-initialize the PWR registers to their default reset values.
+  * @retval An ErrorStatus enumeration value:
+  *          - SUCCESS: PWR registers are de-initialized
+  *          - ERROR: not applicable
   */
+ErrorStatus LL_PWR_DeInit(void)
+{
+  /* Force reset of PWR clock */
+  LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_PWR);
 
-/** @addtogroup STM32F10x_System_Exported_Macros
-  * @{
-  */
+  /* Release reset of PWR clock */
+  LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_PWR);
 
-/**
-  * @}
-  */
-
-/** @addtogroup STM32F10x_System_Exported_Functions
-  * @{
-  */
-  
-extern void SystemInit(void);
-extern void SystemCoreClockUpdate(void);
-/**
-  * @}
-  */
-
-#ifdef __cplusplus
+  return SUCCESS;
 }
-#endif
-
-#endif /*__SYSTEM_STM32F10X_H */
 
 /**
   * @}
   */
-  
+
 /**
   * @}
-  */  
+  */
+
+/**
+  * @}
+  */
+#endif /* defined(PWR) */
+/**
+  * @}
+  */
+
+#endif /* USE_FULL_LL_DRIVER */
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

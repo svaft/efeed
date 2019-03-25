@@ -411,7 +411,6 @@ const uint8_t Font4x6[] = {
 };
 
 
-*/
 
 
 const uint16_t Font16x26 [] = {
@@ -517,6 +516,7 @@ FontDef_t Font_16x26 = {
 	26,
 	Font16x26
 };
+*/
 
 /*
 FontDef_t Font_16x26 = {

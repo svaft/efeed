@@ -27,7 +27,7 @@
 extern C {
 #endif
 
-#include "stm32f1xx_hal.h"
+#include "main.h"
 #include "string.h"
 
     // This structure describes a single character's display information

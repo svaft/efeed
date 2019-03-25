@@ -1,7 +1,9 @@
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * File Name          : main.h
-  * Description        : This file contains the common defines of the application
+  * @file           : main.h
+  * @brief          : Header for main.c file.
+  *                   This file contains the common defines of the application.
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -9,7 +11,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2017 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -35,47 +37,91 @@
   *
   ******************************************************************************
   */
+/* USER CODE END Header */
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __MAIN_H
 #define __MAIN_H
-  /* Includes ------------------------------------------------------------------*/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f1xx_ll_dma.h"
+#include "stm32f1xx_ll_i2c.h"
+#include "stm32f1xx_ll_rcc.h"
+#include "stm32f1xx_ll_bus.h"
+#include "stm32f1xx_ll_system.h"
+#include "stm32f1xx_ll_exti.h"
+#include "stm32f1xx_ll_cortex.h"
+#include "stm32f1xx_ll_utils.h"
+#include "stm32f1xx_ll_pwr.h"
+#include "stm32f1xx_ll_tim.h"
+#include "stm32f1xx.h"
+#include "stm32f1xx_ll_gpio.h"
+
+#if defined(USE_FULL_ASSERT)
+#include "stm32_assert.h"
+#endif /* USE_FULL_ASSERT */
+
+/* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
 #define TRUE true
 #define FALSE false
 /* USER CODE END Includes */
 
-/* Private define ------------------------------------------------------------*/
-#define min_pulse 145
+/* Exported types ------------------------------------------------------------*/
+/* USER CODE BEGIN ET */
 
-#define LED_Pin GPIO_PIN_13
+/* USER CODE END ET */
+
+/* Exported constants --------------------------------------------------------*/
+/* USER CODE BEGIN EC */
+
+/* USER CODE END EC */
+
+/* Exported macro ------------------------------------------------------------*/
+/* USER CODE BEGIN EM */
+
+/* USER CODE END EM */
+
+/* Exported functions prototypes ---------------------------------------------*/
+void Error_Handler(void);
+
+/* USER CODE BEGIN EFP */
+
+/* USER CODE END EFP */
+
+/* Private defines -----------------------------------------------------------*/
+#define min_pulse 1450
+#define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-
-#define MOTOR_Z_STEP_Pin GPIO_PIN_6
+#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_6
 #define MOTOR_Z_STEP_GPIO_Port GPIOA
-#define MOTOR_Z_DIR_Pin GPIO_PIN_7
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
 #define MOTOR_Z_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_ENABLE_Pin GPIO_PIN_1
+#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_1
 #define MOTOR_Z_ENABLE_GPIO_Port GPIOB
-
-// crosslide feed:
-#define MOTOR_X_STEP_Pin GPIO_PIN_0
-#define MOTOR_X_STEP_GPIO_Port GPIOA
-#define MOTOR_X_DIR_Pin GPIO_PIN_15
-#define MOTOR_X_DIR_GPIO_Port GPIOC
-#define MOTOR_X_ENABLE_Pin GPIO_PIN_1
-#define MOTOR_X_ENABLE_GPIO_Port GPIOA
-
-
-
-#define ENC_A_Pin GPIO_PIN_6
+#define ENC_A_Pin LL_GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
-#define ENC_B_Pin GPIO_PIN_7
+#define ENC_B_Pin LL_GPIO_PIN_7
 #define ENC_B_GPIO_Port GPIOB
-#define ENC_ZERO_Pin GPIO_PIN_8
+#define ENC_ZERO_Pin LL_GPIO_PIN_8
 #define ENC_ZERO_GPIO_Port GPIOB
-
+#ifndef NVIC_PRIORITYGROUP_0
+#define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007) /*!< 0 bit  for pre-emption priority,
+                                                                 4 bits for subpriority */
+#define NVIC_PRIORITYGROUP_1         ((uint32_t)0x00000006) /*!< 1 bit  for pre-emption priority,
+                                                                 3 bits for subpriority */
+#define NVIC_PRIORITYGROUP_2         ((uint32_t)0x00000005) /*!< 2 bits for pre-emption priority,
+                                                                 2 bits for subpriority */
+#define NVIC_PRIORITYGROUP_3         ((uint32_t)0x00000004) /*!< 3 bits for pre-emption priority,
+                                                                 1 bit  for subpriority */
+#define NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003) /*!< 4 bits for pre-emption priority,
+                                                                 0 bit  for subpriority */
+#endif
 /* USER CODE BEGIN Private defines */
 
 
@@ -96,7 +142,7 @@
 
 
 
-#define MOTOR_Z_SetPulse()           __HAL_TIM_ENABLE(&htim3)
+#define MOTOR_Z_SetPulse()           LL_TIM_EnableCounter(TIM3) //__HAL_TIM_ENABLE(&htim3)
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR = MOTOR_Z_DIR_Pin
 #define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR = MOTOR_Z_DIR_Pin
@@ -124,17 +170,10 @@
 
 /* USER CODE END Private defines */
 
-void _Error_Handler(char *, int);
-
-#define Error_Handler() _Error_Handler(__FILE__, __LINE__)
-
-/**
-  * @}
-  */ 
-
-/**
-  * @}
-*/ 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __MAIN_H */
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

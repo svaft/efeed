@@ -5,8 +5,6 @@
  *      Author: yuri
  */
 
-#include "stm32f1xx_hal.h"
-
 #include "i2c_interface.h"
 #include "error_code.h"
 #include "string.h"
@@ -19,7 +17,7 @@ sample_log_t i2c_device_logging1;
  * @param hi2c
  * @return
  */
-error_code_t i2c_device_init(I2C_HandleTypeDef *hi2c){
+error_code_t i2c_device_init(I2C_TypeDef *hi2c){
 
 	uint8_t  handShake[2];
 	handShake[0]=0xf0;
@@ -27,14 +25,14 @@ error_code_t i2c_device_init(I2C_HandleTypeDef *hi2c){
 	if (HAL_I2C_Master_Transmit(hi2c,i2c_device_id,handShake, 2,0x1000) != HAL_OK){
 		return ERROR_INIT_I2C;
 	}
-	HAL_Delay(100);
+	LL_mDelay(100);
 	handShake[0]=0xfb;
 	handShake[1]=0x00;
 
 	if (HAL_I2C_Master_Transmit(hi2c,i2c_device_id,handShake, 2,0x1000)!= HAL_OK){
 		return ERROR_INIT_I2C;
 	}
-	HAL_Delay(100);
+	LL_mDelay(100);
 	return ERROR_OK;
 }
 
@@ -51,7 +49,7 @@ error_code_t read_sample_i2c(I2C_HandleTypeDef *hi2c, i2c_sample_t *sample){
 	if (HAL_I2C_Master_Transmit(hi2c,i2c_device_id,cmd, 1,0x1000) != HAL_OK){
 		return ERROR_I2C_SAMPLE;
 	}
-	HAL_Delay(1);
+	LL_mDelay(1);
 
 	if (HAL_I2C_Master_Receive(hi2c, i2c_device_id, data,6,0x1000) != HAL_OK){
 		return ERROR_I2C_SAMPLE;

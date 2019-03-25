@@ -15,7 +15,7 @@
 
 #define SAMPLE_SIZE		10
 
-#include "stm32f1xx_hal.h"
+#include "main.h"
 
 typedef enum{
 	BUTTON_RELEASED,

@@ -38,7 +38,7 @@ extern C {
  *  - 11 x 18 pixels
  *  - 16 x 26 pixels
  */
-#include "stm32f1xx_hal.h"
+#include "main.h"
 #include "string.h"
 
 /**

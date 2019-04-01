@@ -81,6 +81,13 @@ bool encoder;
 #define encoder t4sr[TIM_SR_UIF_Pos]
 #endif
 
+
+__IO uint32_t cnt2 = 0;
+__IO uint32_t cnt3 = 0;
+__IO uint32_t cnt4 = 0;
+uint16_t cntbuf[1000];
+int cnt2div=0;
+
 //_Bool ramp_down(void);
 //inline _Bool ramp_up(void);
 //void move(void);
@@ -248,33 +255,6 @@ void TIM1_UP_IRQHandler(void)
   /* USER CODE END TIM1_UP_IRQn 1 */
 }
 
-
-
-void TIM1_UP_IRQHandler_old(void)
-{
-  /* USER CODE BEGIN TIM1_UP_IRQn 0 */
-//	debug7();
-	// enable corresponding channel for sub-step:
-	debug1();
-	TIM3->CCER = state_hw.substep_mask;
-	// start pulse:
-	LL_TIM_EnableCounter(TIM3); 
-	// stop sub-step timer:
-	LL_TIM_DisableCounter(TIM1);
-	LL_TIM_SetCounter(TIM1,0);
-	TIM1->SR = 0;
-	return;
-  /* USER CODE END TIM1_UP_IRQn 0 */
-  /* USER CODE BEGIN TIM1_UP_IRQn 1 */
-  if(LL_TIM_IsActiveFlag_UPDATE(TIM1) == 1)
-  {
-    /* Clear the update interrupt flag*/
-    LL_TIM_ClearFlag_UPDATE(TIM1);
-  }
-
-  /* USER CODE END TIM1_UP_IRQn 1 */
-}
-
 /**
   * @brief This function handles TIM1 capture compare interrupt.
   */
@@ -350,11 +330,6 @@ void TIM3_IRQHandler(void)
 /**
   * @brief This function handles TIM4 global interrupt.
   */
-__IO uint32_t cnt2 = 0;
-__IO uint32_t cnt3 = 0;
-__IO uint32_t cnt4 = 0;
-uint16_t cntbuf[1000];
-int cnt2div=0;
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
@@ -462,6 +437,31 @@ void USART2_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+void TIM1_UP_IRQHandler_old(void)
+{
+  /* USER CODE BEGIN TIM1_UP_IRQn 0 */
+//	debug7();
+	// enable corresponding channel for sub-step:
+	debug1();
+	TIM3->CCER = state_hw.substep_mask;
+	// start pulse:
+	LL_TIM_EnableCounter(TIM3); 
+	// stop sub-step timer:
+	LL_TIM_DisableCounter(TIM1);
+	LL_TIM_SetCounter(TIM1,0);
+	TIM1->SR = 0;
+	return;
+  /* USER CODE END TIM1_UP_IRQn 0 */
+  /* USER CODE BEGIN TIM1_UP_IRQn 1 */
+  if(LL_TIM_IsActiveFlag_UPDATE(TIM1) == 1)
+  {
+    /* Clear the update interrupt flag*/
+    LL_TIM_ClearFlag_UPDATE(TIM1);
+  }
+
+  /* USER CODE END TIM1_UP_IRQn 1 */
+}
 
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

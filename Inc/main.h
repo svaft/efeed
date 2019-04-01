@@ -74,7 +74,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+extern TIM_TypeDef *sync_timer;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -124,16 +124,11 @@ void Error_Handler(void);
 #endif
 /* USER CODE BEGIN Private defines */
 
-
-#ifndef _SIMU
-//#define _SIMU
-#endif /* __MAIN_H */
-
 //#define t4cr1       ((uint32_t *)((0x42000000  + ((0x40000800)-0x40000000)*32)))
-#define t4sr        ((uint32_t *)((0x42000000  + ((0x40000810)-0x40000000)*32)))
-#define t4dier  ((uint32_t *)((0x42000000  + ((0x4000080C)-0x40000000)*32)))
-#define disable_encoder_ticks() t4dier[TIM_DIER_UIE_Pos] = 0    
-#define enable_encoder_ticks()  t4dier[TIM_DIER_UIE_Pos] = 1    
+//#define t4sr        ((uint32_t *)((0x42000000  + ((0x40000810)-0x40000000)*32)))
+//#define t4dier  ((uint32_t *)((0x42000000  + ((0x4000080C)-0x40000000)*32)))
+#define disable_encoder_ticks() LL_TIM_DisableIT_UPDATE(sync_timer) //t4dier[TIM_DIER_UIE_Pos] = 0    
+#define enable_encoder_ticks()  LL_TIM_EnableIT_UPDATE(sync_timer) //t4dier[TIM_DIER_UIE_Pos] = 1    
 
 #define auto_mode_delay_ms 4000
 
@@ -161,7 +156,7 @@ void Error_Handler(void);
 
 #define Enc_Line_Q1648                (uint64_t)((uint64_t)Enc_Line << 48)
 
-#define Enc_Read()                   __HAL_TIM_GetCounter(&htim4)
+//#define Enc_Read()                   __HAL_TIM_GetCounter(&htim4)
 
 #define Spindle_Direction_CW         0                             // прямое вращение
 #define Spindle_Direction_CCW        1                             // обратное вращение

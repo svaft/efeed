@@ -53,101 +53,10 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE BEGIN PV */
-
-void process_button(void);
-
-/* Private variables ---------------------------------------------------------*/
-//int count;
-
-//sample_log_t i2c_device_logging;
-
-uint32_t current_pos = 0, cpv = 0, thread_limit = 0, mode = 10, mode_prev = 10, clk_mode = 10, buttons_flag_set_prev = 0;
-#define BB_ADDR 0x20000900
-uint32_t buttons_flag_set __attribute__((at(BB_ADDR)));
-#define buttons_flag_setbb ((uint32_t *)((0x22000000    + ((BB_ADDR)-0x20000000)*32)))
-
-// ***** Stepper Motor *****
-#define auto_symbol 0
-#define left_arrow  1
-#define right_arrow 2
-
-bool Spindle_Direction = Spindle_Direction_CW;
-bool feed_direction = feed_direction_left;
-
-bool auto_mode = false;
-int32_t auto_mode_delay = -1; // default delay between change direction is 6 secons
-
-extern uint32_t infeed_steps;
-//extern uint32_t infeed_steps = 10;
-uint32_t ramp_step = 0, rs = 0;
-
-/*
-infeed steps count depends on lathe-tool-part rigid
-recommendation: mm(tpi) - passes
-        0,50-0,75(48-32) - 4-5 passes,
-        0,80-1,00(28-24) - 5-6,
-        1,25-1,50(20-16) - 6-8
-        1,75-2,00(14-12) - 8-10,
-        2,50-3,00(11,5-9) - 9-12
-*/
-
-// Button timing variables
-#define debounce 20                 // ms debounce period to prevent flickering when pressing or releasing the button
-#define DCgap 150                       // max ms between clicks for a double click event
-#define holdTime 500                // ms hold period: how long to wait for press+hold event
-#define clickTime 250
-#define longHoldTime 3000       // ms long hold period: how long to wait for press+hold event
-uint32_t gap = 0;
-uint32_t menu_changed = 0;
-
-
-#define long_press_start        buttons_flag_setbb[0]
-#define long_press_start_Pos        (0U)
-#define long_press_start_Msk        (0x1U << long_press_start_Pos)
-
-#define long_press_end                          buttons_flag_setbb[1]
-#define long_press_end_Pos          (1U)
-#define long_press_end_Msk          (0x1U << long_press_end_Pos)
-
-#define single_click                                        buttons_flag_setbb[2]
-#define single_click_Pos                        (2U)
-#define single_click_Msk                        (0x1U << single_click_Pos)
-
-#define double_click                                        buttons_flag_setbb[3]
-#define double_click_Pos                        (3U)
-#define double_click_Msk                        (0x1U << double_click_Pos)
-
-
 typedef struct {
 	uint32_t downTime;               // time the button was pressed down
 	uint32_t buttons, buttons_mstick, buttons_flag, buttons_mask, clk_mode;
-
 } BUTTON;
-
-uint32_t downTime = 0;               // time the button was pressed down
-uint32_t buttons = 0, buttons_mstick = 0, buttons_flag = 0, buttons_mask = 0;
-
-
-// ***** Threads *****
-fixedptud prolong_addSteps = 0;
-uint32_t Q824set = 0;
-uint32_t Q824count = 0;
 
 typedef struct {
 	fixedptu Q824; //Q8.24 fix math format
@@ -158,69 +67,7 @@ typedef struct {
 	char infeed_mm[6];
 	char infeed_inch[6];
 	uint8_t infeed_strategy;
-}
-THREAD_INFO;
-
-// основное меню. Считаем по формуле:
-// Enc_Line/(Step_Per_Revolution/Feed_Screw*Thread_mm)
-// перегенерация есть в excel файле
-const THREAD_INFO Thread_Info[] = {
-	{ 0x12000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
-//{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
-	{ 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 1 },
-	{ 0x038B162C, 0, "10", "tpi", 0, "", "", 0 },
-	{ 0x06000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
-	{ 0x09000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
-	{ 0x00000000, 20, "F", "mm", 0, "", "", 0 },
-	{ 0x2D000000, 0, "0.20", "mm", 20, "", "", 0 },
-	{ 0x32000000, 0, "0.18", "mm", 20, "", "", 0 },
-	{ 0x3C000000, 0, "0.15", "mm", 20, "", "", 0 },
-	{ 0x4B000000, 0, "0.12", "mm", 20, "", "", 0 },
-	{ 0x64000000, 0, "0.09", "mm", 20, "", "", 0 },
-	{ 0x96000000, 0, "0.06", "mm", 20, "", "", 0 },
-	{ 0xE1000000, 0, "0.04", "mm", 20, "", "", 0 },
-	{ 0x00000000, 0, "..", "up", 20, "", "", 0 },
-	{ 0x00000000, 10, "T", "mm", 0, "", "", 0 },
-	{ 0x07333333, 0, "1.25", "mm", 10, ".79", ".031", 0 },
-	{ 0x05249249, 0, "1.75", "mm", 10, "1.11", ".044", 0 },
-	{ 0x04800000, 0, "2.00", "mm", 10, "1.26", ".050", 0 },
-	{ 0x12000000, 0, "0.50", "mm", 10, ".34", ".013", 0 },
-	{ 0x0C000000, 0, "0.75", "mm", 10, ".50", ".020", 0 },
-	{ 0x00000000, 0, "..", "up", 10, "", "", 0 },
-	{ 0x00000000, 30, "T", "tpi", 0, "", "", 0 },
-	{ 0x09912244, 0, "27", "tpi", 30, "", "", 0 },
-	{ 0x09366CD9, 0, "26", "tpi", 30, "", "", 0 },
-	{ 0x08810204, 0, "24", "tpi", 30, "", "", 0 },
-	{ 0x07CB972E, 0, "22", "tpi", 30, "", "", 0 },
-	{ 0x07162C58, 0, "20", "tpi", 30, "", "", 0 },
-	{ 0x06BB76ED, 0, "19", "tpi", 30, "", "", 0 },
-	{ 0x0660C183, 0, "18", "tpi", 30, "", "", 0 },
-	{ 0x05AB56AD, 0, "16", "tpi", 30, "", "", 0 },
-	{ 0x04F5EBD7, 0, "14", "tpi", 30, "", "", 0 },
-	{ 0x04408102, 0, "12", "tpi", 30, "", "", 0 },
-	{ 0x00000000, 0, "..", "up", 30, "", "", 0 },
-};
-
-uint8_t Menu_Step = 0;                                          // выборка из массива по умолчанию (1.5mm)
-const uint8_t Menu_size = sizeof(Thread_Info)/sizeof(Thread_Info[0]);
-
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
-static void MX_TIM4_Init(void);
-static void MX_TIM3_Init(void);
-static void MX_I2C2_Init(void);
-static void MX_TIM2_Init(void);
-/* USER CODE BEGIN PFP */
-/* Private function prototypes -----------------------------------------------*/
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
+} THREAD_INFO;
 
 typedef struct {
 	fixedptu Q824; //Q8.24 fix math format
@@ -242,42 +89,159 @@ typedef struct {
 	char infeed_mm[6];
 	char infeed_inch[6];
 	uint8_t infeed_strategy;
-}
-S_WORK_SETUP;
+} S_WORK_SETUP;
 
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+// ***** Stepper Motor *****
+#define auto_symbol 0
+#define left_arrow  1
+#define right_arrow 2
+
+// Button timing variables
+#define debounce 20                 // ms debounce period to prevent flickering when pressing or releasing the button
+#define DCgap 150                       // max ms between clicks for a double click event
+#define holdTime 500                // ms hold period: how long to wait for press+hold event
+#define clickTime 250
+#define longHoldTime 3000       // ms long hold period: how long to wait for press+hold event
+
+
+#define long_press_start        buttons_flag_setbb[0]
+#define long_press_start_Pos        (0U)
+#define long_press_start_Msk        (0x1U << long_press_start_Pos)
+
+#define long_press_end                          buttons_flag_setbb[1]
+#define long_press_end_Pos          (1U)
+#define long_press_end_Msk          (0x1U << long_press_end_Pos)
+
+#define single_click                                        buttons_flag_setbb[2]
+#define single_click_Pos                        (2U)
+#define single_click_Msk                        (0x1U << single_click_Pos)
+
+#define double_click                                        buttons_flag_setbb[3]
+#define double_click_Pos                        (3U)
+#define double_click_Msk                        (0x1U << double_click_Pos)
+
+
+#define BB_ADDR 0x20000900
+#define buttons_flag_setbb ((uint32_t *)((0x22000000    + ((BB_ADDR)-0x20000000)*32)))
+
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+
+/* USER CODE BEGIN PV */
+
+TIM_TypeDef *sync_timer;
+
+/* Private variables ---------------------------------------------------------*/
+uint32_t current_pos = 0, cpv = 0, thread_limit = 0, mode = 10, mode_prev = 10, clk_mode = 10, buttons_flag_set_prev = 0;
+uint32_t buttons_flag_set __attribute__((at(BB_ADDR)));
+
+bool Spindle_Direction = Spindle_Direction_CW;
+bool feed_direction = feed_direction_left;
+
+bool auto_mode = false;
+int32_t auto_mode_delay = -1; // default delay between change direction is 6 secons
+
+extern uint32_t infeed_steps;
+uint32_t ramp_step = 0, rs = 0;
+
+/*
+infeed steps count depends on lathe-tool-part rigid
+recommendation: mm(tpi) - passes
+        0,50-0,75(48-32) - 4-5 passes,
+        0,80-1,00(28-24) - 5-6,
+        1,25-1,50(20-16) - 6-8
+        1,75-2,00(14-12) - 8-10,
+        2,50-3,00(11,5-9) - 9-12
+*/
+
+
+uint32_t gap = 0;
+uint32_t menu_changed = 0;
+
+uint32_t downTime = 0;               // time the button was pressed down
+uint32_t buttons = 0, buttons_mstick = 0, buttons_flag = 0, buttons_mask = 0;
+
+
+// ***** Threads *****
+fixedptud prolong_addSteps = 0;
+uint32_t Q824set = 0;
+uint32_t Q824count = 0;
+
+// основное меню. Считаем по формуле:
+// Enc_Line/(Step_Per_Revolution/Feed_Screw*Thread_mm)
+// перегенерация есть в excel файле
+const THREAD_INFO Thread_Info[] = {
+{ 0x96000000, 0, "0.09", "mm", 0, "1.26", ".050", 0 },
+{ 0x5A000000, 0, "0.15", "mm", 0, "", "", 0 },
+{ 0x09000000, 0, "1.50", "mm", 0, "1.26", ".050", 2 },
+{ 0x0D800000, 0, "1.00", "mm", 0, ".95", ".037", 0 },
+{ 0x0550A142, 0, "10", "tpi", 0, ".65", ".026", 0 },
+{ 0x00000000, 20, "F", "mm", 0, "", "", 0 },
+{ 0x43800000, 0, "0.20", "mm", 20, "", "", 0 },
+{ 0x4B000000, 0, "0.18", "mm", 20, "", "", 0 },
+{ 0x5A000000, 0, "0.15", "mm", 20, "", "", 0 },
+{ 0x70800000, 0, "0.12", "mm", 20, "", "", 0 },
+{ 0x96000000, 0, "0.09", "mm", 20, "", "", 0 },
+{ 0xE1000000, 0, "0.06", "mm", 20, "", "", 0 },
+{ 0x00000000, 0, "0.04", "mm", 20, "", "", 0 },
+{ 0x00000000, 0, "..", "up", 20, "", "", 0 },
+{ 0x00000000, 10, "T", "mm", 0, "", "", 0 },
+{ 0x0ACCCCCC, 0, "1.25", "mm", 10, ".79", ".031", 0 },
+{ 0x07B6DB6D, 0, "1.75", "mm", 10, "1.11", ".044", 0 },
+{ 0x06C00000, 0, "2.00", "mm", 10, "1.26", ".050", 0 },
+{ 0x1B000000, 0, "0.50", "mm", 10, ".34", ".013", 0 },
+{ 0x12000000, 0, "0.75", "mm", 10, ".50", ".020", 0 },
+{ 0x00000000, 0, "..", "up", 10, "", "", 0 },
+{ 0x00000000, 30, "T", "tpi", 0, "", "", 0 },
+{ 0x0E59B366, 0, "27", "tpi", 30, "", "", 0 },
+{ 0x0DD1A346, 0, "26", "tpi", 30, "", "", 0 },
+{ 0x0CC18306, 0, "24", "tpi", 30, "", "", 0 },
+{ 0x0BB162C5, 0, "22", "tpi", 30, "", "", 0 },
+{ 0x0AA14285, 0, "20", "tpi", 30, "", "", 0 },
+{ 0x0A193264, 0, "19", "tpi", 30, "", "", 0 },
+{ 0x09912244, 0, "18", "tpi", 30, "", "", 0 },
+{ 0x08810204, 0, "16", "tpi", 30, "", "", 0 },
+{ 0x0770E1C3, 0, "14", "tpi", 30, "", "", 0 },
+{ 0x0660C183, 0, "12", "tpi", 30, "", "", 0 },
+{ 0x00000000, 0, "..", "up", 30, "", "", 0 },
+};
+
+uint8_t Menu_Step = 0;                                          // выборка из массива по умолчанию (1.5mm)
+const uint8_t Menu_size = sizeof(Thread_Info)/sizeof(Thread_Info[0]);
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
+static void MX_TIM4_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_I2C2_Init(void);
+static void MX_TIM2_Init(void);
+/* USER CODE BEGIN PFP */
+/* Private function prototypes -----------------------------------------------*/
+void process_button(void);
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
 S_WORK_SETUP work_setup;
 
 const fixedptud enc_setup = 0x9000000000000;
 
-
-/*
-void recalculate_setup()  // todo: not ready yet
-{
-	work_setup.Q824      = Thread_Info[Menu_Step].Q824;
-	work_setup.pitch        = (fixedptud)enc_setup / (fixedptud)work_setup.Q824;
-	fixedpt_str( work_setup.pitch, (char *)&work_setup.Text, 2 );
-
-	work_setup.thread_depth = fixedpt_mul( work_setup.pitch, 10905190 );
-	work_setup.total_pass = 10;
-	work_setup.pass = 0;
-
-	work_setup.infeed_mod = 7823344;
-
-	fixedptu sqrt_steps = fixedptu_fromint( work_setup.total_pass - 1 );
-	sqrt_steps = fixedpt_sqrt( sqrt_steps );
-
-
-// first step coefficient = 0.3, sqrt(0.3) = 0,547722558 = fpt9189259
-// step 1 with coeff. 0.3
-	work_setup.deltap_mm[0]      = fixedptu_div( fixedptu_mul( work_setup.thread_depth, 9189259 ), sqrt_steps );
-	work_setup.deltap_inch[0] = fixedptu_div( work_setup.deltap_mm[0], 426141286 ); // 426141286 = Q824inch
-
-	for(int step = 1; step < work_setup.total_pass; step++ ) {
-		work_setup.deltap_mm[step]          = fixedptu_div( fixedptu_mul( work_setup.thread_depth, fixedpt_sqrt( fixedptu_fromint( step ) ) ), sqrt_steps );
-		work_setup.deltap_inch[step]        = fixedptu_div( work_setup.deltap_mm[step], 426141286 );
-	}
-}
-*/
 // реализация конечного автомата обработки событий кнопки
 inline void process_button(void)
 {
@@ -296,7 +260,7 @@ inline void process_button(void)
 
 #if defined ( _SIMU )
 //          uint32_t tmp_buttons = 0;
-	uint32_t tmp_buttons = GPIOA->IDR & GPIO_PIN_8;
+	uint32_t tmp_buttons = GPIOA->IDR & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS;
 #else
 	uint32_t tmp_buttons = GPIOA->IDR & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS;
 #endif
@@ -489,7 +453,7 @@ int main(void)
 
   /* System interrupt init*/
 
-  /**NOJTAG: JTAG-DP Disabled and SW-DP Enabled 
+  /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled 
   */
   LL_GPIO_AF_Remap_SWJ_NOJTAG();
 
@@ -506,18 +470,33 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+
+#ifndef _SIMU
   MX_DMA_Init();
   MX_TIM4_Init();
+#endif
   MX_TIM3_Init();
+#ifndef _SIMU
   MX_I2C2_Init();
-  MX_TIM2_Init();
+#endif
+	MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 // инициализация дисплея
+
 #ifndef _SIMU
+	sync_timer = TIM4;
 	Activate_I2C_Master();
 	SSD1306_Init(I2C2);
 	while(ubTransferComplete ==0);
 	redraw_screen();
+#else
+	sync_timer = TIM2;
+	TIM2->PSC = 2400;
+	TIM2->ARR = 1;
+	LL_TIM_DisableIT_UPDATE(TIM2);
+	LL_TIM_GenerateEvent_UPDATE(TIM2);
+	TIM2->SR = 0;
+	LL_TIM_EnableIT_UPDATE(TIM2);
 #endif
 
 	LL_SYSTICK_EnableIT();
@@ -531,18 +510,18 @@ int main(void)
 
 	TIM3->CCER = TIM_CCER_CC1E; /* Enable the Compare output channel 1 */
 
-TIM4->CNT = 0;
-	TIM4->SR = 0; // reset interrup flags
-  LL_TIM_EnableIT_CC3(TIM4);		// enable interrupts for TACHO events from encoder
-  LL_TIM_CC_EnableChannel(TIM4,LL_TIM_CHANNEL_CH3);
-	LL_TIM_EnableIT_UPDATE(TIM4);	// enable interrupts for ticks(update) events from encoder
-	LL_TIM_EnableCounter(TIM4); 												//Enable timer 4	
+	sync_timer->CNT = 0;
+	sync_timer->SR = 0; // reset interrup flags
+  LL_TIM_EnableIT_CC3(sync_timer);		// enable interrupts for TACHO events from encoder
+  LL_TIM_CC_EnableChannel(sync_timer,LL_TIM_CHANNEL_CH3); // enable tacho channel
+	LL_TIM_EnableIT_UPDATE(sync_timer);	// enable interrupts for ticks(update) events from encoder
+	LL_TIM_EnableCounter(sync_timer); 												//Enable timer 4	
 
 	// init buttons
 
 #if defined ( _SIMU )
 //  buttons_mask = buttons = GPIO_PIN_8;        //button pressed by default
-	buttons_mask = buttons = GPIOA->IDR & GPIO_PIN_8;
+	buttons_mask = buttons = GPIOA->IDR & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS;
 #else
 //LL_GPIO_IsInputPinSet(GPIOA,LL_GPIO_PIN_8);
 	buttons_mask = buttons = GPIOA->IDR & LL_GPIO_PIN_8 >> GPIO_PIN_MASK_POS;
@@ -591,7 +570,7 @@ TIM4->CNT = 0;
 		}
 
 		switch(buttons_flag_set) {
-		case single_click_Msk:          {
+		case single_click_Msk: {
 			if(thread_limit != 0) {
 				if(auto_mode == true && auto_mode_delay > 0) { // single click in auto mode temporary disable auto_mode, processing to be continued at next single click
 					auto_mode_delay = -1;
@@ -601,7 +580,8 @@ TIM4->CNT = 0;
 				// first pass of thread cut was complete, so just use single click
 				//  to switch between modes to process all other cuts
 				MOTOR_Z_Enable(); // time to wakeup motor from sleep is quite high(1.7ms), so enable it as soon as possible
-				for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to waakeup motor driver
+				LL_mDelay(2);
+//				for(unsigned int i=0; i<(72*1700/16); i++); // wait 1700us delay to waakeup motor driver
 				mode = current_pos > 0 ? 40 : 50;
 			} else { // controller in initial state, scroll menu
 				mode = 10;
@@ -706,7 +686,9 @@ TIM4->CNT = 0;
 		}
 // update display info
 		if(menu_changed == 1) {
+#ifndef _SIMU
 			redraw_screen();
+#endif			
 			menu_changed = 0;
 		}
 
@@ -810,7 +792,7 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 1 */
 
   /* USER CODE END I2C2_Init 1 */
-  /**I2C Initialization 
+  /** I2C Initialization 
   */
   LL_I2C_DisableOwnAddress2(I2C2);
   LL_I2C_DisableGeneralCall(I2C2);
@@ -846,16 +828,22 @@ static void MX_TIM2_Init(void)
   /* Peripheral clock enable */
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
 
+  /* TIM2 interrupt Init */
+  NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(TIM2_IRQn);
+
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
   TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = min_pulse;
+  TIM_InitStruct.Autoreload = 0;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM2, &TIM_InitStruct);
   LL_TIM_DisableARRPreload(TIM2);
-  LL_TIM_SetOnePulseMode(TIM2, LL_TIM_ONEPULSEMODE_SINGLE);
+  LL_TIM_SetClockSource(TIM2, LL_TIM_CLOCKSOURCE_INTERNAL);
+  LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_RESET);
+  LL_TIM_DisableMasterSlaveMode(TIM2);
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */

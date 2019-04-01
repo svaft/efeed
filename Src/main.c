@@ -408,7 +408,7 @@ int main(void)
 
 	// start gcode parsing, emulate receive it by usart interrupt(bluetooth) 
 	for(int a = 0; a < 5; a++ ){
-		command_parser((char *)garray[a]);
+//		command_parser((char *)garray[a]);
 	}
 
 // calibration test
@@ -447,7 +447,7 @@ int main(void)
 	// start gcode execution
 	G94(&state_hw);
 //	do_fsm_move_start2(&state_hw);
-
+	int command = 0;
 //	debug();
 	while (1) {
 		// recalc substep delays
@@ -474,13 +474,12 @@ int main(void)
 			// get next task and repeat unitl all task recalculated on precalculater buffer is full
 			
 		} else {
-			// if buffer is full so to sleep
+			// if buffer is full go to sleep
 			__WFI();
 		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-#ifndef _SIMU		
 //		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 //		process_G_pipeline();
@@ -497,6 +496,18 @@ int main(void)
 //			}
 //		}
 
+#ifdef _SIMU		
+		if(buttons_flag_set) {
+			switch(buttons_flag_set) {
+				case single_click_Msk:
+					command_parser((char *)garray[command]);
+					break;
+			}
+			buttons_flag_set = 0; // reset button flags
+		}
+#endif
+		
+#ifndef _SIMU		
 		if(buttons_flag_set) {
 			do_fsm_menu(&state_hw);
 			buttons_flag_set = 0; // reset button flags

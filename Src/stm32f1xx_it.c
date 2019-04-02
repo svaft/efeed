@@ -312,6 +312,7 @@ void TIM3_IRQHandler(void)
 	}
 //	debug1();
 	if(state_hw.current_task.steps_to_end == 0){
+		state_hw.task_lock = false; // unlock task processor lo load next task
 //			debug();
 		if(task_cb.count == 0){
 			do_fsm_move_end2(&state_hw);

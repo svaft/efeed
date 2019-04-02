@@ -4,6 +4,7 @@
 fixedpt command;
 G_pipeline_t init_gp={0,0,0,0,0};
 
+G_task_t gt_precalc[task_precalc_size];
 G_task_t gt[task_size];
 G_pipeline_t gp[gp_size];
 substep_t substep_delay[substep_size];
@@ -17,16 +18,25 @@ substep_t* cb_push_back_empty_ref(void){
 
 void load_next_task(state_t* s){
 //	debug7();
-	cb_pop_front(&task_cb, &s->current_task);
-	if(s->current_task.init_callback_ref){
-		s->current_task.init_callback_ref(s); // task specific init
+	if(s->task_lock == false && task_cb.count > 0) {
+		s->task_lock = true;
+		cb_pop_front(&task_cb, &s->current_task);
+		if(s->current_task.init_callback_ref){
+			s->current_task.init_callback_ref(s); // task specific init
+		}
+		
+		todo LL_TIM_IsEnabledCounter(s->syncbase);
+//		if(LL_TIM_IsEnabledCounter(s->syncbase) == false) {
+//			do_fsm_move_start2(s);
+//		}
+		s->Q824set = s->current_task.F; // load feed value
 	}
-	s->Q824set = s->current_task.F; // load feed value
 }
 
 
 
 void G95(state_t* s){
+	s->G94G95 = 1;
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	// reconfigure async timer:
@@ -50,6 +60,8 @@ void G95(state_t* s){
 
 
 void G94(state_t* s){
+	s->G94G95 = 0;
+
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	LL_TIM_DisableCounter(TIM2); // pause async timer
@@ -61,10 +73,11 @@ void G94(state_t* s){
 
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+	s->task_lock = false; // all processing si done here so unlock task to next
 }
 
 void do_fsm_move_start2(state_t* s){
-	load_next_task(s); // load first task from queue
+//	load_next_task(s); // load first task from queue
 
 //	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
 //	s->syncbase->ARR = 1;
@@ -159,15 +172,15 @@ void command_parser(char *line){
 						
 						break;
 					case 38502400: //G94 Units per Minute Mode
-						s->G94G95 = 0;
-						s->prescaler = TIM2->PSC; //todo
-//						g_task = add_empty_task();
-//						g_task->init_callback_ref = calibrate_init_callback;
+//						s->G94G95 = 0;
+						g_task = add_empty_task();
+						g_task->init_callback_ref = G94;
 						break;
 					case 38912000: //G95 - is Units per Revolution Mode
-						s->G94G95 = 1;
+//						s->G94G95 = 1;
 						g_task = add_empty_task();
-						g_task->init_callback_ref = calibrate_init_callback;
+						g_task->init_callback_ref = G95;
+//						g_task->init_callback_ref = calibrate_init_callback;
 //						s->sync = 1;
 						break;
 					case 0://G0 command packed into 2210_400 format

@@ -88,9 +88,94 @@ state_t state_precalc;
 /* Private variables ---------------------------------------------------------*/
 //int count;
 extern bool demo;
+/*
+G18 - XZ-plane
+G98 - retract to the position that axis was in just before this series of one or more contiguous canned cycles was started
+G50 set spindle speed
+G28, G28.1 Go to Predefined Position
+G54-G59.3 Select Coordinate System
+G96, G97 Spindle Control Mode, G97 (RPM Mode)
+*/
 
 
-//uint32_t current_pos = 0, cpv = 0, end_pos = 0, mode = 10, mode_prev = 10;
+static const char * ga1[] = {
+"G90 G94 G18",
+//"G71",
+//"LIMS=S6000",
+//"G53 G0 X0.",
+//"",
+//"; Profile3",
+//"T1 D1",
+//"G54",
+//"G94",
+//"G97 S4547 M3",
+"G0 X14. Z0",
+//"G96 S200 M3",
+//"LIMS=S5000",
+"G1 X14.2 F1000",
+"X16.028 Z1.307",
+"X13.2 Z-0.107",
+"Z-30.8",
+"X14.",
+"X18.",
+"G0 Z1.414",
+"X15.228",
+"G1 X12.4 Z0 F1000",
+"Z-30.8",
+"X13.2",
+"X17.2",
+"G0 Z1.414",
+"X14.428",
+"G1 X11.6 Z0 F1000",
+"Z-30.8",
+"X12.4",
+"X16.4",
+"G0 Z1.414",
+"X13.728",
+"G1 X10.9 Z0 F1000",
+"Z-30.8",
+"X11.6",
+"X14.428 Z-29.386",
+"G0 Z1.414",
+"X13.028",
+"G1 X10.2 Z0 F1000",
+"Z-30.8",
+"X10.9",
+"X13.728 Z-29.386",
+"G0 Z0.614",
+"X12.828",
+"G1 X10. Z-0.8 F1000",
+"Z-30.8",
+"X12.828 Z-29.386",
+"X14.",
+"G0 Z0",
+//"G97 S4547 M3",
+};
+
+/*
+	static const char * const garray[] = {
+		"G90 G94 F900",
+		"G1 X0.02 Z0.",
+		"G4 P.01",
+		"G1 X0. Z0.",
+		"G3 X12. Z-6 K-6",		
+//		"G1 X2.828 F1",
+		"G1 X.05 F600",
+		"G1 X0.02 Z0.",
+		"G4 P.01",
+		"G3 X2.3 Z-1.15 I-0.01 K-1.15",
+
+		"X0. Z-1",
+		"X3.",
+		"G3 X4. Z-6 K-5",
+		"G1 Z-11.056",
+		"G2 Z-26.056 I8.597 K-7.5",
+
+		"G1 X0. Z-2.5 F.3",
+		"G1 X10.", 
+		"G3 X12. Z-4.5 I-1.99 K-2.245" 
+	};
+*/
 
 // ***** Stepper Motor *****
 
@@ -267,15 +352,6 @@ uint32_t x1 = 0;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-//	MOTOR_Z_DIR_GPIO_Port->BSRR
-//	gt[0].z_direction = zdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
-//	gt[0].x_direction = xdir_forward; //oDR 0x4001080C xdir-odr 0x4001100C
-//	zdir = gt[0].z_direction;
-	memset(&state_hw,0,sizeof(state_hw));
-//	memset(&z_axis,0,sizeof(z_axis));
-	state_hw.function = do_fsm_menu_lps;
-//	state.callback = dxdz_callback;
-
 
   /* USER CODE END 1 */
 
@@ -296,6 +372,13 @@ int main(void)
   LL_GPIO_AF_Remap_SWJ_NOJTAG();
 
   /* USER CODE BEGIN Init */
+	memset(&state_hw,0,sizeof(state_hw));
+	state_hw.function = do_fsm_menu_lps;
+
+	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
+//	cb_init_ref(&task_precalc_cb, task_precalc_size, sizeof(G_task_t), &gt_precalc);
+	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
+	cb_init_ref(&substep_cb, substep_size, sizeof(substep_t),&substep_delay);
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -316,10 +399,6 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
-	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
-	cb_init_ref(&substep_cb, substep_size, sizeof(substep_t),&substep_delay);
-
 {
   /* Enable DMA TX Interrupt */
   LL_USART_EnableDMAReq_TX(USART2);
@@ -334,20 +413,14 @@ int main(void)
 		demo = true;
 	}
 	// инициализация дисплея:
-#ifndef _SIMU
+	#ifndef _SIMU
 	Activate_I2C_Master();
 	init_screen(I2C2);
 //	update_screen();
 //	i2c_device_init(I2C2);
 	LL_mDelay(250);
-#endif
+	#endif
 	init_buttons();
-	
-
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
 
 //  LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
 //  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
@@ -356,6 +429,11 @@ int main(void)
 	do_fsm_menu(&state_hw);
 	LED_OFF();
 }
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
 
 //	debug();
 // prevent to put TIM3 stepper chanels high on set corresponding CCER-CCxE bit.
@@ -381,36 +459,6 @@ int main(void)
 	LL_TIM_DisableARRPreload(TIM1);
 
 
-
-	static const char * const garray[] = {
-		"G90 G94 F900",
-		"G1 X0.02 Z0.",
-		"G4 P.01",
-		"G1 X0. Z0.",
-		"G3 X12. Z-6 K-6",		
-//		"G1 X2.828 F1",
-		"G1 X.05 F600",
-		"G1 X0.02 Z0.",
-		"G4 P.01",
-		"G3 X2.3 Z-1.15 I-0.01 K-1.15",
-
-		"X0. Z-1",
-		"X3.",
-		"G3 X4. Z-6 K-5",
-		"G1 Z-11.056",
-		"G2 Z-26.056 I8.597 K-7.5",
-
-		"G1 X0. Z-2.5 F.3",
-		"G1 X10.", 
-		"G3 X12. Z-4.5 I-1.99 K-2.245" 
-	};
-
-
-	// start gcode parsing, emulate receive it by usart interrupt(bluetooth) 
-	for(int a = 0; a < 5; a++ ){
-//		command_parser((char *)garray[a]);
-	}
-
 // calibration test
 /*
 	LL_TIM_DisableARRPreload(TIM4);
@@ -431,26 +479,27 @@ int main(void)
 */
 
 // todo need refactor this code how to g-code parsing, precalculation and execution going to start and work together
-	G_task_t *precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
-  memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
+	G_task_t *precalculating_task = 0;
+//	G_task_t *precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
+//  memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
 
 	// init precalc
-	if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
-		precalculating_task->precalculate_init_callback_ref(&state_precalc);
-	// do first step precalc
-	if(precalculating_task->precalculate_callback_ref)
-		precalculating_task->precalculate_callback_ref(&state_precalc);
+//	if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
+//		precalculating_task->precalculate_init_callback_ref(&state_precalc);
 
-	
-	
-	
+// do first step precalc
+//	if(precalculating_task->precalculate_callback_ref)
+//		precalculating_task->precalculate_callback_ref(&state_precalc);
+
 	// start gcode execution
 	G94(&state_hw);
 //	do_fsm_move_start2(&state_hw);
 	int command = 0;
 //	debug();
+
 	while (1) {
 		// recalc substep delays
+		
 		if(substep_cb.count < substep_cb.capacity && precalculating_task){
 			// get pointer to last processed task
 			if(precalculating_task->precalculate_callback_ref) {
@@ -466,16 +515,28 @@ int main(void)
 				}
 			} else {
 				precalculating_task = cb_pop_front_ref2(&task_cb);
-				memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
-				if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
-					precalculating_task->precalculate_init_callback_ref(&state_precalc);
+				if(precalculating_task) {
+					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
+					if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
+						precalculating_task->precalculate_init_callback_ref(&state_precalc);
+				}
 			}
 			// call task recalculate callback until task is fully precalculated
 			// get next task and repeat unitl all task recalculated on precalculater buffer is full
 			
 		} else {
+			if(precalculating_task == 0 && task_cb.count2 > 0){
+				precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
+				if(precalculating_task) {
+					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
+					// init precalc:
+					if(precalculating_task->precalculate_init_callback_ref)
+						precalculating_task->precalculate_init_callback_ref(&state_precalc);
+				}
+
+			}
 			// if buffer is full go to sleep
-			__WFI();
+//			__WFI();
 		}
     /* USER CODE END WHILE */
 
@@ -483,6 +544,7 @@ int main(void)
 //		reqest_sample_i2c_dma(); // init reqest to joystick by DMA, when process_button complete i2c done its job
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 //		process_G_pipeline();
+		load_next_task(&state_hw);
 		process_button();
 //		process_joystick();
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
@@ -500,7 +562,8 @@ int main(void)
 		if(buttons_flag_set) {
 			switch(buttons_flag_set) {
 				case single_click_Msk:
-					command_parser((char *)garray[command]);
+					// emulate receive g-code line by usart interrupt(bluetooth) 
+					command_parser((char *)ga1[command++]);
 					break;
 			}
 			buttons_flag_set = 0; // reset button flags

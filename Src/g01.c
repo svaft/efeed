@@ -70,7 +70,8 @@ void G01init_callback(state_t* s){
 	s->function = do_fsm_move2;
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
 	TIM3->CCER = 0;
-
+	XDIR = s->current_task.x_direction;
+	ZDIR = s->current_task.z_direction;
 	if(s->current_task.dz > s->current_task.dx){
 		s->current_task.steps_to_end = s->current_task.dz;
 		s->substep_axis = SUBSTEP_AXIS_X;
@@ -122,6 +123,7 @@ void G01parse(char *line){ //~60-70us
 		xdir = xdir_backward;
 	}
 	G_task_t *gt_new_task = add_empty_task();
+	gt_new_task->stepper = true;
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
 	gt_new_task->dz =  fixedpt_toint2210(dz);

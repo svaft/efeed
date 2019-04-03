@@ -38,6 +38,11 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "fixedptc.h"
+#include "buttons.h"
+#include "fsm.h"
+#include "i2c_interface.h"
+#include "ssd1306.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,7 +52,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
- 
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -67,54 +72,6 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#include "fixedptc.h"
-#include "buttons.h"
-#include "fsm.h"
-#include "i2c_interface.h"
-#include "ssd1306.h"
-
-#if  defined ( _SIMU )
-#define tacho tacho_debug
-bool encoder;
-#else
-#define tacho 	t4sr[TIM_SR_CC3IF_Pos]
-#define encoder t4sr[TIM_SR_UIF_Pos]
-#endif
-
-
-__IO uint32_t cnt2 = 0;
-__IO uint32_t cnt3 = 0;
-__IO uint32_t cnt4 = 0;
-uint16_t cntbuf[1000];
-int cnt2div=0;
-
-//_Bool ramp_down(void);
-//inline _Bool ramp_up(void);
-//void move(void);
-//void at_move_end(void);
-
-
-extern bool feed_direction;
-//extern TIM_HandleTypeDef htim3;
-extern uint8_t Spindle_Direction;
-
-
-extern uint16_t text_buffer[];
-extern uint32_t tbc;
-
-extern uint32_t async_z;
-
-uint32_t tacho_cnt = 0;
-uint32_t tacho_debug = 0;
-
-
-extern __IO uint8_t  ubMasterRequestDirection;
-extern __IO uint8_t  ubMasterXferDirection;
-extern __IO uint8_t  ubMasterNbDataToReceive;
-
-extern __IO uint8_t ubUART2ReceptionComplete;
-
-
 
 /* USER CODE END 0 */
 
@@ -163,23 +120,6 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   
   /* USER CODE BEGIN SysTick_IRQn 1 */
-
-/*
-#if  defined ( _SIMU )
-
-//simulate spindle
-	if(++tacho_cnt == 1800 ) {
-		tacho_debug = 1;
-		tacho_cnt = 0;
-		TIM4_IRQHandler();
-	}
-	if(++TIM4->CNT > TIM4->ARR) {
-		TIM4->CNT = 0; // overflow emulation
-		encoder = true;
-		TIM4_IRQHandler();
-	}
-#endif
-*/
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
 	for(int a = 0; a<BT_TOTAL;a++){
@@ -336,8 +276,8 @@ void TIM4_IRQHandler(void)
   /* USER CODE BEGIN TIM4_IRQn 0 */
 	TIM4->SR = 0; // clear SR at the beginning of the interrupt to avoid false call it twice, http://www.keil.com/support/docs/3928.htm 
 	state_hw.prescaler = TIM2->CNT;
-	cnt2 = 2400000 / TIM2->CNT; // speed in RPM
 	TIM2->CNT = 0;
+	state_hw.rpm = 2400000 / state_hw.prescaler;
 //		__dsb(0);
 //	}
 	

@@ -442,7 +442,7 @@ void G76(int p, int z){
 0x0F21BDA2,
 */
 uint8_t get_ramp_steps(fixedptu from_speed, fixedptu to_speed){
-	uint32_t ramp_delay, from, to;
+	uint32_t ramp_delay, from;
 	if(from_speed > to_speed){//ramp up
 		ramp_delay = ramp_profile[0];
 		while(ramp_delay > from_speed){
@@ -456,6 +456,7 @@ uint8_t get_ramp_steps(fixedptu from_speed, fixedptu to_speed){
 		}
 	} else { //ramp down
 	}
+	return 0;
 }
 
 

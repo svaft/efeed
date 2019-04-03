@@ -24,12 +24,11 @@ void load_next_task(state_t* s){
 		if(s->current_task.init_callback_ref){
 			s->current_task.init_callback_ref(s); // task specific init
 		}
-		
-		todo LL_TIM_IsEnabledCounter(s->syncbase);
-//		if(LL_TIM_IsEnabledCounter(s->syncbase) == false) {
-//			do_fsm_move_start2(s);
-//		}
+
 		s->Q824set = s->current_task.F; // load feed value
+		if(s->current_task.stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
+			do_fsm_move_start2(s);
+		}
 	}
 }
 
@@ -153,7 +152,7 @@ G_task_t* get_last_task( void ){
 
 
 void command_parser(char *line){
-  state_t *s = &state_hw;
+//  state_t *s = &state_hw;
 	uint8_t char_counter = 0;  
 	char letter;
 	G_task_t *g_task;

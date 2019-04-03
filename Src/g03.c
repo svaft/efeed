@@ -26,7 +26,6 @@ void arc_q1_callback_precalculate(state_t* s){
 	
 	if (e2 > s->arc_dx) {
 		while(1); // trap
-		return;
 	}
 	substep_t *sb = substep_cb.top;//	cb_push_back_empty(&substep_cb);
 
@@ -70,8 +69,8 @@ void arc_q1_callback_precalculate(state_t* s){
 			} else {
 				// in this case we need to do two substeps in one main step  :( 
 				while(1);
-				cb_push_back_empty_ref()->delay = delay;
-				cb_push_back_empty_ref()->skip = 1;
+//				cb_push_back_empty_ref()->delay = delay;
+//				cb_push_back_empty_ref()->skip = 1;
 			}
 		}
 		s->current_task.z--;

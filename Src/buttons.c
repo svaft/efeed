@@ -13,8 +13,9 @@ void init_buttons(void){
 	bt[0].clk_mode = 10;
 	bt[0].GPIOx = BUTTON_1_GPIO_Port;
 	bt[0].button_pin = BUTTON_1_Pin;
-	bt[0].buttons = bt[0].buttons_mask = LL_GPIO_IsInputPinSet(bt[0].GPIOx,BUTTON_1_Pin); //bt[0].GPIOx->IDR & bt[0].button_pin;
+	bt[0].buttons = bt[0].buttons_mask = LL_GPIO_IsInputPinSet(bt[0].GPIOx,bt[0].button_pin); //bt[0].GPIOx->IDR & bt[0].button_pin;
 	return;
+/*
 	bt[1] = bt[0];
 	bt[1].clk_mode = 10;
 	bt[1].GPIOx = BUTTON_2_GPIO_Port;
@@ -34,7 +35,7 @@ void init_buttons(void){
 	bt[3].clk_mode = 10;
 	bt[3].button_pin = 0x01; // button_c code
 	bt[3].buttons = bt[3].buttons_mask = dma_data[5]&bt[3].button_pin; // = bt[1].GPIOx->IDR & bt[1].button_pin;
-
+*/
 }
 inline void process_joystick()
 {
@@ -101,7 +102,7 @@ inline void process_button()
 		if( bt[a].buttons_mstick > DEBOUNCE_MS ) {
 			switch(bt[a].clk_mode) {
 			case 10: {
-				if ( tmp_buttons & bt[a].button_pin ) {   // released
+				if ( tmp_buttons == false ) {   // released
 				} else { // pressed
 //					buttons_mstick = 1;
 					bt[a].clk_mode = 20;
@@ -109,7 +110,7 @@ inline void process_button()
 				break;
 			}
 			case 20: {
-				if ( tmp_buttons & bt[a].button_pin ) { // released
+				if ( tmp_buttons == false ) { // released
 					bt[a].clk_mode = 50;
 				} else {
 					bt[a].downTime = bt[a].buttons_mstick;
@@ -125,7 +126,7 @@ inline void process_button()
 				break;
 			}
 			case 40: {
-				if ( tmp_buttons & bt[a].button_pin ) { //released
+				if ( tmp_buttons == false ) { //released
 					bt[a].clk_mode = 50;
 				} else {
 					bt[a].downTime = bt[a].buttons_mstick;
@@ -147,7 +148,7 @@ inline void process_button()
 				break;
 			}
 			case 70: { //70. тиков меньше 200, это может быть дабл-клик, ждем нажатия еще 100, если ничего идем в 60, если клик идем в 80
-				if ( tmp_buttons & bt[a].button_pin ) {
+				if ( tmp_buttons == false ) {
 					bt[a].downTime = bt[a].buttons_mstick;
 					if( bt[a].downTime > DOUBLECLICK_GAP_MS ) {
 						bt[a].clk_mode = 60;
@@ -158,7 +159,7 @@ inline void process_button()
 				break;
 			}
 			case 80: {
-				if ( tmp_buttons & bt[a].button_pin ) { // released
+				if ( tmp_buttons == false ) { // released
 					bt[a].clk_mode = 90;
 				} else {
 					bt[a].downTime = bt[a].buttons_mstick;

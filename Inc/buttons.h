@@ -14,17 +14,22 @@
 // BB_VAR must be greater then 0x20000000 + RW-data (see at build output after linking). 
 // if there are error L6971E just enlarge BB_VAR variable
 //#define BB_VAR   	0x20004000 
-#define BB_VAR 		BITBAND_SRAM_REF + 19500
-#define BITBAND_SRAM_REF   0x20000000
-#define BITBAND_SRAM_BASE  0x22000000
-#define BITBAND_SRAM(a,b) ((BITBAND_SRAM_BASE + (a-BITBAND_SRAM_REF)*32 + (b*4)))  // Convert SRAM address
+#define BB_VAR 		SRAM_BASE + 0x4000
+#define BITBAND_SRAM(a,b) ((SRAM_BB_BASE + (a-SRAM_BASE)*32 + (b*4)))  // Convert SRAM address
 
 
 // Button timing variables
+#ifdef _SIMU
+#define DEBOUNCE_MS 1                 // ms debounce period to prevent flickering when pressing or releasing the button
+#define DOUBLECLICK_GAP_MS 5                       // max ms between clicks for a double click event
+#define HOLDTIME_MS 40                // ms hold period: how long to wait for press+hold event
+#define CLICKTIME_MS 10 
+#else
 #define DEBOUNCE_MS 20                 // ms debounce period to prevent flickering when pressing or releasing the button
 #define DOUBLECLICK_GAP_MS 150                       // max ms between clicks for a double click event
 #define HOLDTIME_MS 500                // ms hold period: how long to wait for press+hold event
 #define CLICKTIME_MS 250 
+#endif
 //#define LONGHOLDTIME_MS 3000       // ms long hold period: how long to wait for press+hold event
 
 //#define long_press_start			buttons_flag_setbb[0]
@@ -70,12 +75,12 @@ typedef struct
 
 extern BUTTON bt[BT_TOTAL];
 
-extern uint32_t buttons_flag_set;//  __attribute__((at(BB_VAR)));
+extern uint32_t buttons_flag_set __attribute__((at(BB_VAR)));
 extern __IO uint8_t  ubTransferComplete;
 
 
-//#define buttons_flag_setbb ((BITBAND_SRAM_BASE + (&buttons_flag_set-BITBAND_SRAM_REF)*32))  // Convert SRAM address
-#define buttons_flag_setbb ((uint32_t *)((0x22000000  + ((BB_VAR)-0x20000000)*32)))
+//#define buttons_flag_setbb1 ((BITBAND_SRAM_BASE + (&buttons_flag_set-BITBAND_SRAM_REF)*32))  // Convert SRAM address
+#define buttons_flag_setbb ((uint32_t *)((SRAM_BB_BASE  + ((BB_VAR)-SRAM_BASE)*32)))
 
 //#define buttons_flag_setbb ((uint32_t *)((0x22000000  + ((BB_VAR)-0x20000000)*32)))
 //uint32_t gap = 0;

@@ -78,14 +78,10 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
 /* USER CODE BEGIN PV */
-
-//axis z_axis;
 state_t state_hw;
 state_t state_precalc;
 
-/* Private variables ---------------------------------------------------------*/
 //int count;
 extern bool demo;
 /*
@@ -182,13 +178,13 @@ static const char * ga1[] = {
 bool Spindle_Direction = Spindle_Direction_CW;
 bool feed_direction = feed_direction_left;
 
-uint32_t menu_changed = 0;
+bool menu_changed = false;
 
 //#define _SIMU
 bool auto_mode = false;
 int32_t auto_mode_delay = -1; // default delay between change direction is 6 secons
 
-uint32_t rs = 0; // temp tamp_step to update screen
+//uint32_t rs = 0; // temp tamp_step to update screen
 
 /*
 infeed steps count depends on lathe-tool-part rigid
@@ -247,12 +243,31 @@ const THREAD_INFO Thread_Info[] = {
 
 uint8_t Menu_Step = 0;																					// выборка из массива по умолчанию (1.5mm)
 const uint8_t Menu_size = sizeof(Thread_Info)/sizeof(Thread_Info[0]);
-//uint16_t text_buffer[100];
-//uint32_t tbc = 0;
+
+S_WORK_SETUP work_setup;
+const fixedptud enc_setup = 0x9000000000000;
+
+
+#define RX_BUFFER_SIZE   12
+uint8_t aRXBufferA[RX_BUFFER_SIZE];
+uint8_t aRXBufferB[RX_BUFFER_SIZE];
+__IO uint32_t	uwNbReceivedChars;
+__IO uint32_t	uwBufferReadyIndication;
+uint8_t *pBufferReadyForUser;
+uint8_t *pBufferReadyForReception;
+__IO uint8_t ubUART2ReceptionComplete = 0;
+
+/* Buffer used for transmission */
+const uint8_t aTxBuffer[] = "ok\r\n";
+uint8_t ubNbDataToTransmit = sizeof(aTxBuffer);
+__IO uint8_t ubTransmissionComplete = 0;
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+/* USER CODE BEGIN PFP */
+void USART_CharReception_Callback(void);
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
@@ -262,32 +277,10 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_USART2_UART_Init(void);
-/* USER CODE BEGIN PFP */
-/* Private function prototypes -----------------------------------------------*/
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-S_WORK_SETUP work_setup;
-
-const fixedptud enc_setup = 0x9000000000000;
-
-#define RX_BUFFER_SIZE   12
-uint8_t aRXBufferA[RX_BUFFER_SIZE];
-uint8_t aRXBufferB[RX_BUFFER_SIZE];
-__IO uint32_t     uwNbReceivedChars;
-__IO uint32_t     uwBufferReadyIndication;
-uint8_t *pBufferReadyForUser;
-uint8_t *pBufferReadyForReception;
-
-__IO uint8_t ubUART2ReceptionComplete = 0;
-
-/* Buffer used for transmission */
-const uint8_t aTxBuffer[] = "test\r\n";
-uint8_t ubNbDataToTransmit = sizeof(aTxBuffer);
-__IO uint8_t ubTransmissionComplete = 0;
 
 
 
@@ -296,11 +289,11 @@ __IO uint8_t ubTransmissionComplete = 0;
   * @param  None
   * @retval None
   */
-void DMA1_ReceiveComplete_Callback(void)
-{
-  /* DMA Rx transfer completed */
-  ubUART2ReceptionComplete = 1;
-}
+//void DMA1_ReceiveComplete_Callback(void)
+//{
+  // DMA Rx transfer completed:
+//  ubUART2ReceptionComplete = 1;
+//}
 
 
 /**
@@ -327,21 +320,6 @@ void USART_CharReception_Callback(void)
 		pBufferReadyForReception[uwNbReceivedChars++] = symbol;
 	}
 }
-
-
-uint64_t tst = 20318984;
-fixedpt f1;
-
-
-uint32_t rr = 174240000; //33mm*33*400*400
-uint32_t y1 = 5800;
-uint32_t y2 = 12480;
-uint32_t x1 = 0;
-
-//G_pipeline gpp[100];
-//LL_GPIO_SetOutputPin
-//LL_GPIO_ResetOutputPin
-
 
 /* USER CODE END 0 */
 
@@ -390,7 +368,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
+	MX_DMA_Init();
   MX_I2C2_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
@@ -412,7 +390,7 @@ int main(void)
 	if(LL_GPIO_IsInputPinSet(BUTTON_1_GPIO_Port, BUTTON_1_Pin)){
 		demo = true;
 	}
-	// инициализация дисплея:
+	// init I2C display: 
 	#ifndef _SIMU
 	Activate_I2C_Master();
 	init_screen(I2C2);
@@ -492,7 +470,7 @@ int main(void)
 //		precalculating_task->precalculate_callback_ref(&state_precalc);
 
 	// start gcode execution
-	G94(&state_hw);
+//	G94(&state_hw);
 //	do_fsm_move_start2(&state_hw);
 	int command = 0;
 //	debug();

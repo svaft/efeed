@@ -106,7 +106,16 @@ static const char * ga1[] = {
 //"G94",
 //"G97 S4547 M3",
 "G0 X14. Z0 F100",
-//"G96 S200 M3",
+"G1 Z-30.",
+"Z0.",
+"G1 Z-30.",
+"Z0.",
+"X0.",
+"X14.",
+"X0.",
+"X14.",
+
+	//"G96 S200 M3",
 //"LIMS=S5000",
 "G1 X14.2 F100",
 "X16.028 Z1.307",
@@ -536,7 +545,6 @@ int main(void)
 //			}
 //		}
 
-#ifdef _SIMU		
 		if(buttons_flag_set) {
 			switch(buttons_flag_set) {
 				case single_click_Msk:
@@ -546,13 +554,14 @@ int main(void)
 			}
 			buttons_flag_set = 0; // reset button flags
 		}
+#ifdef _SIMU		
 #endif
 		
 #ifndef _SIMU		
-		if(buttons_flag_set) {
-			do_fsm_menu(&state_hw);
-			buttons_flag_set = 0; // reset button flags
-		}
+//		if(buttons_flag_set) {
+//			do_fsm_menu(&state_hw);
+//			buttons_flag_set = 0; // reset button flags
+//		}
 
 //		if(z_axis.ramp_step != rs) {
 //			rs = z_axis.ramp_step;

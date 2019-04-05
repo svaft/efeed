@@ -103,7 +103,12 @@ void G01parse(char *line){ //~60-70us
 	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
 	int z0 = init_gp.Z & ~1uL<<10;
 	G_pipeline_t *gref = G_parse(line);
-
+	if(state_hw.init == false){
+		init_gp.X = gref->X;
+		init_gp.Z = gref->Z;
+		state_hw.init = true;
+		return;
+	}
 //	gref->Z = -32*1024;
 //	gref->X = 6*1024;
 	

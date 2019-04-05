@@ -155,10 +155,11 @@ typedef struct G_task{
 
 typedef struct state_s
 {
+	bool init;
 //	uint32_t steps_to_end;
-	uint32_t current_pos;
-	uint32_t end_pos;
-	uint8_t ramp_step;
+//	uint32_t current_pos;
+//	uint32_t end_pos;
+//	uint8_t ramp_step;
 	uint32_t Q824set; // feed rate
 	uint32_t fract_part; // Q8.24 format fract part
 	
@@ -175,11 +176,11 @@ typedef struct state_s
 	bool precalculate_end;
 	
 	bool G94G95; // 0 - unit per min, 1 - unit per rev
-	uint32_t substep_mask;
+//	uint32_t substep_mask;
   state_func_t function;
 //  callback_func_t callback;
-	uint32_t async_z;
-	uint8_t z_period;
+//	uint32_t async_z;
+//	uint8_t z_period;
 	bool f_encoder;
 	bool f_tacho;
 	bool spindle_dir;

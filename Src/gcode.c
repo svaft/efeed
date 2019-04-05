@@ -4,7 +4,7 @@
 fixedpt command;
 G_pipeline_t init_gp={0,0,0,0,0};
 
-G_task_t gt_precalc[task_precalc_size];
+//G_task_t gt_precalc[task_precalc_size];
 G_task_t gt[task_size];
 G_pipeline_t gp[gp_size];
 substep_t substep_delay[substep_size];

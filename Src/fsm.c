@@ -96,7 +96,8 @@ void do_fsm_menu(state_t* s){
 		break;
 	}
 	case single_click_Msk: {
-		if(s->end_pos != 0) {
+		int end_pos = 0; // todo
+		if(end_pos != 0) {
 			// first pass of thread cut was complete, so just use single click
 			//	to switch between modes to process all other cuts
 

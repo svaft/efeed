@@ -78,6 +78,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+
 /* USER CODE BEGIN PV */
 state_t state_hw;
 state_t state_precalc;
@@ -105,19 +106,17 @@ static const char * ga1[] = {
 //"G54",
 //"G94",
 //"G97 S4547 M3",
-"G0 X14. Z0 F100",
-"G1 Z-30.",
+"G0 X14. Z0 F30",
+"G1 Z-3.",
 "Z0.",
-"G1 Z-30.",
-"Z0.",
-"X0.",
+"X10.",
 "X14.",
-"X0.",
+"X10.",
 "X14.",
 
 	//"G96 S200 M3",
 //"LIMS=S5000",
-"G1 X14.2 F100",
+"G1 X14.2 ",
 "X16.028 Z1.307",
 "X13.2 Z-0.107",
 "Z-30.8",
@@ -275,6 +274,15 @@ __IO uint8_t ubTransmissionComplete = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
+static void MX_I2C2_Init(void);
+static void MX_TIM1_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void USART_CharReception_Callback(void);
 void SystemClock_Config(void);
@@ -377,7 +385,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-	MX_DMA_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
@@ -401,11 +409,11 @@ int main(void)
 	}
 	// init I2C display: 
 	#ifndef _SIMU
-	Activate_I2C_Master();
-	init_screen(I2C2);
+//	Activate_I2C_Master();
+//	init_screen(I2C2);
 //	update_screen();
 //	i2c_device_init(I2C2);
-	LL_mDelay(250);
+//	LL_mDelay(250);
 	#endif
 	init_buttons();
 
@@ -517,8 +525,12 @@ int main(void)
 				if(precalculating_task) {
 					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
 					// init precalc:
-					if(precalculating_task->precalculate_init_callback_ref)
+					if(precalculating_task->precalculate_init_callback_ref){
 						precalculating_task->precalculate_init_callback_ref(&state_precalc);
+						for(int a = 0; a<10;a++)
+							precalculating_task->precalculate_callback_ref(&state_precalc);
+					}
+
 				}
 
 			}
@@ -858,6 +870,7 @@ static void MX_TIM3_Init(void)
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
   LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH1);
   LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
+  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
@@ -1069,10 +1082,10 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin);
+  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_DIR_Pin|MOTOR_Z_ENABLE_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_X_ENABLE_Pin|MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin);
+  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_X_ENABLE_Pin|MOTOR_Z_DIR_Pin);
 
   /**/
   GPIO_InitStruct.Pin = LED_Pin;
@@ -1088,20 +1101,19 @@ static void MX_GPIO_Init(void)
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_1|LL_GPIO_PIN_4|LL_GPIO_PIN_5 
-                          |LL_GPIO_PIN_6|LL_GPIO_PIN_10|LL_GPIO_PIN_11|LL_GPIO_PIN_12 
-                          |LL_GPIO_PIN_15;
+                          |LL_GPIO_PIN_6|LL_GPIO_PIN_10|LL_GPIO_PIN_11|LL_GPIO_PIN_12;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = MOTOR_X_DIR_Pin;
+  GPIO_InitStruct.Pin = MOTOR_X_DIR_Pin|MOTOR_Z_ENABLE_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  LL_GPIO_Init(MOTOR_X_DIR_GPIO_Port, &GPIO_InitStruct);
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin;
+  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_Z_DIR_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -1109,7 +1121,7 @@ static void MX_GPIO_Init(void)
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_2|LL_GPIO_PIN_12|LL_GPIO_PIN_13|LL_GPIO_PIN_14 
-                          |LL_GPIO_PIN_15|LL_GPIO_PIN_9;
+                          |LL_GPIO_PIN_15|LL_GPIO_PIN_5|LL_GPIO_PIN_9;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 

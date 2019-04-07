@@ -26,7 +26,7 @@
 #define CLICKTIME_MS 10 
 #else
 #define DEBOUNCE_MS 20                 // ms debounce period to prevent flickering when pressing or releasing the button
-#define DOUBLECLICK_GAP_MS 150                       // max ms between clicks for a double click event
+#define DOUBLECLICK_GAP_MS 80//150                       // max ms between clicks for a double click event
 #define HOLDTIME_MS 500                // ms hold period: how long to wait for press+hold event
 #define CLICKTIME_MS 250 
 #endif

@@ -77,7 +77,23 @@ void G94(state_t* s){
 
 void do_fsm_move_start2(state_t* s){
 //	load_next_task(s); // load first task from queue
-
+	#define leddbg 100
+	LED_ON();
+	LL_mDelay(leddbg);
+	LED_OFF();
+	LL_mDelay(leddbg);
+	LED_ON();
+	LL_mDelay(leddbg);
+	LED_OFF();
+	LL_mDelay(leddbg);
+	LED_ON();
+	LL_mDelay(leddbg);
+	LED_OFF();
+	LL_mDelay(leddbg);
+	LED_ON();
+	LL_mDelay(leddbg);
+	LED_OFF();
+	LL_mDelay(leddbg);
 //	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
 //	s->syncbase->ARR = 1;
 //	s->syncbase->CNT = 1; // set ARR=CNT to start pulse generation on next count increment after EnableCounter.
@@ -104,6 +120,7 @@ void do_fsm_move2(state_t* s){
 
 	substep_t *sb = substep_cb.tail; //cb_pop_front_ref(&substep_cb);
 	if(!sb->skip){
+		LED_ON();
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 		TIM1->CCR1	= delay;
 		TIM1->ARR 	= delay + min_pulse;
@@ -123,8 +140,8 @@ void do_fsm_move2(state_t* s){
 
 
 void do_fsm_move_end2(state_t* s){
-	debug();
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+//	debug();
+//  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now

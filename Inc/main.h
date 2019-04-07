@@ -235,12 +235,12 @@ void Error_Handler(void);
 #define BUTTON_1_GPIO_Port GPIOA
 #define BUTTON_2_Pin LL_GPIO_PIN_9
 #define BUTTON_2_GPIO_Port GPIOA
-#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_3
-#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
+#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_15
+#define MOTOR_Z_ENABLE_GPIO_Port GPIOA
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_3
+#define MOTOR_Z_DIR_GPIO_Port GPIOB
 #define MOTOR_Z_STEP_Pin LL_GPIO_PIN_4
 #define MOTOR_Z_STEP_GPIO_Port GPIOB
-#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_5
-#define MOTOR_Z_DIR_GPIO_Port GPIOB
 #define ENC_A_Pin LL_GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
 #define ENC_B_Pin LL_GPIO_PIN_7
@@ -366,15 +366,15 @@ void Error_Handler(void);
 #define LED_OFF()		LL_GPIO_SetOutputPin(LED_GPIO_Port, LED_Pin)
 #define LED_ON()		LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin)
 
-#define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH1
-#define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH3
+#define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH3
+#define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH1
 #define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
-#define MOTOR_Z_AllowPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 1
-#define MOTOR_Z_BlockPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 0
+#define MOTOR_Z_AllowPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 1
+#define MOTOR_Z_BlockPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 0
 
 #define MOTOR_X_OnlyPulse()         TIM3->CCER = MOTOR_X_CHANNEL
-#define MOTOR_X_AllowPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 1
-#define MOTOR_X_BlockPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 0
+#define MOTOR_X_AllowPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 1
+#define MOTOR_X_BlockPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 0
 
 #define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400	todo move to some central point to modify
 

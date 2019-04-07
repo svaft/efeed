@@ -98,11 +98,16 @@ inline void process_button()
 			bt[a].buttons_mstick = 1;
 			return;
 		}
-
+#ifdef _SIMU
+	#define released 0
+		#else
+	#define released 1
+#endif		
+		
 		if( bt[a].buttons_mstick > DEBOUNCE_MS ) {
 			switch(bt[a].clk_mode) {
 			case 10: {
-				if ( tmp_buttons == false ) {   // released
+				if ( tmp_buttons == released ) {   // released
 				} else { // pressed
 //					buttons_mstick = 1;
 					bt[a].clk_mode = 20;
@@ -110,7 +115,7 @@ inline void process_button()
 				break;
 			}
 			case 20: {
-				if ( tmp_buttons == false ) { // released
+				if ( tmp_buttons == released ) { // released
 					bt[a].clk_mode = 50;
 				} else {
 					bt[a].downTime = bt[a].buttons_mstick;
@@ -126,7 +131,7 @@ inline void process_button()
 				break;
 			}
 			case 40: {
-				if ( tmp_buttons == false ) { //released
+				if ( tmp_buttons == released ) { //released
 					bt[a].clk_mode = 50;
 				} else {
 					bt[a].downTime = bt[a].buttons_mstick;
@@ -148,7 +153,7 @@ inline void process_button()
 				break;
 			}
 			case 70: { //70. тиков меньше 200, это может быть дабл-клик, ждем нажатия еще 100, если ничего идем в 60, если клик идем в 80
-				if ( tmp_buttons == false ) {
+				if ( tmp_buttons == released ) {
 					bt[a].downTime = bt[a].buttons_mstick;
 					if( bt[a].downTime > DOUBLECLICK_GAP_MS ) {
 						bt[a].clk_mode = 60;
@@ -159,7 +164,7 @@ inline void process_button()
 				break;
 			}
 			case 80: {
-				if ( tmp_buttons == false ) { // released
+				if ( tmp_buttons == released ) { // released
 					bt[a].clk_mode = 90;
 				} else {
 					bt[a].downTime = bt[a].buttons_mstick;

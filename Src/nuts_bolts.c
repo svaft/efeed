@@ -92,9 +92,8 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
  *
  * \return 
  */
-#define hzminps 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
 	fixedptu str_f824mm_min_to_delay824(fixedptu feed){
-	fixedptu f = fixedpt_xdiv2210(hzminps, feed);
+	fixedptu f = fixedpt_xdiv2210(hzminps_z, feed);
 	f = f << 14; // translate to 8.24 format used for delays
 	return f;
 }
@@ -223,55 +222,53 @@ int str_f_to_2210(char *line, uint8_t *char_counter){
 
 //int str_f_inch_to_steps2210(const char *str, char **endptr){
 int str_f_inch_to_steps2210(char *line, uint8_t *char_counter){
-  char *str = line + *char_counter;
+  while(1); // todo trap, rewrite
+	char *str = line + *char_counter;
 
-// minimum processed value is 0.0001inch
-    #define steps_per_inch_Z_2210   254*40*1024
-
-    uint8_t ten = 0;
-    fixedpt t2210 = 0;
-    uint32_t number = 0;
-    bool negative = false;
-    bool fract = false;
-    char c;
-    while ((c = *str) != 0) {
-        if (c >= '0' && c <= '9')   {
-            if(fract==false){
-                number = number * 10 + (c - '0');
-            } else{
-                if(ten<4){
-                    number = number * 10 + (c - '0');
-                }
-                ten++;
-            }
-        } 
-        else if (c == '-')  {
-            negative = true;
-        }
-        else if (c == '.') {
-            t2210 = number * steps_per_inch_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
-            number = 0;
-            fract = true;
-        }   
-        str++;
-    }
+	uint8_t ten = 0;
+	fixedpt t2210 = 0;
+	uint32_t number = 0;
+	bool negative = false;
+	bool fract = false;
+	char c;
+	while ((c = *str) != 0) {
+		if (c >= '0' && c <= '9')   {
+			if(fract==false){
+				number = number * 10 + (c - '0');
+			} else{
+				if(ten<4){
+						number = number * 10 + (c - '0');
+				}
+				ten++;
+			}
+		} 
+		else if (c == '-')  {
+			negative = true;
+		}
+		else if (c == '.') {
+			t2210 = number * steps_per_inch_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
+			number = 0;
+			fract = true;
+		}   
+		str++;
+	}
 //    if (endptr != 0) *endptr = (char *)str;
 
 	*char_counter = str - line - 1; // Set char_counter to next statement
 	if (fract == true){
     switch(ten){
-        case 1:{ // if only one fract didgit in g-code
-            number *= 1000;
-            break;
-        }
-        case 2:{// if only two fract didgits in g-code
-            number *= 100;
-            break;
-        }
-        case 3:{// if only three fract didgits in g-code
-            number *= 10;
-            break;
-        }
+			case 1:{ // if only one fract didgit in g-code
+				number *= 1000;
+				break;
+			}
+			case 2:{// if only two fract didgits in g-code
+				number *= 100;
+				break;
+			}
+			case 3:{// if only three fract didgits in g-code
+				number *= 10;
+				break;
+			}
     }
     /* some explanations:
     number contains fract part*10000, ie when 0.9999inch = 9999.
@@ -301,9 +298,6 @@ int str_f_inch_to_steps2210(char *line, uint8_t *char_counter){
 
 int str_f_to_steps2210(char *line, uint8_t *char_counter){
   char *str = line + *char_counter;
-
-	// minimum processed value is 0.001mm
-    #define steps_per_unit_Z_2210   400<<10
 
 	uint8_t ten = 0;
 	fixedpt t2210 = 0;
@@ -345,7 +339,10 @@ int str_f_to_steps2210(char *line, uint8_t *char_counter){
 			}
 		}
 
-		t2210 += ((number << 12) / 10); //		t2210 += ((number << 10) * 400 / 1000);
+		// for 1mm pitch leadscrew:
+//		t2210 += ((number << 12) / 10); //		t2210 += ((number << 10) * 400 / 1000); // 
+
+		t2210 += (number * steps_per_unit_Z_2210) / 1000;
 //		t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
 	} else {
 		t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format

@@ -169,7 +169,11 @@ typedef struct state_s
 	
 	uint32_t prescaler; // used for calculating substep delay
 	uint16_t rpm; // current sindle speed in rpm
+
 	int substep_axis;
+	volatile uint32_t *substep_pin;
+	uint8_t substep_pulse_on;
+	uint8_t substep_pulse_off;
 	
 	G_task_t current_task;
 	bool task_lock;
@@ -329,6 +333,76 @@ void Error_Handler(void);
 #elif	MOTOR_Z_DIR_Pin == 	LL_GPIO_PIN_15
 	#define MOTOR_Z_DIR_Pin_num 15
 #endif 	
+
+
+#if 	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_0	
+	#define MOTOR_Z_STEP_Pin_num 0
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_1
+	#define MOTOR_Z_STEP_Pin_num 1
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_2
+	#define MOTOR_Z_STEP_Pin_num 2
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_3
+	#define MOTOR_Z_STEP_Pin_num 3
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_4
+	#define MOTOR_Z_STEP_Pin_num 4
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_5
+	#define MOTOR_Z_STEP_Pin_num 5
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_6
+	#define MOTOR_Z_STEP_Pin_num 6
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_7
+	#define MOTOR_Z_STEP_Pin_num 7
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_8
+	#define MOTOR_Z_STEP_Pin_num 8
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_9
+	#define MOTOR_Z_STEP_Pin_num 9
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_10
+	#define MOTOR_Z_STEP_Pin_num 10
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_11
+	#define MOTOR_Z_STEP_Pin_num 11
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_12
+	#define MOTOR_Z_STEP_Pin_num 12
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_13
+	#define MOTOR_Z_STEP_Pin_num 13
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_14
+	#define MOTOR_Z_STEP_Pin_num 14
+#elif	MOTOR_Z_STEP_Pin == 	LL_GPIO_PIN_15
+	#define MOTOR_Z_STEP_Pin_num 15
+#endif 	
+
+#if 	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_0	
+	#define MOTOR_X_STEP_Pin_num 0
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_1
+	#define MOTOR_X_STEP_Pin_num 1
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_2
+	#define MOTOR_X_STEP_Pin_num 2
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_3
+	#define MOTOR_X_STEP_Pin_num 3
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_4
+	#define MOTOR_X_STEP_Pin_num 4
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_5
+	#define MOTOR_X_STEP_Pin_num 5
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_6
+	#define MOTOR_X_STEP_Pin_num 6
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_7
+	#define MOTOR_X_STEP_Pin_num 7
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_8
+	#define MOTOR_X_STEP_Pin_num 8
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_9
+	#define MOTOR_X_STEP_Pin_num 9
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_10
+	#define MOTOR_X_STEP_Pin_num 10
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_11
+	#define MOTOR_X_STEP_Pin_num 11
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_12
+	#define MOTOR_X_STEP_Pin_num 12
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_13
+	#define MOTOR_X_STEP_Pin_num 13
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_14
+	#define MOTOR_X_STEP_Pin_num 14
+#elif	MOTOR_X_STEP_Pin == 	LL_GPIO_PIN_15
+	#define MOTOR_X_STEP_Pin_num 15
+#endif 	
+
 #define zdir_forward	1
 #define zdir_backward	0
 #define xdir_forward	1
@@ -340,6 +414,9 @@ void Error_Handler(void);
 // so it can be used for example as XDIR = zdir_forward;
 #define XDIR	*((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_DIR_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_DIR_Pin_num*4 ))))
 #define ZDIR	*((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_Z_DIR_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_Z_DIR_Pin_num*4 ))))
+
+#define XSTP	*((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  (uint32_t)((uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC) 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 ))))
+#define ZSTP	*((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_Z_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_Z_STEP_Pin_num*4 ))))
 
 #define t3cr1			((uint32_t *)((PERIPH_BB_BASE  + ((TIM3_BASE)-PERIPH_BASE)*32)))
 #define t4cr1			((uint32_t *)((PERIPH_BB_BASE  + ((TIM4_BASE)-PERIPH_BASE)*32)))
@@ -376,7 +453,39 @@ void Error_Handler(void);
 #define MOTOR_X_AllowPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 1
 #define MOTOR_X_BlockPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 0
 
-#define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400	todo move to some central point to modify
+
+
+//#define steps_per_unit_Z_2210   400<<10
+
+#define x_steps_unit	200
+#define x_screw_pitch	1,27
+
+#define z_steps_unit	400
+#define z_screw_pitch	1,5
+
+#define hzminps_z 6750<<10 //30000hz*60sec*z_screw_pitch/z_steps_unit // 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
+#define hzminps_x 11430<<10 //30000hz*60sec*x_screw_pitch/x_steps_unit 
+
+// minimum processed value is 0.0001inch
+#define steps_per_inch_Z_2210   254*40*1024
+
+// minimum processed value is 0.001mm
+#define steps_per_unit_Z_2210   273066 //z_steps_unit<<10/z_screw_pitch
+
+/*
+Due to the fact that the configuration of the stepper motor for the X and Z axes may not be equal 
+in the real world, our circle or line(in steps per/mm) will not be a circle/line but an ellipse.
+for example, in my config I have 1 mm lead screw 400 steps / mm in Z 
+but since my taig lathe with imperial screw on cross feed
+I have 1.27 * 200 steps / mm with a decrease in the pulley 61/16 = 200 * 61/16 / 1.27 = 600.3937 steps per mm.
+this is about 1.5 more than the Z axis.
+so in the case of transferring the physical circle into a stepped ellipse, 
+we need to multiply the radius of the X axis (steps by / mm) by 1.5.
+*/
+
+//#define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400/1,5
+
+#define z_to_x_factor2210	2305 //1024*x_steps_unit*61/16/x_screw_pitch/z_steps_unit/z_screw_pitch // 1537 //1024*61*200*1,5/16/1,27/400
 
 #define SUBSTEP_AXIS_Z 0
 #define SUBSTEP_AXIS_X 1

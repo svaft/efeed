@@ -69,19 +69,41 @@ void G01init_callback(state_t* s){
 //	3. set channels
 	s->function = do_fsm_move2;
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
+	s->prescaler = s->syncbase->PSC;
 	TIM3->CCER = 0;
 	XDIR = s->current_task.x_direction;
 	ZDIR = s->current_task.z_direction;
 	if(s->current_task.dz > s->current_task.dx){
 		s->current_task.steps_to_end = s->current_task.dz;
+
+		
+//#define XSTP	*((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 ))))
+
+//#define BITBAND_PERI2(a,b) ((PERIPH_BB_BASE + (a-PERIPH_BASE)*32 + (b*4)))		
+		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
+
+//		BITBAND_PERI2(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin_num); //(unsigned int *)((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 )));
+		s->substep_pulse_on = 1;
+		s->substep_pulse_off = 0;
+		
 		s->substep_axis = SUBSTEP_AXIS_X;
 		s->err = -s->current_task.dz >> 1;
 		MOTOR_Z_AllowPulse(); 
+		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+		
 	} else{
 		s->current_task.steps_to_end = s->current_task.dx;
 		s->err = s->current_task.dx >> 1;
 		s->substep_axis = SUBSTEP_AXIS_Z;
+
+		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
+		
+//		s->substep_pin = &ZSTP;
+		s->substep_pulse_on = 0;
+		s->substep_pulse_off = 1;
+
 		MOTOR_X_AllowPulse(); 
+		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
 	}
 
 //	dxdz_callback(s);

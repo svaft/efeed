@@ -181,9 +181,14 @@ void TIM1_UP_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_IRQn 0 */
 	// enable corresponding channel for sub-step:
+	TIM1->CR1 = 0;
 	TIM1->SR = 0;
-	LL_TIM_DisableCounter(TIM1);
-	LL_GPIO_ResetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin);
+//	LL_TIM_DisableCounter(TIM1);
+
+	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_off;
+//	LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port, MOTOR_Z_STEP_Pin);
+
+//	LL_GPIO_ResetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin);
 //	LL_GPIO_ResetOutputPin(GPIOB,LL_GPIO_PIN_0); 
 	LL_TIM_SetCounter(TIM1,0);
 
@@ -203,8 +208,12 @@ void TIM1_CC_IRQHandler(void)
   /* USER CODE BEGIN TIM1_CC_IRQn 0 */
 //	LL_GPIO_SetOutputPin(GPIOB,LL_GPIO_PIN_0); 
 	TIM1->SR = 0;
-	LL_GPIO_SetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin); 
-	LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
+	LL_TIM_DisableIT_CC1(TIM1);
+	
+	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_on;
+	
+//	LL_GPIO_SetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_X_DIR_Pin); 
+//	LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port, MOTOR_Z_STEP_Pin);
 //	LL_GPIO_SetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
 	//	TIM3->CCER = state_hw.substep_mask;
 //	B0 on

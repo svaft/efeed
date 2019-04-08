@@ -96,7 +96,6 @@ G96, G97 Spindle Control Mode, G97 (RPM Mode)
 
 
 static const char * ga1[] = {
-"G90 G94 G18",
 //"G71",
 //"LIMS=S6000",
 //"G53 G0 X0.",
@@ -106,12 +105,13 @@ static const char * ga1[] = {
 //"G54",
 //"G94",
 //"G97 S4547 M3",
-"G0 X14. Z0 F30",
-"G1 Z-3.",
-"Z0.",
-"X10.",
+"G90 G94 G18",
+"G0 X14. Z0. F500",
+"G1 Z-1.0",
+"Z0. X15.",
 "X14.",
-"X10.",
+"Z-1.",
+"Z0. X15.",
 "X14.",
 
 	//"G96 S200 M3",
@@ -393,8 +393,8 @@ int main(void)
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+	LL_mDelay(50);
 
-{
   /* Enable DMA TX Interrupt */
   LL_USART_EnableDMAReq_TX(USART2);
   /* Enable DMA Channel Tx */
@@ -423,7 +423,7 @@ int main(void)
 
 	do_fsm_menu(&state_hw);
 	LED_OFF();
-}
+
 
   /* USER CODE END 2 */
 
@@ -438,7 +438,7 @@ int main(void)
 	LL_TIM_GenerateEvent_UPDATE(TIM3);
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3); // */
-
+	LL_mDelay(40);
 //		LL_GPIO_SetPinMode(GPIOB,LL_GPIO_PIN_0,LL_GPIO_MODE_OUTPUT);
 
 
@@ -489,7 +489,7 @@ int main(void)
 	// start gcode execution
 //	G94(&state_hw);
 //	do_fsm_move_start2(&state_hw);
-	int command = 0;
+	int command = 0, preload = 9;
 //	debug();
 
 	while (1) {
@@ -557,7 +557,9 @@ int main(void)
 //			}
 //		}
 
-		if(buttons_flag_set) {
+		if(buttons_flag_set || preload-- > 0) {
+			if(preload > 0)
+				buttons_flag_set = 4;
 			switch(buttons_flag_set) {
 				case single_click_Msk:
 					// emulate receive g-code line by usart interrupt(bluetooth) 

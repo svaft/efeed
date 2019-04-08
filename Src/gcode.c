@@ -78,7 +78,7 @@ void G94(state_t* s){
 void do_fsm_move_start2(state_t* s){
 //	load_next_task(s); // load first task from queue
 	#define leddbg 100
-	LED_ON();
+/*	LED_ON();
 	LL_mDelay(leddbg);
 	LED_OFF();
 	LL_mDelay(leddbg);
@@ -93,7 +93,7 @@ void do_fsm_move_start2(state_t* s){
 	LED_ON();
 	LL_mDelay(leddbg);
 	LED_OFF();
-	LL_mDelay(leddbg);
+	LL_mDelay(leddbg);*/
 //	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
 //	s->syncbase->ARR = 1;
 //	s->syncbase->CNT = 1; // set ARR=CNT to start pulse generation on next count increment after EnableCounter.
@@ -120,11 +120,15 @@ void do_fsm_move2(state_t* s){
 
 	substep_t *sb = substep_cb.tail; //cb_pop_front_ref(&substep_cb);
 	if(!sb->skip){
-		LED_ON();
+//		LED_ON();
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
-		TIM1->CCR1	= delay;
-		TIM1->ARR 	= delay + min_pulse;
-		LL_TIM_EnableIT_CC1(TIM1);
+		TIM1->CCR1	= delay + 1;
+		TIM1->ARR 	= delay + min_pulse + 1;
+//		if(delay < 10) {
+//		} else {
+			LL_TIM_EnableIT_CC1(TIM1);
+			LL_TIM_EnableCounter(TIM1);
+//		}
 		cb_pop_front_ref(&substep_cb);
 	} else {
 		sb->skip--;
@@ -181,18 +185,19 @@ void command_parser(char *line){
 				command = str_f_to_steps2210(line, &char_counter);
 				switch(command){
 					//todo now its only one G command per line supported
-					case 4*400*1024: //G4 dwell, pause P seconds
+#define G4_2210	4*steps_per_unit_Z_2210*1024
+					case 4*steps_per_unit_Z_2210: //G4 dwell, pause P seconds
 						G04parse(line+char_counter);
 						break;
-					case 36864000: //G90  absolute distance mode
+					case 90*steps_per_unit_Z_2210: //G90  absolute distance mode
 						
 						break;
-					case 38502400: //G94 Units per Minute Mode
+					case 94*steps_per_unit_Z_2210: //G94 Units per Minute Mode
 //						s->G94G95 = 0;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G94;
 						break;
-					case 38912000: //G95 - is Units per Revolution Mode
+					case 95*steps_per_unit_Z_2210: //G95 - is Units per Revolution Mode
 //						s->G94G95 = 1;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G95;
@@ -202,30 +207,30 @@ void command_parser(char *line){
 					case 0://G0 command packed into 2210_400 format
 						G01parse(line+char_counter);
 						return;	
-					case 409600://G1 command packed into 2210_400 format
+					case 1*steps_per_unit_Z_2210://G1 command packed into 2210_400 format
 						G01parse(line+char_counter);
 						return;	
-					case 819200: //G2 CW ARC
+					case 2*steps_per_unit_Z_2210: //G2 CW ARC
 						G03parse(line+char_counter,CCW); //
 						break;
-					case 1228800: //G3 CCW ARC
+					case 3*steps_per_unit_Z_2210: //G3 CCW ARC
 						G03parse(line+char_counter, CW); //!! G2 and G3 codes inverted for classic lathe where 
 							//cutting tool under Z axis
 						return;	
-					case 13516800: //G33
+					case 33*steps_per_unit_Z_2210: //G33
 						return;	
 				}
 				break;
 			case 'X':
 			case 'Z':
 				switch(command){
-					case 409600://G1 command packed into 2210_400 format
+					case 1*steps_per_unit_Z_2210://G1 command packed into 2210_400 format
 						G01parse(line+char_counter - 1);
 						return;	
-					case 1228800: //G3
+					case 3*steps_per_unit_Z_2210: //G3
 						G03parse(line+char_counter - 1,0);
 						return;	
-					case 13516800: //G33
+					case 33*steps_per_unit_Z_2210: //G33
 						return;	
 				}
 				break;

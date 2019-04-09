@@ -94,7 +94,7 @@ G54-G59.3 Select Coordinate System
 G96, G97 Spindle Control Mode, G97 (RPM Mode)
 */
 
-
+int preload = 20;
 static const char * ga1[] = {
 //"G71",
 //"LIMS=S6000",
@@ -107,12 +107,12 @@ static const char * ga1[] = {
 //"G97 S4547 M3",
 "G90 G94 G18",
 "G0 X14. Z0. F500",
-"G1 Z-1.0",
-"Z0. X15.",
-"X14.",
-"Z-1.",
-"Z0. X15.",
-"X14.",
+//"G1 Z-0.05",
+//"G1 Z0.05 X14.05",
+//"X14. Z-1.",
+//"Z-1.",
+//"Z0. X15.",
+//"X14.",
 
 	//"G96 S200 M3",
 //"LIMS=S5000",
@@ -124,31 +124,31 @@ static const char * ga1[] = {
 "X18.",
 "G0 Z1.414",
 "X15.228",
-"G1 X12.4 Z0 F100",
+"G1 X12.4 Z0 F500",
 "Z-30.8",
 "X13.2",
 "X17.2",
 "G0 Z1.414",
 "X14.428",
-"G1 X11.6 Z0 F100",
+"G1 X11.6 Z0 F500",
 "Z-30.8",
 "X12.4",
 "X16.4",
 "G0 Z1.414",
 "X13.728",
-"G1 X10.9 Z0 F100",
+"G1 X10.9 Z0 F500",
 "Z-30.8",
 "X11.6",
 "X14.428 Z-29.386",
 "G0 Z1.414",
 "X13.028",
-"G1 X10.2 Z0 F100",
+"G1 X10.2 Z0 F500",
 "Z-30.8",
 "X10.9",
 "X13.728 Z-29.386",
 "G0 Z0.614",
 "X12.828",
-"G1 X10. Z-0.8 F100",
+"G1 X10. Z-0.8 F500",
 "Z-30.8",
 "X12.828 Z-29.386",
 "X14.",
@@ -389,13 +389,23 @@ int main(void)
   MX_I2C2_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
-  MX_TIM3_Init();
+	MX_TIM3_Init();
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-	LL_mDelay(50);
+//	LL_TIM_OC_SetPolarity(TIM3,LL_TIM_CHANNEL_CH1,LL_TIM_OCPOLARITY_LOW);
+//	LL_TIM_CC_EnableChannel(TIM3,LL_TIM_CHANNEL_CH1);
+	
+//	while(1);
+	
+//	LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+//	LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port, MOTOR_Z_STEP_Pin); 
+//	LL_mDelay(50);
+//	LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
+//	LL_mDelay(50);
 
-  /* Enable DMA TX Interrupt */
+
+	/* Enable DMA TX Interrupt */
   LL_USART_EnableDMAReq_TX(USART2);
   /* Enable DMA Channel Tx */
   LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_7);
@@ -433,12 +443,12 @@ int main(void)
 //	debug();
 // prevent to put TIM3 stepper chanels high on set corresponding CCER-CCxE bit.
 // without this code channel is enabled on set CCER-CCxE ignoring shadow register, thats strange...	
-
+/*
 	LL_TIM_DisableIT_UPDATE(TIM3);
 	LL_TIM_GenerateEvent_UPDATE(TIM3);
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3); // */
-	LL_mDelay(40);
+//	LL_mDelay(5);
 //		LL_GPIO_SetPinMode(GPIOB,LL_GPIO_PIN_0,LL_GPIO_MODE_OUTPUT);
 
 
@@ -489,8 +499,9 @@ int main(void)
 	// start gcode execution
 //	G94(&state_hw);
 //	do_fsm_move_start2(&state_hw);
-	int command = 0, preload = 9;
+	int command = 0;
 //	debug();
+//	LL_mDelay(50);
 
 	while (1) {
 		// recalc substep delays
@@ -544,6 +555,8 @@ int main(void)
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
 //		process_G_pipeline();
 		load_next_task(&state_hw);
+
+		
 		process_button();
 //		process_joystick();
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
@@ -557,8 +570,8 @@ int main(void)
 //			}
 //		}
 
-		if(buttons_flag_set || preload-- > 0) {
-			if(preload > 0)
+		if(buttons_flag_set || preload > 0) {
+			if(preload-- > 0)
 				buttons_flag_set = 4;
 			switch(buttons_flag_set) {
 				case single_click_Msk:
@@ -864,19 +877,20 @@ static void MX_TIM3_Init(void)
   LL_TIM_EnableARRPreload(TIM3);
   LL_TIM_SetClockSource(TIM3, LL_TIM_CLOCKSOURCE_INTERNAL);
   LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH1);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
-  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.CompareValue = 1;
-  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
-  LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
-  LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH1);
-  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
   TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.CompareValue = 1;
+  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_LOW;
+  LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
+  LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH1);
+  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
+  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
+  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_LOW;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
-  LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH3);
+  LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH3);
   LL_TIM_SetOnePulseMode(TIM3, LL_TIM_ONEPULSEMODE_SINGLE);
   LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
@@ -885,6 +899,26 @@ static void MX_TIM3_Init(void)
   LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_RESET);
   LL_TIM_DisableMasterSlaveMode(TIM3);
   /* USER CODE BEGIN TIM3_Init 2 */
+
+	LL_TIM_DisableIT_UPDATE(TIM3);
+	LL_TIM_GenerateEvent_UPDATE(TIM3);
+	LL_TIM_ClearFlag_UPDATE(TIM3);
+	LL_TIM_EnableIT_UPDATE(TIM3); // */
+
+	LL_TIM_CC_EnableChannel(TIM3,LL_TIM_CHANNEL_CH1);
+	LL_TIM_CC_EnableChannel(TIM3,LL_TIM_CHANNEL_CH3);	
+//	LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+
+/*
+// prevent to put TIM3 stepper chanels high on set corresponding CCER-CCxE bit.
+// without this code channel is enabled on set CCER-CCxE ignoring shadow register, thats strange...	
+	LL_TIM_DisableIT_UPDATE(TIM3);
+	LL_TIM_GenerateEvent_UPDATE(TIM3);
+	LL_TIM_ClearFlag_UPDATE(TIM3);
+	LL_TIM_EnableIT_UPDATE(TIM3); // */
+
+//	TIM3->CCMR1 = 0x48;
+
 
   /* USER CODE END TIM3_Init 2 */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);

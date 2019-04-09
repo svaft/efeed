@@ -467,8 +467,8 @@ void G03parse(char *line, int8_t cwccw){
                   |
 */
 	state_t *s = &state_hw;
-	int x0 = init_gp.X & ~1uL<<10; //save pos from prev gcode
-	int z0 = init_gp.Z & ~1uL<<10;
+	int x0 = init_gp.X & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
+	int z0 = init_gp.Z & ~1uL<<(FIXEDPT_FBITS2210-1);
 	G_pipeline_t *gref = G_parse(line);
 
 	int x0z = -gref->I; //x0+xdelta;

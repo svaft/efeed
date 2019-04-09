@@ -181,20 +181,18 @@ void TIM1_UP_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_IRQn 0 */
 	// enable corresponding channel for sub-step:
-	TIM1->CR1 = 0;
 	TIM1->SR = 0;
-//	LL_TIM_DisableCounter(TIM1);
-
 	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_off;
-//	LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port, MOTOR_Z_STEP_Pin);
+	
+	if(state_hw.current_task.steps_to_end == 0){
+		state_hw.task_lock = false; // unlock task processor to load next task
+		if(task_cb.count == 0){
+			do_fsm_move_end2(&state_hw);
+//			return;
+		}
+//		load_next_task(&state_hw);
+	}
 
-//	LL_GPIO_ResetOutputPin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin);
-//	LL_GPIO_ResetOutputPin(GPIOB,LL_GPIO_PIN_0); 
-	LL_TIM_SetCounter(TIM1,0);
-
-//	LL_GPIO_ResetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
-
-	return;
   /* USER CODE END TIM1_UP_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_IRQn 1 */
   /* USER CODE END TIM1_UP_IRQn 1 */
@@ -206,19 +204,8 @@ void TIM1_UP_IRQHandler(void)
 void TIM1_CC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_CC_IRQn 0 */
-//	LL_GPIO_SetOutputPin(GPIOB,LL_GPIO_PIN_0); 
 	TIM1->SR = 0;
-	LL_TIM_DisableIT_CC1(TIM1);
-	
 	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_on;
-	
-//	LL_GPIO_SetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_X_DIR_Pin); 
-//	LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port, MOTOR_Z_STEP_Pin);
-//	LL_GPIO_SetOutputPin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin);
-	//	TIM3->CCER = state_hw.substep_mask;
-//	B0 on
-//	LL_TIM_DisableCounter(TIM1);
-
   /* USER CODE END TIM1_CC_IRQn 0 */
   /* USER CODE BEGIN TIM1_CC_IRQn 1 */
 
@@ -259,15 +246,13 @@ void TIM3_IRQHandler(void)
 	if(state_hw.current_task.callback_ref){
 		state_hw.current_task.callback_ref(&state_hw);
 	}
-//	debug1();
-	if(state_hw.current_task.steps_to_end == 0){
+	if(state_hw.current_task.steps_to_end == 0 && !LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
 		state_hw.task_lock = false; // unlock task processor lo load next task
-//			debug();
 		if(task_cb.count == 0){
 			do_fsm_move_end2(&state_hw);
-			return;
+//			return;
 		}
-		load_next_task(&state_hw);
+//		load_next_task(&state_hw);
 	}
 
   /* USER CODE END TIM3_IRQn 0 */

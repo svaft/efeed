@@ -115,20 +115,18 @@ void do_fsm_move_start2(state_t* s){
 //	LL_TIM_ClearFlag_UPDATE(TIM2);
 //	LL_TIM_EnableIT_UPDATE(s->syncbase);
 }
-
+uint32_t move_cnt = 0;
 void do_fsm_move2(state_t* s){
-
+	move_cnt++;
 	substep_t *sb = substep_cb.tail; //cb_pop_front_ref(&substep_cb);
-	if(!sb->skip){
-//		LED_ON();
+	if(sb->skip == 0){
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 		TIM1->CCR1	= delay + 1;
 		TIM1->ARR 	= delay + min_pulse + 1;
-//		if(delay < 10) {
-//		} else {
-			LL_TIM_EnableIT_CC1(TIM1);
-			LL_TIM_EnableCounter(TIM1);
-//		}
+		TIM1->SR = 0;
+		LL_TIM_EnableIT_CC1(TIM1);
+		LL_TIM_SetOnePulseMode(TIM1,LL_TIM_ONEPULSEMODE_SINGLE);
+		LL_TIM_EnableCounter(TIM1);
 		cb_pop_front_ref(&substep_cb);
 	} else {
 		sb->skip--;
@@ -224,6 +222,7 @@ void command_parser(char *line){
 			case 'X':
 			case 'Z':
 				switch(command){
+					case 0*steps_per_unit_Z_2210://G0 command packed into 2210_400 format
 					case 1*steps_per_unit_Z_2210://G1 command packed into 2210_400 format
 						G01parse(line+char_counter - 1);
 						return;	

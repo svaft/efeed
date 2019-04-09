@@ -19,9 +19,10 @@ void G01init_callback_precalculate(state_t* s){
 //	s->current_task.steps_to_end = 1; 
 }
 
-
+int pcc = 0;
 
 void dxdz_callback_precalculate(state_t* s){
+	pcc++;
 	s->precalculate_end = false;
 
 	substep_t *sb = substep_cb.top;
@@ -40,7 +41,7 @@ void dxdz_callback_precalculate(state_t* s){
 		s->err += s->current_task.dx;
 		if(s->substep_axis == SUBSTEP_AXIS_Z){
 //			delay = s->prescaler * (s->syncbase->ARR+1)*(abs(e2))/s->current_task.dz;
-			delay = (1<<subdelay_precision)*(abs(e2))/s->current_task.dz;
+			delay = (1<<subdelay_precision)*(abs(e2))/s->current_task.dz - 1;
 		}
 	}
 
@@ -70,7 +71,7 @@ void G01init_callback(state_t* s){
 	s->function = do_fsm_move2;
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
 	s->prescaler = s->syncbase->PSC;
-	TIM3->CCER = 0;
+//	TIM3->CCER = 0;
 	XDIR = s->current_task.x_direction;
 	ZDIR = s->current_task.z_direction;
 	if(s->current_task.dz > s->current_task.dx){
@@ -90,20 +91,23 @@ void G01init_callback(state_t* s){
 		s->err = -s->current_task.dz >> 1;
 		MOTOR_Z_AllowPulse(); 
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
-		
+		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
+
 	} else{
 		s->current_task.steps_to_end = s->current_task.dx;
 		s->err = s->current_task.dx >> 1;
 		s->substep_axis = SUBSTEP_AXIS_Z;
 
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
-		
+
 //		s->substep_pin = &ZSTP;
 		s->substep_pulse_on = 0;
 		s->substep_pulse_off = 1;
 
 		MOTOR_X_AllowPulse(); 
+		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 	}
 
 //	dxdz_callback(s);
@@ -122,8 +126,8 @@ void dxdz_callback(state_t* s){
 
 
 void G01parse(char *line){ //~60-70us
-	int x0 = init_gp.X & ~1uL<<10; //get from prev gcode
-	int z0 = init_gp.Z & ~1uL<<10;
+	int x0 = init_gp.X & ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
+	int z0 = init_gp.Z & ~1uL<<(FIXEDPT_FBITS2210-1);
 	G_pipeline_t *gref = G_parse(line);
 	if(state_hw.init == false){
 		init_gp.X = gref->X;

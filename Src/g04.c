@@ -13,7 +13,8 @@ void G04parse(char *line){
 void G04init_callback(state_t* s){
 	s->function = do_fsm_dwell;
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED); // disable pulse generation
-	TIM3->CCER = 0; // disable pulse generation
+	LL_TIM_CC_DisableChannel(TIM3,LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+//	TIM3->CCER = 0; // disable pulse generation
 	TIM2->ARR = 30;
 }
 

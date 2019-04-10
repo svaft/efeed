@@ -27,7 +27,7 @@ void arc_q1_callback_precalculate(state_t* s){
 	if (e2 > s->arc_dx) {
 		Error_Handler(); // trap
 	}
-	substep_t *sb = substep_cb.top;//	cb_push_back_empty(&substep_cb);
+	substep_t *sb = substep_cb.top;
 
 	if (e2 > s->arc_dz) { // z step 
 		int16_t delay = (1<<subdelay_precision)-1; //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
@@ -276,7 +276,7 @@ void arc_q1_callback_old(void){
 */
 
 void arc_q4_callback(state_t* s){
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 //	do {
 //		setPixel(xm, ym-y);
@@ -1167,7 +1167,7 @@ void plotEllipse(int x0, int z0, int a, int b){
 
 
 void arc_q2_callback(state_t* s){
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
 	if (e2 >= s->arc_dx) { 
@@ -1186,7 +1186,7 @@ void arc_q2_callback(state_t* s){
 
 
 void arc_q3_callback(state_t* s){
-	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 	int64_t e2 = s->arc_err<<1;
 
 	if (e2 >= s->arc_dx) { 

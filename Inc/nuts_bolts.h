@@ -57,7 +57,7 @@ __STATIC_INLINE void cb_free(circular_buffer *cb){
 
 __STATIC_INLINE void cb_push_back(circular_buffer *cb, const void *item){
     if(cb->count == cb->capacity){
-        while(1){}
+        Error_Handler();
             // handle error
     }
     memcpy(cb->head, item, cb->sz);
@@ -71,7 +71,7 @@ __STATIC_INLINE void cb_push_back(circular_buffer *cb, const void *item){
 
 __STATIC_INLINE void cb_push_back_empty(circular_buffer *cb){
     if(cb->count == cb->capacity){
-        while(1){}
+        Error_Handler();
             // handle error
     }
     memset(cb->head, 0, cb->sz);

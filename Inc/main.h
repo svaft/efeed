@@ -445,11 +445,11 @@ void Error_Handler(void);
 
 #define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH3
 #define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH1
-#define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
+//#define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
 #define MOTOR_Z_AllowPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 1
 #define MOTOR_Z_BlockPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 0
 
-#define MOTOR_X_OnlyPulse()         TIM3->CCER = MOTOR_X_CHANNEL
+//#define MOTOR_X_OnlyPulse()         TIM3->CCER = MOTOR_X_CHANNEL
 #define MOTOR_X_AllowPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 1
 #define MOTOR_X_BlockPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 0
 

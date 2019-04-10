@@ -7,7 +7,7 @@ G_pipeline_t init_gp={0,0,0,0,0};
 //G_task_t gt_precalc[task_precalc_size];
 G_task_t gt[task_size];
 G_pipeline_t gp[gp_size];
-substep_t substep_delay[substep_size];
+substep_t substep_delay[substep_size]; // todo check how its work with small substep buffer size 
 
 
 substep_t* cb_push_back_empty_ref(void){
@@ -17,8 +17,8 @@ substep_t* cb_push_back_empty_ref(void){
 
 
 void load_next_task(state_t* s){
-//	debug7();
 	if(s->task_lock == false && task_cb.count > 0) {
+	debug();
 		s->task_lock = true;
 		cb_pop_front(&task_cb, &s->current_task);
 		if(s->current_task.init_callback_ref){

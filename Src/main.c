@@ -106,7 +106,7 @@ static const char * ga1[] = {
 //"G94",
 //"G97 S4547 M3",
 "G90 G94 G18",
-"G0 X14. Z0. F500",
+"G0 X14.2 Z0. F500",
 //"G1 Z-0.05",
 //"G1 Z0.05 X14.05",
 //"X14. Z-1.",
@@ -116,7 +116,7 @@ static const char * ga1[] = {
 
 	//"G96 S200 M3",
 //"LIMS=S5000",
-"G1 X14.2 ",
+//"G1 X14.2 ",
 "X16.028 Z1.307",
 "X13.2 Z-0.107",
 "Z-30.8",
@@ -458,6 +458,8 @@ int main(void)
   LL_TIM_OC_DisablePreload(TIM1, LL_TIM_CHANNEL_CH1);
 
 	LL_TIM_EnableIT_CC1(TIM1);
+	LL_TIM_SetOnePulseMode(TIM1,LL_TIM_ONEPULSEMODE_SINGLE);
+
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
 //	TIM1->CCR1 = 50;
 	LL_TIM_EnableIT_UPDATE(TIM1);

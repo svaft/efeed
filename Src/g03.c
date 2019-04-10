@@ -25,12 +25,12 @@ void arc_q1_callback_precalculate(state_t* s){
 	s->current_task.steps_to_end++;
 	
 	if (e2 > s->arc_dx) {
-		while(1); // trap
+		Error_Handler(); // trap
 	}
 	substep_t *sb = substep_cb.top;//	cb_push_back_empty(&substep_cb);
 
 	if (e2 > s->arc_dz) { // z step 
-		int16_t delay = 1<<subdelay_precision; //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+		int16_t delay = (1<<subdelay_precision)-1; //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 
 ///		e2 = labs(e2);
 		bool step_back = false;
@@ -68,7 +68,7 @@ void arc_q1_callback_precalculate(state_t* s){
 				cb_push_back_empty_ref()->skip = 1;
 			} else {
 				// in this case we need to do two substeps in one main step  :( 
-				while(1);
+				Error_Handler();
 //				cb_push_back_empty_ref()->delay = delay;
 //				cb_push_back_empty_ref()->skip = 1;
 			}
@@ -353,7 +353,7 @@ void G03init_callback(state_t* s){
 				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
 	//			gt_new_task->x_direction = xdir_backward;
 				break;
-			default: while(1); // impossible case trap
+			default: Error_Handler(); // impossible case trap
 		}
 		s->arc_err = s->arc_dx+s->arc_dz;
 	} else { //ccw
@@ -368,7 +368,7 @@ void G03init_callback(state_t* s){
 				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
 				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
 				break;
-			default: while(1); // impossible case trap
+			default: Error_Handler(); // impossible case trap
 		}
 		s->arc_err = s->arc_dx+s->arc_dz;
 	}
@@ -407,7 +407,7 @@ void G03init_callback_precalculate(state_t* s){
 				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
 	//			gt_new_task->x_direction = xdir_backward;
 				break;
-			default: while(1); // impossible case trap
+			default: Error_Handler(); // impossible case trap
 		}
 		s->arc_err = s->arc_dx+s->arc_dz;
 	} else { //ccw
@@ -422,7 +422,7 @@ void G03init_callback_precalculate(state_t* s){
 				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
 				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
 				break;
-			default: while(1); // impossible case trap
+			default: Error_Handler(); // impossible case trap
 		}
 		s->arc_err = s->arc_dx+s->arc_dz;
 	}
@@ -540,7 +540,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 //				gt_new_task->dz = -(2*z0z-1)*gt_new_task->aa>>1;
 	//			gt_new_task->x_direction = xdir_backward;
 				break;
-			default: while(1); // impossible case trap
+			default: Error_Handler(); // impossible case trap
 		}
 //		gt_new_task->err = gt_new_task->dx+gt_new_task->dz;
 
@@ -573,7 +573,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 				gt_new_task->callback_ref = arc_q4_callback;
 //				gt_new_task->dx = -(2*xf-1)*gt_new_task->bb>>1;
 //				gt_new_task->dz = -(2*0-1)*gt_new_task->aa>>1;
-			} else while(1); // impossible case trap
+			} else Error_Handler(); // impossible case trap
 		}
 	} 
 	else { //ccw
@@ -590,7 +590,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 //				gt_new_task->dz =  (2*z0z+1)*gt_new_task->aa>>1;
 				gt_new_task->callback_ref = arc_q3_callback;
 				break;
-			default: while(1); // impossible case trap
+			default: Error_Handler(); // impossible case trap
 		}
 //		gt_new_task->err = gt_new_task->dx+gt_new_task->dz;
 
@@ -622,7 +622,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 //				gt_new_task->dx = -(2*xf-1)*gt_new_task->bb>>1;
 //				gt_new_task->dz =  (2*0+1)*gt_new_task->aa>>1;
 				gt_new_task->callback_ref = arc_q3_callback;
-			} else while(1); // impossible case trap
+			} else Error_Handler(); // impossible case trap
 		}
 	}
 
@@ -954,7 +954,7 @@ void G03parse_old(char *line, int8_t cwccw){ //~130-150us
 			} else if(current_oct == oct1){
 				switch(current_oct){
 					case 0: case 7:
-						while(1);
+						Error_Handler();
 					case 1: case 6:
 						gt_new_task->steps_to_end = abs(octant - z1z);
 						gt_new_task->dz = octant;
@@ -1205,7 +1205,7 @@ void arc_q3_callback(state_t* s){
 		return;
 	}
 	if(s->current_task.x == 0){ // end of quadrant
-		while(1); // trap
+		Error_Handler(); // trap
 		s->current_task.steps_to_end = 0;
 	}
 }

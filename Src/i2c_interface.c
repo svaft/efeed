@@ -348,5 +348,5 @@ void Transfer_Error_Callback()
   /* Disable DMA1_Channel4_IRQn */
   NVIC_DisableIRQ(DMA1_Channel4_IRQn);
   /* Error detected during DMA transfer */
-  while(1){};
+  Error_Handler();
 }

@@ -343,8 +343,7 @@ void I2C2_EV_IRQHandler(void)
 void I2C2_ER_IRQHandler(void)
 {
   /* USER CODE BEGIN I2C2_ER_IRQn 0 */
-  while(1){
-	}
+  Error_Handler();
 
   /* USER CODE END I2C2_ER_IRQn 0 */
   

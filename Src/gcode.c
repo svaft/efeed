@@ -72,6 +72,7 @@ void G94(state_t* s){
 
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+
 	s->task_lock = false; // all processing si done here so unlock task to next
 }
 
@@ -124,8 +125,8 @@ void do_fsm_move2(state_t* s){
 		TIM1->CCR1	= delay + 1;
 		TIM1->ARR 	= delay + min_pulse + 1;
 		TIM1->SR = 0;
-		LL_TIM_EnableIT_CC1(TIM1);
-		LL_TIM_SetOnePulseMode(TIM1,LL_TIM_ONEPULSEMODE_SINGLE);
+		if(LL_TIM_IsEnabledCounter(TIM1))
+			Error_Handler(); // some error?
 		LL_TIM_EnableCounter(TIM1);
 		cb_pop_front_ref(&substep_cb);
 	} else {

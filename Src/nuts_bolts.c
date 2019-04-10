@@ -222,7 +222,7 @@ int str_f_to_2210(char *line, uint8_t *char_counter){
 
 //int str_f_inch_to_steps2210(const char *str, char **endptr){
 int str_f_inch_to_steps2210(char *line, uint8_t *char_counter){
-  while(1); // todo trap, rewrite
+  Error_Handler(); // todo trap, rewrite
 	char *str = line + *char_counter;
 
 	uint8_t ten = 0;

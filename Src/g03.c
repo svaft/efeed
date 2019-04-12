@@ -16,8 +16,9 @@ bool brk=0;
 
 substep_t substep[substep_size];
 
-
-
+uint8_t last_delay = 0;
+uint16_t last_skip = 0;
+uint32_t last_delay_total =0;
 void arc_q1_callback_precalculate(state_t* s){
 	int64_t e2 = s->arc_err<<1;
 	s->current_task.x++;
@@ -53,7 +54,7 @@ void arc_q1_callback_precalculate(state_t* s){
 				delay	-=delay_delta	<< a;
 			}
 		}
-		
+
 		if(!step_back){
 			cb_push_back_empty_ref()->delay = delay;
 		} else { // delay in negative, so we need to step back and modify previous step
@@ -68,6 +69,7 @@ void arc_q1_callback_precalculate(state_t* s){
 				cb_push_back_empty_ref()->skip = 1;
 			} else {
 				// in this case we need to do two substeps in one main step  :( 
+				// seems this case is equator of of the arc so we need to change substep axis
 				Error_Handler();
 //				cb_push_back_empty_ref()->delay = delay;
 //				cb_push_back_empty_ref()->skip = 1;
@@ -75,6 +77,10 @@ void arc_q1_callback_precalculate(state_t* s){
 		}
 		s->current_task.z--;
 		s->arc_err += s->arc_dz += s->arc_aa; 
+
+		last_delay_total = delay * last_skip;
+		last_delay = delay;
+		last_skip = 0;
 	} else {
 		if(substep_cb.count == 0 || sb->skip == 0){
 			cb_push_back_empty(&substep_cb);
@@ -85,6 +91,7 @@ void arc_q1_callback_precalculate(state_t* s){
 		}
 		sb = substep_cb.top;
 		sb->skip++;
+		last_skip++;
 	} // z step
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
@@ -113,6 +120,15 @@ void arc_q1_callback(state_t* s){
 //		return;
 //	}
 		s->substep_axis = SUBSTEP_AXIS_X;
+//		LL_TIM_CC_DisableChannel(s->syncbase,MOTOR_X_CHANNEL);
+		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
+		s->substep_pulse_on = 1;
+		s->substep_pulse_off = 0;
+
+		MOTOR_Z_AllowPulse(); 
+		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
+		
 	}
 
 	if (e2 > s->arc_dz) { // z step 
@@ -120,6 +136,15 @@ void arc_q1_callback(state_t* s){
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} else {
 		s->substep_axis = SUBSTEP_AXIS_Z;
+
+		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
+		s->substep_pulse_on = 0;
+		s->substep_pulse_off = 1;
+		
+		MOTOR_X_AllowPulse(); 
+		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 	}
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
@@ -500,6 +525,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 
 	G_task_t *gt_new_task;
 	gt_new_task 		= add_empty_task();
+	gt_new_task->stepper = true;
 
 //feed:
 	if(s->G94G95 == 1){ 	// unit(mm) per rev
@@ -547,6 +573,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 		if(q_to != q_from){ 
 			// two quadrants used, add next quadrant as separated task with changed motor direction flag:
 			gt_new_task 		= add_empty_task();
+			gt_new_task->stepper = true;
 		//feed:
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
 				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
@@ -597,6 +624,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 		if(q_to != q_from){ 
 			// two quadrants used, add next quadrant as separated task with changed motor direction flag:
 			gt_new_task 		= add_empty_task();
+			gt_new_task->stepper = true;
 		//feed:
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
 				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);

@@ -94,7 +94,7 @@ G54-G59.3 Select Coordinate System
 G96, G97 Spindle Control Mode, G97 (RPM Mode)
 */
 
-int preload = 20;
+int preload = 4;
 static const char * ga1[] = {
 //"G71",
 //"LIMS=S6000",
@@ -106,6 +106,12 @@ static const char * ga1[] = {
 //"G94",
 //"G97 S4547 M3",
 "G90 G94 G18",
+	
+"G1 X0. Z0. F500",
+"G3 X12. Z-6 K-6",
+
+	
+	
 "G0 X14.2 Z0. F500",
 //"G1 Z-0.05",
 //"G1 Z0.05 X14.05",

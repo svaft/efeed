@@ -100,8 +100,8 @@
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR = MOTOR_Z_DIR_Pin
 #define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR = MOTOR_Z_DIR_Pin
-#define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
-#define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BRR = MOTOR_Z_ENABLE_Pin
+#define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BRR = MOTOR_Z_ENABLE_Pin
+#define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
 
 
 // ***** Taho *****

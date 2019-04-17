@@ -75,7 +75,7 @@ typedef struct
 
 extern BUTTON bt[BT_TOTAL];
 
-extern uint32_t buttons_flag_set __attribute__((at(BB_VAR)));
+extern uint32_t buttons_flag_set;// __attribute__((at(BB_VAR)));
 extern __IO uint8_t  ubTransferComplete;
 
 

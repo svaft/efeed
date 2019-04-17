@@ -16,9 +16,16 @@ bool brk=0;
 
 substep_t substep[substep_size];
 
-uint8_t last_delay = 0;
-uint16_t last_skip = 0;
-uint32_t last_delay_total =0;
+uint8_t prev_delay = 0, prev_delay_sma = 0;
+uint32_t avgSum = 0, directSum = 0;
+
+#define arrNumbers_len 8
+int arrNumbers[arrNumbers_len] = {0};
+bool start_smooth_flag = false;
+uint8_t pos = 0;
+int32_t sma = 0;
+
+
 void arc_q1_callback_precalculate(state_t* s){
 	int64_t e2 = s->arc_err<<1;
 	s->current_task.x++;
@@ -31,7 +38,7 @@ void arc_q1_callback_precalculate(state_t* s){
 	substep_t *sb = substep_cb.top;
 
 	if (e2 > s->arc_dz) { // z step 
-		int16_t delay = (1<<subdelay_precision)-1; //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+		int16_t delay = (1<<subdelay_precision); //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 
 ///		e2 = labs(e2);
 		bool step_back = false;
@@ -53,6 +60,50 @@ void arc_q1_callback_precalculate(state_t* s){
 				r 		-= edz_delta 	<< a;
 				delay	-=delay_delta	<< a;
 			}
+		}
+		// subdelay found, let's smooth it:
+		// found delay from previous calculated step to current:
+		int last_delay_total = 255 - prev_delay + delay + (sb->skip << 8);
+		directSum += last_delay_total;
+		prev_delay = delay;
+//		last_skip = 0;
+
+		// calculate moving sum:
+		sma = sma - arrNumbers[pos] + last_delay_total;
+		arrNumbers[pos++] = last_delay_total;
+    if (pos >= arrNumbers_len){
+      pos = 0;
+    }
+
+		// dumb condition when to start applying smooth steps:
+		if(last_delay_total <700)
+			start_smooth_flag = true;
+
+		if(start_smooth_flag == true) {
+			// calculate moving average:
+			int sma_avg = sma / arrNumbers_len;
+			avgSum += sma_avg;
+			prev_delay_sma = (sma_avg - (255 - prev_delay_sma));
+			if(prev_delay_sma < 0)
+				Error_Handler();
+			int skip_sma_steps = prev_delay_sma >> 8;
+			if(step_back){
+				if(sb->delay > 0){
+				// ellipse equator?
+					subdelay_x++;
+				}
+				step_back = false;
+			}
+			sb = substep_cb.top;
+			if(sb->skip > 0)
+				sb->skip = skip_sma_steps;
+			else if(skip_sma_steps > 0){
+				cb_push_back_empty_ref()->skip = skip_sma_steps;
+			}
+			delay = prev_delay_sma;
+		} else {
+			avgSum += last_delay_total;
+			prev_delay_sma = prev_delay;
 		}
 
 		if(!step_back){
@@ -76,11 +127,7 @@ void arc_q1_callback_precalculate(state_t* s){
 			}
 		}
 		s->current_task.z--;
-		s->arc_err += s->arc_dz += s->arc_aa; 
-
-		last_delay_total = delay * last_skip;
-		last_delay = delay;
-		last_skip = 0;
+		s->arc_err += s->arc_dz += s->arc_aa;
 	} else {
 		if(substep_cb.count == 0 || sb->skip == 0){
 			cb_push_back_empty(&substep_cb);
@@ -91,7 +138,7 @@ void arc_q1_callback_precalculate(state_t* s){
 		}
 		sb = substep_cb.top;
 		sb->skip++;
-		last_skip++;
+//		last_skip++;
 	} // z step
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {

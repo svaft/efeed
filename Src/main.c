@@ -107,7 +107,7 @@ static const char * ga1[] = {
 //"G97 S4547 M3",
 "G90 G94 G18",
 	
-"G1 X0. Z0. F500",
+"G1 X0. Z0. F70",
 "G3 X12. Z-6 K-6",
 
 	
@@ -1200,6 +1200,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
+	TIM1->CR1 = TIM2->CR1 = TIM3->CR1 = TIM4->CR1 = 0;
 	while (1) {
 	}
   /* USER CODE END Error_Handler_Debug */

@@ -26,106 +26,118 @@ uint8_t pos = 0;
 int32_t sma = 0;
 
 
+void substep_recalc(int64_t e2, int64_t dzdx){
+	substep_t *sb = substep_cb.top;
+
+	int16_t delay = (1<<subdelay_precision); //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+
+///		e2 = labs(e2);
+	bool step_back = false;
+	if(e2>0){
+		step_back = true;
+		e2 = -e2;
+	}
+	int16_t delay_delta = delay >> subdelay_precision;
+	int64_t edz_delta = dzdx >> subdelay_precision;
+	// do binary search for delta:
+	int64_t r = dzdx - (edz_delta <<(subdelay_precision-1)); // start from half
+	delay -= delay_delta<<(subdelay_precision-1);
+
+	for(int a =subdelay_precision-2;a>=0; a--){
+		if(r > e2){
+			r 		+=	edz_delta		<< a;
+			delay	+=	delay_delta	<< a;
+		}	else {
+			r 		-=	edz_delta		<< a;
+			delay	-=	delay_delta	<< a;
+		}
+	}
+	// subdelay found, let's smooth it:
+	// find delay from previous calculated step to current:
+	int last_delay_total = 255 - prev_delay + delay + (sb->skip << 8);
+	directSum += last_delay_total; //debug info
+	prev_delay = delay;
+//		last_skip = 0;
+
+	// calculate moving sum:
+	sma = sma - arrNumbers[pos] + last_delay_total;
+	arrNumbers[pos++] = last_delay_total;
+	if (pos >= arrNumbers_len){
+		pos = 0;
+	}
+
+	// dumb condition when to start applying smooth steps:
+	if(last_delay_total <700)
+		start_smooth_flag = true;
+
+	if(start_smooth_flag == true) {
+		// calculate moving average:
+		int sma_avg = sma / arrNumbers_len;
+		avgSum += sma_avg;
+		prev_delay_sma = (sma_avg - (255 - prev_delay_sma));
+		if(prev_delay_sma < 0)
+			Error_Handler();
+		int skip_sma_steps = prev_delay_sma >> 8;
+		if(step_back){
+			if(sb->delay > 0){
+			// ellipse equator?
+				subdelay_x++;
+			}
+			step_back = false;
+		}
+		sb = substep_cb.top;
+		if(sb->skip > 0)
+			sb->skip = skip_sma_steps;
+		else if(skip_sma_steps > 0){
+			cb_push_back_empty_ref()->skip = skip_sma_steps;
+		}
+		delay = prev_delay_sma;
+	} else {
+		avgSum += last_delay_total;
+		prev_delay_sma = prev_delay;
+	}
+
+	if(!step_back){
+		cb_push_back_empty_ref()->delay = delay;
+	} else { // delay in negative, so we need to step back and modify previous step
+		delay = (1 << subdelay_precision) - delay;
+		sb = substep_cb.top;
+		if(sb->skip > 0){
+			sb->skip--; // 1 step back
+			if(sb->skip > 0){ // if we stil have some to skip add new substep, if not - just modify current substep
+				sb = cb_push_back_empty_ref();
+			}
+			sb->delay = delay;
+			cb_push_back_empty_ref()->skip = 1;
+		} else {
+			// in this case we need to do two substeps in one main step  :( 
+			// seems this case is equator of of the arc so we need to change substep axis
+			Error_Handler();
+//				cb_push_back_empty_ref()->delay = delay;
+//				cb_push_back_empty_ref()->skip = 1;
+		}
+	}
+}
+
+
 void arc_q1_callback_precalculate(state_t* s){
 	int64_t e2 = s->arc_err<<1;
 	s->current_task.x++;
 	s->arc_err += s->arc_dx += s->arc_bb; 
 	s->current_task.steps_to_end++;
-	
-	if (e2 > s->arc_dx) {
-		Error_Handler(); // trap
-	}
+
 	substep_t *sb = substep_cb.top;
 
+	if (e2 > s->arc_dx) {
+		substep_job_t *sbjob = substep_job_cb.top;
+		if (sbjob && sbjob->substep_axis == SUBSTEP_AXIS_X) {
+		}
+
+		Error_Handler(); // trap
+	}
+
 	if (e2 > s->arc_dz) { // z step 
-		int16_t delay = (1<<subdelay_precision); //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
-
-///		e2 = labs(e2);
-		bool step_back = false;
-		if(e2>0){
-			step_back = true;
-			e2 = -e2;
-		}
-		int16_t delay_delta = delay >> subdelay_precision;
-		int64_t edz_delta = s->arc_dz >> subdelay_precision;
-		// do binary search for delta:
-		int64_t r = s->arc_dz - (edz_delta <<(subdelay_precision-1)); // start from half
-		delay -= delay_delta<<(subdelay_precision-1);
-
-		for(int a =subdelay_precision-2;a>=0; a--){
-			if(r > e2){
-				r 		+= edz_delta	<< a;
-				delay	+= delay_delta<< a;
-			}	else {
-				r 		-= edz_delta 	<< a;
-				delay	-=delay_delta	<< a;
-			}
-		}
-		// subdelay found, let's smooth it:
-		// found delay from previous calculated step to current:
-		int last_delay_total = 255 - prev_delay + delay + (sb->skip << 8);
-		directSum += last_delay_total;
-		prev_delay = delay;
-//		last_skip = 0;
-
-		// calculate moving sum:
-		sma = sma - arrNumbers[pos] + last_delay_total;
-		arrNumbers[pos++] = last_delay_total;
-    if (pos >= arrNumbers_len){
-      pos = 0;
-    }
-
-		// dumb condition when to start applying smooth steps:
-		if(last_delay_total <700)
-			start_smooth_flag = true;
-
-		if(start_smooth_flag == true) {
-			// calculate moving average:
-			int sma_avg = sma / arrNumbers_len;
-			avgSum += sma_avg;
-			prev_delay_sma = (sma_avg - (255 - prev_delay_sma));
-			if(prev_delay_sma < 0)
-				Error_Handler();
-			int skip_sma_steps = prev_delay_sma >> 8;
-			if(step_back){
-				if(sb->delay > 0){
-				// ellipse equator?
-					subdelay_x++;
-				}
-				step_back = false;
-			}
-			sb = substep_cb.top;
-			if(sb->skip > 0)
-				sb->skip = skip_sma_steps;
-			else if(skip_sma_steps > 0){
-				cb_push_back_empty_ref()->skip = skip_sma_steps;
-			}
-			delay = prev_delay_sma;
-		} else {
-			avgSum += last_delay_total;
-			prev_delay_sma = prev_delay;
-		}
-
-		if(!step_back){
-			cb_push_back_empty_ref()->delay = delay;
-		} else { // delay in negative, so we need to step back and modify previous step
-			delay = (1 << subdelay_precision) - delay;
-			sb = substep_cb.top;
-			if(sb->skip > 0){
-				sb->skip--; // 1 step back
-				if(sb->skip > 0){ // if we stil have some to skip add new substep, if not - just modify current substep
-					sb = cb_push_back_empty_ref();
-				}
-				sb->delay = delay;
-				cb_push_back_empty_ref()->skip = 1;
-			} else {
-				// in this case we need to do two substeps in one main step  :( 
-				// seems this case is equator of of the arc so we need to change substep axis
-				Error_Handler();
-//				cb_push_back_empty_ref()->delay = delay;
-//				cb_push_back_empty_ref()->skip = 1;
-			}
-		}
+		substep_recalc(e2, s->arc_dz);
 		s->current_task.z--;
 		s->arc_err += s->arc_dz += s->arc_aa;
 	} else {
@@ -175,7 +187,6 @@ void arc_q1_callback(state_t* s){
 		MOTOR_Z_AllowPulse(); 
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
 		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
-		
 	}
 
 	if (e2 > s->arc_dz) { // z step 
@@ -556,10 +567,10 @@ void G03parse(char *line, int8_t cwccw){
 
 /*
 Due to the fact that the configuration of the stepper motor for the X and Z axes may not be equal 
-in the real world, our circle(in steps per/mm) will not be a circle but an ellipse.
-for example, in my config I have 1 mm lead screw 400 steps / mm in Z 
-but since my taig lathe with imperial screw on cross feed
-I have 1.27 * 200 steps / mm with a decrease in the pulley 61/16 = 200 * 61/16 / 1.27 = 600.3937 steps per mm.
+in the real world so the circle in mm(or inch) will not be a circle in steps per/mm but an ellipse.
+for example, in my config if I have 1 mm lead screw 400 steps / mm in Z 
+and my taig lathe with imperial screw on cross feed
+I have 1.27 * 200 steps / mm with a decrease in the pulley pair 61/16 = 200 * 61/16 / 1.27 = 600.3937 steps per mm.
 this is about 1.5 more than the Z axis.
 so in the case of transferring the physical circle into a stepped ellipse, 
 we need to multiply the radius of the X axis (steps by / mm) by 1.5.

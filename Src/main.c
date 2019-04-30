@@ -381,6 +381,8 @@ int main(void)
 //	cb_init_ref(&task_precalc_cb, task_precalc_size, sizeof(G_task_t), &gt_precalc);
 	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
 	cb_init_ref(&substep_cb, substep_size, sizeof(substep_t),&substep_delay);
+	cb_init_ref(&substep_job_cb, substep_job_size, sizeof(substep_job_t),&substep_delay);
+
   /* USER CODE END Init */
 
   /* Configure the system clock */

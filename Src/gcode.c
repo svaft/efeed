@@ -8,7 +8,7 @@ G_pipeline_t init_gp={0,0,0,0,0};
 G_task_t gt[task_size];
 G_pipeline_t gp[gp_size];
 substep_t substep_delay[substep_size]; // todo check how its work with small substep buffer size 
-
+substep_job_t substep_job[substep_job_size];
 
 substep_t* cb_push_back_empty_ref(void){
 	cb_push_back_empty(&substep_cb);

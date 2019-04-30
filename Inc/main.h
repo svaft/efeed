@@ -152,6 +152,16 @@ typedef struct G_task{
 //	int64_t err, aa, bb;
 } G_task_t;
 
+typedef struct substep_job{
+	uint32_t steps_to_end;
+
+	int substep_axis;
+	volatile uint32_t *substep_pin;
+	uint8_t substep_pulse_on;
+	uint8_t substep_pulse_off;
+} substep_job_t;
+
+
 
 typedef struct state_s
 {

@@ -17,6 +17,7 @@
 #define gp_size 10
 #define substep_size 3000
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
+#define substep_job_size task_size*2
 
 void command_parser(char *line);
 
@@ -30,6 +31,9 @@ extern G_task_t gt_precalc[];
 extern G_task_t gt[];
 extern G_pipeline_t gp[];
 extern G_pipeline_t init_gp;
+extern substep_job_t substep_job[];
+
+
 
 void calibrate_callback(state_t *);
 void calibrate_init_callback(state_t* s);
@@ -57,6 +61,12 @@ G_task_t * add_empty_task(){
 	cb_push_back_empty(&task_cb);
 	return task_cb.top;
 }
+
+substep_job_t * add_empty_substep_job(){
+	cb_push_back_empty(&substep_job_cb);
+	return substep_job_cb.top;
+}
+
 
 //G_task* add_empty_task(void);
 void add_task(int dx, int dz, int feed, int inc_dec, void *ref, uint32_t rr, uint8_t x_dir, uint8_t z_dir );

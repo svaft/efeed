@@ -487,6 +487,7 @@ void encoder_tick(_Bool dir){
 					MOTOR_Z_Forward();
 				else
 					MOTOR_Z_Reverse();
+				TIM4->CNT = 0;
 				enable_encoder_ticks(); // enable thread specific interrupt controlled by Q824set
 				mode = 45;
 				break;

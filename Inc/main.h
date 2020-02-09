@@ -98,12 +98,14 @@ void Error_Handler(void);
 #define min_pulse 1450
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_6
-#define MOTOR_Z_STEP_GPIO_Port GPIOA
-#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
-#define MOTOR_Z_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_1
+#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_0
+#define MOTOR_Z_STEP_GPIO_Port GPIOB
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_12
+#define MOTOR_Z_DIR_GPIO_Port GPIOB
+#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_13
 #define MOTOR_Z_ENABLE_GPIO_Port GPIOB
+#define BUTTON_Pin LL_GPIO_PIN_8
+#define BUTTON_GPIO_Port GPIOA
 #define ENC_A_Pin LL_GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
 #define ENC_B_Pin LL_GPIO_PIN_7
@@ -141,8 +143,8 @@ void Error_Handler(void);
 #define MOTOR_Z_RemovePulse()        // dummy macro, pulse disabled by hardware
 #define MOTOR_Z_Forward()            MOTOR_Z_DIR_GPIO_Port->BSRR = MOTOR_Z_DIR_Pin
 #define MOTOR_Z_Reverse()            MOTOR_Z_DIR_GPIO_Port->BRR = MOTOR_Z_DIR_Pin
-#define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
-#define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BRR = MOTOR_Z_ENABLE_Pin
+#define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BRR = MOTOR_Z_ENABLE_Pin
+#define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
 
 
 // ***** Taho *****

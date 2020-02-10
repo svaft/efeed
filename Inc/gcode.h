@@ -61,7 +61,7 @@ G_task_t * add_empty_task(){
 	cb_push_back_empty(&task_cb);
 	return task_cb.top;
 }
-
+__STATIC_INLINE 
 substep_job_t * add_empty_substep_job(){
 	cb_push_back_empty(&substep_job_cb);
 	return substep_job_cb.top;

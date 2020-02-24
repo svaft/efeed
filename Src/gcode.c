@@ -119,8 +119,8 @@ void do_fsm_move_start2(state_t* s){
 uint32_t move_cnt = 0;
 void do_fsm_move2(state_t* s){
 	move_cnt++;
-	substep_t *sb = substep_cb.tail; //cb_pop_front_ref(&substep_cb);
-	if(sb->skip == 0){
+	substep_t *sb = substep_cb.tail; //get ref to current substep
+	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 		TIM1->CCR1	= delay + 1;
 		TIM1->ARR 	= delay + min_pulse + 1;
@@ -128,16 +128,16 @@ void do_fsm_move2(state_t* s){
 		if(LL_TIM_IsEnabledCounter(TIM1))
 			Error_Handler(); // some error?
 		LL_TIM_EnableCounter(TIM1);
-		cb_pop_front_ref(&substep_cb);
-	} else {
+		cb_pop_front_ref(&substep_cb); 		// timer to substep pulse started, move substep ref to next value in circular buffer to get in on next iteration
+	} else { 														// substep contain packed value of skipped steps, continue to skip steps until skip = 0
 		sb->skip--;
 		if(sb->skip == 0)
-			cb_pop_front_ref(&substep_cb);
+			cb_pop_front_ref(&substep_cb); 	// substep reach zero, move substep ref to next value in circular buffer to get in on next iteration
 	}
 
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
-	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;
-	s->fract_part = fixedpt_fracpart( set_with_fract ); // save fract part for future use on next step
+	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
+	s->fract_part = fixedpt_fracpart( set_with_fract ); 							// save fract part for future use on next step
 //	s->current_task.steps_to_end--; // migrated to callback
 }
 
@@ -184,7 +184,7 @@ void command_parser(char *line){
 				command = str_f_to_steps2210(line, &char_counter);
 				switch(command){
 					//todo now its only one G command per line supported
-#define G4_2210	4*steps_per_unit_Z_2210*1024
+//#define G4_2210	4*steps_per_unit_Z_2210*1024
 					case 4*steps_per_unit_Z_2210: //G4 dwell, pause P seconds
 						G04parse(line+char_counter);
 						break;
@@ -314,9 +314,3 @@ void calibrate_callback(state_t *s){
 		LL_TIM_EnableARRPreload(s->syncbase);
 	}
 }
-
-
-
-
-
-

@@ -2,7 +2,7 @@
 
 circular_buffer gp_cb;
 circular_buffer task_cb;
-circular_buffer task_precalc_cb;
+//circular_buffer task_precalc_cb;
 circular_buffer substep_cb;
 circular_buffer substep_job_cb;
 
@@ -23,7 +23,7 @@ void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref){
 		cb->top  		= cb->buffer;
 }
 
-
+/*
 int str_f_to_steps(const char *str, uint16_t steps_per_unit, char **endptr)
 {
     uint8_t ten = 0;
@@ -71,6 +71,7 @@ int str_f_to_steps(const char *str, uint16_t steps_per_unit, char **endptr)
     if (negative) return -t824;
     else return t824;
 }
+*/
 
 /**
  * \brief convert value mm/rev in Q824 format to delay according to stepper per rev,
@@ -100,7 +101,7 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
 }
 
 
-
+/*
 int str_f_to_824(char *line, uint8_t *char_counter){
   char *str = line + *char_counter;
 
@@ -159,7 +160,7 @@ int str_f_to_824(char *line, uint8_t *char_counter){
 	if (negative) return -t824;
 	else return t824;
 }
-
+*/
 
 int str_f_to_2210(char *line, uint8_t *char_counter){
   char *str = line + *char_counter;
@@ -323,7 +324,7 @@ int str_f_to_steps2210(char *line, uint8_t *char_counter){
 				number = 0;
 				fract = true;
 		} else if (c == ' '){ //skip blanks
-		} else break;   
+		} else break;
 		str++;
 	}
 //    if (endptr != 0) *endptr = (char *)str;
@@ -334,21 +335,16 @@ int str_f_to_steps2210(char *line, uint8_t *char_counter){
 				number *= 100;
 				break;
 			}
-			case 2:{// if only two fract didgits in g-code
+			case 2:{// if two fract didgits in g-code
 				number *= 10;
 				break;
 			}
 		}
-
-		// for 1mm pitch leadscrew:
-//		t2210 += ((number << 12) / 10); //		t2210 += ((number << 10) * 400 / 1000); // 
-
 		t2210 += (number * steps_per_unit_Z_2210) / 1000;
 //		t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
 	} else {
 		t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
 	}
-//  t2210 += (( number * steps_per_unit_Z_fract_2210 ) / 10 );
 	if (negative) return -t2210;
 	else return t2210;
 }

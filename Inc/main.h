@@ -470,24 +470,31 @@ void Error_Handler(void);
 #define x_steps_unit	200
 #define x_screw_pitch	1,27
 
-#define z_steps_unit	400
-#define z_screw_pitch	1,5
+#define x_screw_pulley 61 // used to transfer torque from stepper motor to screw with reduction
+#define x_motor_pulley 16 // used to transfer torque from stepper motor to screw with reduction
 
-#define hzminps_z 6750<<10 //30000hz*60sec*z_screw_pitch/z_steps_unit // 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
+
+#define z_steps_unit	400
+#define z_screw_pitch	2
+
+
+#define hzminps_z 9000<<10 //30000hz*60sec*z_screw_pitch/z_steps_unit // 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
 #define hzminps_x 11430<<10 //30000hz*60sec*x_screw_pitch/x_steps_unit 
 
-// minimum processed value is 0.0001inch
-#define steps_per_inch_Z_2210   254*40*1024
 
 // minimum processed value is 0.001mm
-#define steps_per_unit_Z_2210   273066 //z_steps_unit<<10/z_screw_pitch
+//#define steps_per_unit_Z_2210   273066 //z_steps_unit<<10/z_screw_pitch (1,5mm screw)
+#define steps_per_unit_Z_2210   204800 //z_steps_unit<<10/z_screw_pitch
+
+// minimum processed value is 0.0001inch
+#define steps_per_inch_Z_2210   5201920 // steps_per_unit_Z_2210*25,4    //254*40*1024
 
 /*
 Due to the fact that the configuration of the stepper motor for the X and Z axes may not be equal 
 in the real world, our circle or line(in steps per/mm) will not be a circle/line but an ellipse.
 for example, in my config I have 1 mm lead screw 400 steps / mm in Z 
 but since my taig lathe with imperial screw on cross feed
-I have 1.27 * 200 steps / mm with a decrease in the pulley 61/16 = 200 * 61/16 / 1.27 = 600.3937 steps per mm.
+I have 1.27 * 200 steps / mm with a decrease in the pulley x_screw_pulley / x_motor_pulley (61/16) = 200 * 61/16 / 1.27 = 600.3937 steps per mm.
 this is about 1.5 more than the Z axis.
 so in the case of transferring the physical circle into a stepped ellipse, 
 we need to multiply the radius of the X axis (steps by / mm) by 1.5.
@@ -495,7 +502,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 
 //#define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400/1,5
 
-#define z_to_x_factor2210	2305 //1024*x_steps_unit*61/16/x_screw_pitch/z_steps_unit/z_screw_pitch // 1537 //1024*61*200*1,5/16/1,27/400
+#define z_to_x_factor2210	3074 //1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/z_steps_unit/z_screw_pitch //1024*61*200*2/16/1,27/400
 
 #define SUBSTEP_AXIS_Z 0
 #define SUBSTEP_AXIS_X 1

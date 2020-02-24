@@ -108,7 +108,11 @@ static const char * ga1[] = {
 "G90 G94 G18",
 	
 "G1 X0. Z0. F70",
-"G3 X12. Z-6 K-6",
+"Z0.1",
+"Z0.",
+
+	
+	"G3 X12. Z-6 K-6",
 
 	
 	
@@ -216,7 +220,7 @@ recommendation: mm(tpi) - passes
 // перегенерация есть в excel файле
 const THREAD_INFO Thread_Info[] = {
 //	{ 0x18000000, 0, "0.50", "mm", 0, ".34", ".013", 0 },
-	{ 0x06000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
+	{ 0x0C000000, 0, "1.50", "mm", 0, ".95", ".037", 0 },
 #ifndef _SIMU
 	{ 0x02400000, 0, "4.00", "mm", 10, "1.26", ".050", 0 },
 //	{ 0xF0000000, 0, "1.00", "mm", 0, ".65", ".026", 0 },
@@ -521,7 +525,6 @@ int main(void)
 
 	while (1) {
 		// recalc substep delays
-		
 		if(substep_cb.count < substep_cb.capacity && precalculating_task){
 			// get pointer to last processed task
 			if(precalculating_task->precalculate_callback_ref) {
@@ -532,7 +535,6 @@ int main(void)
 
 					if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
 						precalculating_task->precalculate_init_callback_ref(&state_precalc);
-					
 				// load next task
 				}
 			} else {
@@ -544,8 +546,7 @@ int main(void)
 				}
 			}
 			// call task recalculate callback until task is fully precalculated
-			// get next task and repeat unitl all task recalculated on precalculater buffer is full
-			
+			// get next task and repeat unitl all task recalculated or precalculater buffer is full
 		} else {
 			if(precalculating_task == 0 && task_cb.count2 > 0){
 				precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
@@ -557,9 +558,7 @@ int main(void)
 						for(int a = 0; a<10;a++)
 							precalculating_task->precalculate_callback_ref(&state_precalc);
 					}
-
 				}
-
 			}
 			// if buffer is full go to sleep
 //			__WFI();
@@ -597,10 +596,10 @@ int main(void)
 			}
 			buttons_flag_set = 0; // reset button flags
 		}
-#ifdef _SIMU		
+#ifdef _SIMU
 #endif
 		
-#ifndef _SIMU		
+#ifndef _SIMU
 //		if(buttons_flag_set) {
 //			do_fsm_menu(&state_hw);
 //			buttons_flag_set = 0; // reset button flags

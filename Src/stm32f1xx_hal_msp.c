@@ -228,7 +228,9 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
   if(htim->Instance==TIM3)
   {
   /* USER CODE BEGIN TIM3_MspPostInit 0 */
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
+//    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
   /* USER CODE END TIM3_MspPostInit 0 */
   
     /**TIM3 GPIO Configuration    
@@ -238,6 +240,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(MOTOR_Z_STEP_GPIO_Port, &GPIO_InitStruct);
+    __HAL_AFIO_REMAP_TIM3_PARTIAL();
 
   /* USER CODE BEGIN TIM3_MspPostInit 1 */
 

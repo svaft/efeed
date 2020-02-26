@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/STM32/project/efeed/Inc
+HeaderPath=C:/DEV/projects/efeed/Inc
 HeaderFiles=stm32f1xx_it.h;stm32f1xx_hal_conf.h;main.h;stm32_assert.h;
-SourcePath=C:/STM32/project/efeed/Src
+SourcePath=C:/DEV/projects/efeed/Src
 SourceFiles=stm32f1xx_it.h;stm32f1xx_hal_conf.h;main.h;stm32f1xx_it.c;stm32f1xx_hal_msp.c;main.c;
 
 [PreviousLibFiles]

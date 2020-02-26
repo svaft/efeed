@@ -70,13 +70,14 @@
 #define MOTOR_Z_ENABLE_GPIO_Port GPIOA
 
 // crosslide feed:
+/*
 #define MOTOR_X_STEP_Pin GPIO_PIN_0
 #define MOTOR_X_STEP_GPIO_Port GPIOA
 #define MOTOR_X_DIR_Pin GPIO_PIN_15
 #define MOTOR_X_DIR_GPIO_Port GPIOC
 #define MOTOR_X_ENABLE_Pin GPIO_PIN_1
 #define MOTOR_X_ENABLE_GPIO_Port GPIOA
-
+*/
 
 #ifndef _SIMU
 //#define _SIMU

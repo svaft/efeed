@@ -208,7 +208,7 @@ void HAL_TIM_IC_MspInit(TIM_HandleTypeDef* htim_ic)
     */
     GPIO_InitStruct.Pin = ENC_A_Pin|ENC_B_Pin|ENC_ZERO_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL; //GPIO_PULLUP; //for onboard pullup only!
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     /* TIM4 interrupt Init */

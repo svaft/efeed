@@ -468,7 +468,7 @@ int main(void)
     while(p>0)
         p--;
 
-    i2c_device_init(&hi2c2);
+//    i2c_device_init(&hi2c2);
 
 
     fixedptud prolong_fract = 0;
@@ -908,9 +908,9 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pins : PA0 PA1 PA2 PA3
                                                      PA4 PA5 PA9 PA10
                                                      PA11 PA12 PA15 */
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
+    GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3
                           |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_9|GPIO_PIN_10
-                          |GPIO_PIN_11|GPIO_PIN_12;
+                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_15;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -923,7 +923,7 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pins : PB0 PB2 PB12 PB13
                                                      PB14 PB15 PB3 PB4
                                                      PB5 PB9 */
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13
+    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_12|GPIO_PIN_13
                           |GPIO_PIN_14|GPIO_PIN_15
                           |GPIO_PIN_5|GPIO_PIN_9;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
@@ -938,7 +938,7 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pin : PA8 */
     GPIO_InitStruct.Pin = GPIO_PIN_8;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL; //for onboard pullup only! //GPIO_PULLUP;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }

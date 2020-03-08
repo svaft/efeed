@@ -64,9 +64,9 @@
 
 #define MOTOR_Z_STEP_Pin GPIO_PIN_4
 #define MOTOR_Z_STEP_GPIO_Port GPIOB
-#define MOTOR_Z_DIR_Pin GPIO_PIN_3
-#define MOTOR_Z_DIR_GPIO_Port GPIOB
-#define MOTOR_Z_ENABLE_Pin GPIO_PIN_15
+#define MOTOR_Z_DIR_Pin GPIO_PIN_1
+#define MOTOR_Z_DIR_GPIO_Port GPIOA
+#define MOTOR_Z_ENABLE_Pin GPIO_PIN_0
 #define MOTOR_Z_ENABLE_GPIO_Port GPIOA
 
 // crosslide feed:

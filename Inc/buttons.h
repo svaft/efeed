@@ -14,7 +14,7 @@
 // BB_VAR must be greater then 0x20000000 + RW-data (see at build output after linking). 
 // if there are error L6971E just enlarge BB_VAR variable
 //#define BB_VAR   	0x20004000 
-#define BB_VAR 		SRAM_BASE + 0x4000
+#define BB_VAR 		SRAM_BASE + 400 //0x4000
 #define BITBAND_SRAM(a,b) ((SRAM_BB_BASE + (a-SRAM_BASE)*32 + (b*4)))  // Convert SRAM address
 
 

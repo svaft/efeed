@@ -157,50 +157,34 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>160</LineNumber>
+          <LineNumber>594</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134218998</Address>
+          <Address>134232892</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\g01.c</Filename>
+          <Filename>../Src/main.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/g01.c\160</Expression>
+          <Expression>\\efeed\../Src/main.c\594</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>68</LineNumber>
+          <LineNumber>147</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134218576</Address>
+          <Address>134233386</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\g01.c</Filename>
+          <Filename>..\Src\buttons.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/g01.c\68</Expression>
-        </Bp>
-        <Bp>
-          <Number>2</Number>
-          <Type>0</Type>
-          <LineNumber>121</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134229908</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\g01.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/g01.c\121</Expression>
+          <Expression>\\\../Src/buttons.c\147</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -218,6 +202,21 @@
           <count>2</count>
           <WinNumber>1</WinNumber>
           <ItemText>TIM2</ItemText>
+        </Ww>
+        <Ww>
+          <count>3</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>bt[0]</ItemText>
+        </Ww>
+        <Ww>
+          <count>4</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>buttons_flag_set</ItemText>
+        </Ww>
+        <Ww>
+          <count>5</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>buttons_flag_setbb[2]</ItemText>
         </Ww>
       </WatchWindow1>
       <MemoryWindow1>
@@ -255,7 +254,7 @@
         <AscS3>0</AscS3>
         <aSer3>0</aSer3>
         <eProf>0</eProf>
-        <aLa>1</aLa>
+        <aLa>0</aLa>
         <aPa1>0</aPa1>
         <AscS4>0</AscS4>
         <aSer4>0</aSer4>

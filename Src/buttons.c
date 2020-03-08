@@ -3,7 +3,7 @@
 
 
 //uint32_t buttons_flag_set = 0;
-uint32_t buttons_flag_set;// __attribute__((at(BB_VAR)));
+uint32_t buttons_flag_set __attribute__((at(BB_VAR)));
 
 uint32_t buttons_flag_set_prev = 0;
 BUTTON bt[BT_TOTAL];

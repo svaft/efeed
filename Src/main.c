@@ -585,7 +585,7 @@ int main(void)
 //			}
 //		}
 
-		if(buttons_flag_set || preload > 0) {
+		if(buttons_flag_set ) { //|| preload > 0) {
 			if(preload-- > 0)
 				buttons_flag_set = 4;
 			switch(buttons_flag_set) {
@@ -976,8 +976,7 @@ static void MX_TIM4_Init(void)
   PB8   ------> TIM4_CH3 
   */
   GPIO_InitStruct.Pin = ENC_A_Pin|ENC_B_Pin|ENC_ZERO_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* TIM4 interrupt Init */
@@ -1134,10 +1133,10 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_DIR_Pin|MOTOR_Z_ENABLE_Pin);
+  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin|MOTOR_X_DIR_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_X_ENABLE_Pin|MOTOR_Z_DIR_Pin);
+  LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port, MOTOR_X_ENABLE_Pin);
 
   /**/
   GPIO_InitStruct.Pin = LED_Pin;
@@ -1152,36 +1151,41 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_1|LL_GPIO_PIN_4|LL_GPIO_PIN_5 
-                          |LL_GPIO_PIN_6|LL_GPIO_PIN_10|LL_GPIO_PIN_11|LL_GPIO_PIN_12;
+  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin|MOTOR_X_DIR_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_4|LL_GPIO_PIN_5|LL_GPIO_PIN_6|LL_GPIO_PIN_10 
+                          |LL_GPIO_PIN_11|LL_GPIO_PIN_12|LL_GPIO_PIN_15;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = MOTOR_X_DIR_Pin|MOTOR_Z_ENABLE_Pin;
+  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /**/
-  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_Z_DIR_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  LL_GPIO_Init(MOTOR_X_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_2|LL_GPIO_PIN_12|LL_GPIO_PIN_13|LL_GPIO_PIN_14 
-                          |LL_GPIO_PIN_15|LL_GPIO_PIN_5|LL_GPIO_PIN_9;
+                          |LL_GPIO_PIN_15|LL_GPIO_PIN_3|LL_GPIO_PIN_5|LL_GPIO_PIN_9;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = BUTTON_1_Pin|BUTTON_2_Pin;
+  GPIO_InitStruct.Pin = BUTTON_1_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
+  LL_GPIO_Init(BUTTON_1_GPIO_Port, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = BUTTON_2_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  LL_GPIO_Init(BUTTON_2_GPIO_Port, &GPIO_InitStruct);
 
 }
 

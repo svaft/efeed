@@ -94,7 +94,7 @@ G54-G59.3 Select Coordinate System
 G96, G97 Spindle Control Mode, G97 (RPM Mode)
 */
 
-int preload = 4;
+int preload = 2;
 static const char * ga1[] = {
 //"G71",
 //"LIMS=S6000",
@@ -107,7 +107,7 @@ static const char * ga1[] = {
 //"G97 S4547 M3",
 "G90 G94 G18",
 	
-"G1 X0. Z0. F70",
+"G1 X0. Z0. F120",
 "Z0.1",
 "Z0.",
 
@@ -585,13 +585,21 @@ int main(void)
 //			}
 //		}
 
-		if(buttons_flag_set ) { //|| preload > 0) {
-			if(preload-- > 0)
-				buttons_flag_set = 4;
+		if(buttons_flag_set || preload >= 0) {
+			if(preload-- >= 0){
+				command_parser((char *)ga1[command++]);
+//				buttons_flag_set = 4;
+			}
 			switch(buttons_flag_set) {
 				case single_click_Msk:
 					// emulate receive g-code line by usart interrupt(bluetooth) 
-					command_parser((char *)ga1[command++]);
+					if(feed_direction == feed_direction_left)
+						command_parser("Z-10. F120");
+					else
+						command_parser("Z0. F60");
+
+					feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
+					menu_changed = 1;
 					break;
 			}
 			buttons_flag_set = 0; // reset button flags
@@ -618,6 +626,7 @@ int main(void)
 // update display info
 		if(menu_changed == 1){ // haltodo && hi2c2.hdmatx->State == HAL_DMA_STATE_READY) {
 			menu_changed = update_screen();
+			SSD1306_UpdateScreen();
 		}
 #endif		
 		

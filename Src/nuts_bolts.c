@@ -74,7 +74,7 @@ int str_f_to_steps(const char *str, uint16_t steps_per_unit, char **endptr)
 */
 
 /**
- * \brief convert value mm/rev in Q824 format to delay according to stepper per rev,
+ * \brief convert value mm/rev in Q22.10 format to Q824 delay according to stepper per rev,
  * 	lead screw pitch and encoder resolution
  * \param[in] 
  *
@@ -86,7 +86,7 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
 */
 //z_steps_unit*z_steps_unit/z_screw_pitch
 //	return fixedptu_div(18<<24,feed);
-	return fixedptu_div(rev_to_delay,feed);
+	return fixedptu_div(rev_to_delay,feed<<14); // feed<<14 - convert feed value in 22.10 to 8.24 format
 }
 
 

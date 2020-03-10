@@ -162,6 +162,8 @@ typedef struct substep_job{
 } substep_job_t;
 
 
+#define G94code 0
+#define G95code 1
 
 typedef struct state_s
 {

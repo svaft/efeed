@@ -94,7 +94,12 @@ G54-G59.3 Select Coordinate System
 G96, G97 Spindle Control Mode, G97 (RPM Mode)
 */
 
-int preload = 2;
+#ifdef _SIMU
+int preload = 3;
+#else
+int preload = 1;
+#endif
+		
 static const char * ga1[] = {
 //"G71",
 //"LIMS=S6000",
@@ -105,9 +110,11 @@ static const char * ga1[] = {
 //"G54",
 //"G94",
 //"G97 S4547 M3",
-"G90 G94 G18",
-	
-"G1 X0. Z0. F120",
+//"G90 G94 G18",//async
+//"G1 X0. Z0. F120",
+
+	"G90 G95 G18",//sync
+	"G1 X0. Z0. F1",
 "Z0.1",
 "Z0.",
 
@@ -594,9 +601,10 @@ int main(void)
 				case single_click_Msk:
 					// emulate receive g-code line by usart interrupt(bluetooth) 
 					if(feed_direction == feed_direction_left)
-						command_parser("Z-10. F120");
+						command_parser("Z-10. F1");
+//						command_parser("Z-10. F120");
 					else
-						command_parser("Z0. F60");
+						command_parser("Z0.");
 
 					feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
 					menu_changed = 1;

@@ -586,7 +586,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 	gt_new_task->stepper = true;
 
 //feed:
-	if(s->G94G95 == 1){ 	// unit(mm) per rev
+	if(s->G94G95 == G95code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 	} else { 											// unit(mm) per min
 		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);

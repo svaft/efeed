@@ -269,9 +269,16 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 	TIM4->SR = 0; // clear SR at the beginning of the interrupt to avoid false call it twice, http://www.keil.com/support/docs/3928.htm 
-	state_hw.prescaler = TIM2->CNT;
-	TIM2->CNT = 0;
-	state_hw.rpm = 2400000 / state_hw.prescaler;
+	state_hw.function(&state_hw);
+
+
+//	state_hw.prescaler = TIM2->CNT;
+//	TIM2->CNT = 0;
+//	state_hw.rpm = 2400000 / state_hw.prescaler;
+
+	
+	
+	
 //		__dsb(0);
 //	}
 	

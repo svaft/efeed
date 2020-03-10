@@ -161,7 +161,7 @@ void G01parse(char *line){ //~60-70us
 	gt_new_task->z_direction = zdir;
 
 //		bool G94G95; // 0 - unit per min, 1 - unit per rev
-	if(state_hw.G94G95 == 1){ 	// unit(mm) per rev
+	if(state_hw.G94G95 == G95code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 	} else { 											// unit(mm) per min
 		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);

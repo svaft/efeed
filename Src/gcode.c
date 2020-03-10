@@ -35,7 +35,7 @@ void load_next_task(state_t* s){
 
 
 void G95(state_t* s){
-	s->G94G95 = 1;
+	s->G94G95 = G95code;
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
 	// reconfigure async timer:
@@ -59,7 +59,7 @@ void G95(state_t* s){
 
 
 void G94(state_t* s){
-	s->G94G95 = 0;
+	s->G94G95 = G94code;
 
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 
@@ -73,7 +73,7 @@ void G94(state_t* s){
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 
-	s->task_lock = false; // all processing si done here so unlock task to next
+	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
 void do_fsm_move_start2(state_t* s){
@@ -273,8 +273,8 @@ G_pipeline_t* G_parse(char *line){
 				break;
 			case 'F':
 				init_gp.F = str_f_to_2210(line, &char_counter);
-				if (init_gp.F < 36000) //
-					init_gp.F = 36000; // the slowest feed that cat fit into limit of 8.24 format			
+//				if (init_gp.F < 36000) //
+//					init_gp.F = 36000; // the slowest feed that cat fit into limit of 8.24 format			
 				break;
 			case 'P':
 				init_gp.P = str_f_to_2210(line, &char_counter);

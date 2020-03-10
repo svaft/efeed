@@ -55,6 +55,8 @@ void G95(state_t* s){
 
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by snyc timer TIM4(spindle sync mode)
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+
+	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
 

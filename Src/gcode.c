@@ -236,7 +236,8 @@ void command_parser(char *line){
 				break;
 			case 'F':
 				init_gp.F = str_f_to_2210(line, &char_counter);
-
+				if (init_gp.F < 36000) //
+					init_gp.F = 36000; // the slowest feed that cat fit into limit of 8.24 format
 				break;
 // repeat same command				
 						
@@ -272,6 +273,8 @@ G_pipeline_t* G_parse(char *line){
 				break;
 			case 'F':
 				init_gp.F = str_f_to_2210(line, &char_counter);
+				if (init_gp.F < 36000) //
+					init_gp.F = 36000; // the slowest feed that cat fit into limit of 8.24 format			
 				break;
 			case 'P':
 				init_gp.P = str_f_to_2210(line, &char_counter);

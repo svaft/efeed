@@ -84,7 +84,9 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
 /* 1800enc lines*2(2x mode) / (400steps p mm / 1mm lead screw * current_code.feed ) << 24 to q824
 		1800*2/(400/1*feed)<<24 = 3600/(400feed)<<24=9<<24/feed
 */
-	return fixedptu_div(9<<24,feed);
+//z_steps_unit*z_steps_unit/z_screw_pitch
+//	return fixedptu_div(18<<24,feed);
+	return fixedptu_div(rev_to_delay,feed);
 }
 
 
@@ -341,7 +343,9 @@ int str_f_to_steps2210(char *line, uint8_t *char_counter){
 			}
 		}
 		t2210 += (number * steps_per_unit_Z_2210) / 1000;
-//		t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
+//		t2210 += ((number * 838861) >> 12); //  steps_per_unit_Z_2210/1000=204,8 or  209716/1024=204,800048
+
+		//		t2210 += ((number * 419430) >> 10); // quick divide for 400 steps/mm, 400/1000 = 4/10, number<<10*4/10 = number<<12/10. 
 	} else {
 		t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
 	}

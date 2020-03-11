@@ -247,7 +247,7 @@ void TIM3_IRQHandler(void)
 		state_hw.current_task.callback_ref(&state_hw);
 	}
 	if(state_hw.current_task.steps_to_end == 0 && !LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
-		state_hw.task_lock = false; // unlock task processor lo load next task
+		state_hw.task_lock = false; // unlock task processor to load next task
 		if(task_cb.count == 0){
 			do_fsm_move_end2(&state_hw);
 //			return;

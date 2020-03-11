@@ -110,13 +110,13 @@ static const char * ga1[] = {
 //"G54",
 //"G94",
 //"G97 S4547 M3",
-//"G90 G94 G18",//async
-//"G1 X0. Z0. F120",
+"G90 G94 G18",//async
+"G1 X0. Z0. F120",
 
-	"G90 G95 G18",//sync
-	"G1 X0. Z0. F1",
-"Z0.1",
-"Z0.",
+//	"G90 G95 G18",//sync
+//	"G1 X0. Z0. F1",
+	"Z0.1",
+	"Z0.",
 
 	
 	"G3 X12. Z-6 K-6",
@@ -536,7 +536,7 @@ int main(void)
 			// get pointer to last processed task
 			if(precalculating_task->precalculate_callback_ref) {
 				precalculating_task->precalculate_callback_ref(&state_precalc);
-				if(state_precalc.precalculate_end == true){
+				if(state_precalc.precalculating_task_ref->unlocked  == true){ // precalc finished, load next task to precalc
 					precalculating_task = cb_pop_front_ref2(&task_cb);
 					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
 
@@ -547,8 +547,9 @@ int main(void)
 			} else {
 				precalculating_task = cb_pop_front_ref2(&task_cb);
 				if(precalculating_task) {
+					state_precalc.precalculating_task_ref = precalculating_task;
 					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
-					if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
+					if(precalculating_task->precalculate_init_callback_ref)
 						precalculating_task->precalculate_init_callback_ref(&state_precalc);
 				}
 			}
@@ -559,11 +560,14 @@ int main(void)
 				precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
 				if(precalculating_task) {
 					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
+					state_precalc.precalculating_task_ref = precalculating_task;
 					// init precalc:
 					if(precalculating_task->precalculate_init_callback_ref){
 						precalculating_task->precalculate_init_callback_ref(&state_precalc);
-						for(int a = 0; a<10;a++)
-							precalculating_task->precalculate_callback_ref(&state_precalc);
+						if(precalculating_task->precalculate_callback_ref) {
+//							for(int a = 0; a<10;a++)
+								precalculating_task->precalculate_callback_ref(&state_precalc);
+						}
 					}
 				}
 			}
@@ -578,7 +582,7 @@ int main(void)
 //		process_G_pipeline();
 		load_next_task(&state_hw);
 
-		
+
 		process_button();
 //		process_joystick();
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);

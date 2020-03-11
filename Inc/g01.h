@@ -15,6 +15,6 @@ void dxdz_callback(state_t* s); // line movement callback
 void dxdz_callback_precalculate(state_t* s);
 void G01init_callback_precalculate(state_t* s);
 
-void G01parse(char *line);
+void G01parse(char *line, bool G00G01);
 
 #endif /* G01_H_ */

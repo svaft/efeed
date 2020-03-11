@@ -23,7 +23,7 @@ void G01init_callback_precalculate(state_t* s){
 
 void dxdz_callback_precalculate(state_t* s){
 //	pcc++;
-	s->precalculate_end = false;
+//	s->precalculate_end = false;
 
 	substep_t *sb = substep_cb.top;
 	int e2 = s->err;
@@ -56,8 +56,11 @@ void dxdz_callback_precalculate(state_t* s){
 		sb->skip++;
 	}
 	s->current_task.steps_to_end--;
-	if(s->current_task.steps_to_end == 0)
-		s->precalculate_end = true;
+	if(s->current_task.steps_to_end == 0){
+		s->precalculating_task_ref->unlocked = true;
+
+//		s->precalculate_end = true; // todo remove?
+	}
 }
 
 // called from load_task
@@ -122,18 +125,18 @@ void dxdz_callback(state_t* s){
 }
 
 
-void G01parse(char *line){ //~60-70us
+void G01parse(char *line, bool G00G01){ //~60-70us
 	int x0 = init_gp.X & ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
 	int z0 = init_gp.Z & ~1uL<<(FIXEDPT_FBITS2210-1);
+	state_t *s = &state_precalc;
+
 	G_pipeline_t *gref = G_parse(line);
-	if(state_hw.init == false){
+	if(s->init == false){
 		init_gp.X = gref->X;
 		init_gp.Z = gref->Z;
-		state_hw.init = true;
+		s->init = true;
 		return;
 	}
-//	gref->Z = -32*1024;
-//	gref->X = 6*1024;
 	
 	int dx,dz, xdir,zdir;
 	if(gref->Z > z0){ // go from left to right
@@ -161,7 +164,7 @@ void G01parse(char *line){ //~60-70us
 	gt_new_task->z_direction = zdir;
 
 //		bool G94G95; // 0 - unit per min, 1 - unit per rev
-	if(state_hw.G94G95 == G95code){ 	// unit(mm) per rev
+	if(s->G94G95 == G95code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 	} else { 											// unit(mm) per min
 		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);

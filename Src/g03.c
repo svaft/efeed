@@ -154,13 +154,15 @@ void arc_q1_callback_precalculate(state_t* s){
 	} // z step
 
 	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
-		s->precalculate_end = true;
+		s->precalculating_task_ref->unlocked = true;
+//		s->precalculate_end = true;
 //		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
 
 	if(s->current_task.z == 0){ // end of quadrant
-		s->precalculate_end = true;
+		s->precalculating_task_ref->unlocked = true;
+//		s->precalculate_end = true;
 //		s->current_task.steps_to_end = 0;
 	}
 }
@@ -465,7 +467,7 @@ void G03init_callback(state_t* s){
 
 
 void G03init_callback_precalculate(state_t* s){
-	s->precalculate_end = false;
+//	s->precalculate_end = false;
 	//precalculate variables:
 	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
 	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;

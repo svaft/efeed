@@ -16,23 +16,36 @@ substep_t* cb_push_back_empty_ref(void){
 }
 
 
+
+/**
+* @brief  Extract new task from queue and start to process it
+* @retval void.
+  */
 void load_next_task(state_t* s){
 	if(s->task_lock == false && task_cb.count > 0) {
-	debug();
-		s->task_lock = true;
-		cb_pop_front(&task_cb, &s->current_task);
-		if(s->current_task.init_callback_ref){
-			s->current_task.init_callback_ref(s); // task specific init
-		}
+		G_task_t *next_task = cb_get_front_ref(&task_cb);
+		if(next_task && next_task->unlocked == true) {
+//	debug();
+			s->task_lock = true;
+			cb_pop_front(&task_cb, &s->current_task);
+			if(s->current_task.init_callback_ref){
+				s->current_task.init_callback_ref(s); // task specific init
+			}
 
-		s->Q824set = s->current_task.F; // load feed value
-		if(s->current_task.stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
-			do_fsm_move_start2(s);
+			s->Q824set = s->current_task.F; // load feed value
+			if(s->current_task.stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
+				do_fsm_move_start2(s);
+			}
 		}
 	}
 }
 
 
+
+void G95init_callback_precalculate(state_t* s){
+	s->G94G95 = G95code;
+	s->precalculating_task_ref->unlocked = true;
+}
 
 void G95(state_t* s){
 	s->G94G95 = G95code;
@@ -59,6 +72,11 @@ void G95(state_t* s){
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
+
+void G94init_callback_precalculate(state_t* s){
+	s->G94G95 = G94code;
+	s->precalculating_task_ref->unlocked = true;
+}
 
 void G94(state_t* s){
 	s->G94G95 = G94code;
@@ -106,19 +124,20 @@ void do_fsm_move_start2(state_t* s){
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
 
-//	LL_mDelay(100);
-//	debug();
-
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	LL_TIM_EnableCounter(s->syncbase);
 	LL_TIM_EnableIT_UPDATE(s->syncbase);
-//	LL_TIM_DisableIT_UPDATE(TIM2);
 	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
-//	LL_TIM_ClearFlag_UPDATE(TIM2);
-//	LL_TIM_EnableIT_UPDATE(s->syncbase);
 }
 uint32_t move_cnt = 0;
+
+
+
+/**
+* @brief  do_fsm_move2
+* @retval void.
+  */
 void do_fsm_move2(state_t* s){
 	move_cnt++;
 	substep_t *sb = substep_cb.tail; //get ref to current substep
@@ -144,6 +163,11 @@ void do_fsm_move2(state_t* s){
 }
 
 
+
+/**
+* @brief  do_fsm_move_end2
+* @retval void.
+  */
 void do_fsm_move_end2(state_t* s){
 //	debug();
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
@@ -174,7 +198,6 @@ G_task_t* get_last_task( void ){
 
 
 void command_parser(char *line){
-//  state_t *s = &state_hw;
 	uint8_t char_counter = 0;  
 	char letter;
 	G_task_t *g_task;
@@ -191,25 +214,26 @@ void command_parser(char *line){
 						G04parse(line+char_counter);
 						break;
 					case 90*steps_per_unit_Z_2210: //G90  absolute distance mode
-						
 						break;
 					case 94*steps_per_unit_Z_2210: //G94 Units per Minute Mode
 //						s->G94G95 = 0;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G94;
+						g_task->precalculate_init_callback_ref = G94init_callback_precalculate;
 						break;
 					case 95*steps_per_unit_Z_2210: //G95 - is Units per Revolution Mode
 //						s->G94G95 = 1;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G95;
+						g_task->precalculate_init_callback_ref = G95init_callback_precalculate;
 //						g_task->init_callback_ref = calibrate_init_callback;
 //						s->sync = 1;
 						break;
 					case 0://G0 command packed into 2210_400 format
-						G01parse(line+char_counter);
+						G01parse(line+char_counter, G00code);
 						return;	
 					case 1*steps_per_unit_Z_2210://G1 command packed into 2210_400 format
-						G01parse(line+char_counter);
+						G01parse(line+char_counter, G01code);
 						return;	
 					case 2*steps_per_unit_Z_2210: //G2 CW ARC
 						G03parse(line+char_counter,CCW); //
@@ -226,8 +250,10 @@ void command_parser(char *line){
 			case 'Z':
 				switch(command){
 					case 0*steps_per_unit_Z_2210://G0 command packed into 2210_400 format
+						G01parse(line+char_counter - 1,G00code);
+						return;	
 					case 1*steps_per_unit_Z_2210://G1 command packed into 2210_400 format
-						G01parse(line+char_counter - 1);
+						G01parse(line+char_counter - 1,G01code);
 						return;	
 					case 3*steps_per_unit_Z_2210: //G3
 						G03parse(line+char_counter - 1,0);
@@ -238,8 +264,8 @@ void command_parser(char *line){
 				break;
 			case 'F':
 				init_gp.F = str_f_to_2210(line, &char_counter);
-				if (init_gp.F < 36000) //
-					init_gp.F = 36000; // the slowest feed that cat fit into limit of 8.24 format
+//				if (init_gp.F < 36000) //
+//					init_gp.F = 36000; // the slowest feed that cat fit into limit of 8.24 format
 				break;
 // repeat same command				
 						

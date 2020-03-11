@@ -21,6 +21,9 @@
 
 void command_parser(char *line);
 
+void G94init_callback_precalculate(state_t* s);
+void G95init_callback_precalculate(state_t* s);
+
 void G94(state_t* s);
 void G95(state_t* s);
 

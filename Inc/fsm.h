@@ -8,9 +8,9 @@
 
 #include "main.h"
 #include "gcode.h"
-#define debug()	LL_GPIO_TogglePin(MOTOR_X_ENABLE_GPIO_Port, MOTOR_X_ENABLE_Pin)
-#define debug1() LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin)
-#define debug7() LL_GPIO_TogglePin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin)
+//#define debug()	LL_GPIO_TogglePin(MOTOR_X_ENABLE_GPIO_Port, MOTOR_X_ENABLE_Pin)
+//#define debug1() LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port, MOTOR_Z_DIR_Pin)
+//#define debug7() LL_GPIO_TogglePin(MOTOR_X_DIR_GPIO_Port, MOTOR_X_DIR_Pin)
 
 struct state;
 

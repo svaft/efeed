@@ -105,6 +105,16 @@ __STATIC_INLINE void cb_pop_front(circular_buffer *cb, void *item){
     cb->count--;
 }
 
+__STATIC_INLINE void* cb_get_front_ref(circular_buffer *cb){
+    if(cb->count == 0){
+        return 0;
+        // handle error
+    }
+    return cb->tail; // get ref to stored value to return at the end and step to next
+}
+
+
+
 __STATIC_INLINE void* cb_pop_front_ref(circular_buffer *cb){
     if(cb->count == 0){
         return 0;

@@ -146,6 +146,7 @@ typedef struct G_task{
 
 	uint8_t z_direction, x_direction;
 	bool stepper; // use this variable if this code use stepper motor
+	bool unlocked; // task unlocked(already processed by precalc)
 // arc
 //	int rr, inc_dec;
 	uint32_t a,b;
@@ -160,10 +161,6 @@ typedef struct substep_job{
 	uint8_t substep_pulse_on;
 	uint8_t substep_pulse_off;
 } substep_job_t;
-
-
-#define G94code 0
-#define G95code 1
 
 typedef struct state_s
 {
@@ -188,8 +185,9 @@ typedef struct state_s
 	uint8_t substep_pulse_off;
 	
 	G_task_t current_task;
+	G_task_t *precalculating_task_ref;
 	bool task_lock;
-	bool precalculate_end;
+//	bool precalculate_end; // moved to task structure
 	
 	bool G94G95; // 0 - unit per min, 1 - unit per rev
 //	uint32_t substep_mask;
@@ -524,6 +522,16 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 #define Spindle_Direction_CCW        1
 #define feed_direction_left         0 // from right to left
 #define feed_direction_right        1 // from left to right
+
+
+
+#define G94code 0
+#define G95code 1
+
+#define G00code 0
+#define G01code 1
+
+
 
 /* USER CODE END Private defines */
 

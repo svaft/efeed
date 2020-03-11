@@ -24,7 +24,7 @@ substep_t* cb_push_back_empty_ref(void){
 void load_next_task(state_t* s){
 	if(s->task_lock == false && task_cb.count > 0) {
 		G_task_t *next_task = cb_get_front_ref(&task_cb);
-		if(next_task && next_task->unlocked == true) {
+		if(next_task){// && next_task->unlocked == true) {
 //	debug();
 			s->task_lock = true;
 			cb_pop_front(&task_cb, &s->current_task);

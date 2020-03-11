@@ -527,6 +527,7 @@ int main(void)
 //	G94(&state_hw);
 //	do_fsm_move_start2(&state_hw);
 	int command = 0;
+	int testcommand = 0;
 //	debug();
 //	LL_mDelay(50);
 
@@ -605,11 +606,38 @@ int main(void)
 			switch(buttons_flag_set) {
 				case single_click_Msk:
 					// emulate receive g-code line by usart interrupt(bluetooth) 
-					if(feed_direction == feed_direction_left)
-						command_parser("Z-10. F1");
-//						command_parser("Z-10. F120");
-					else
-						command_parser("Z0.");
+			switch(testcommand) {
+				case 0:
+					command_parser("X2. Z20. F640");
+//					command_parser("X0.666");
+//					command_parser("Z-10. F180");
+					break;
+				case 1:
+					command_parser("X0.");
+//					command_parser("Z0.");
+					break;
+				case 2:
+					command_parser("X0.333");
+					break;
+				case 3:
+					command_parser("X0.");
+					break;
+				case 4:
+					command_parser("X1. Z10.");
+					break;
+				case 5:
+					command_parser("X0. Z0.");
+					break;
+			}
+			testcommand++;
+			if(testcommand > 5 )
+				testcommand = 0;
+				
+//				if(feed_direction == feed_direction_left)
+//						command_parser("Z-10. F1");
+//						command_parser("Z-10. F240");
+//					else
+//						command_parser("Z0.");
 
 					feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
 					menu_changed = 1;

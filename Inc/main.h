@@ -467,7 +467,7 @@ void Error_Handler(void);
 
 //#define steps_per_unit_Z_2210   400<<10
 
-#define x_steps_unit	200
+#define x_steps_unit	400
 #define x_screw_pitch	1.27
 
 #define x_screw_pulley 61 // used to transfer torque from stepper motor to screw with reduction

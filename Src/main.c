@@ -115,7 +115,7 @@ static const char * ga1[] = {
 
 //	"G90 G95 G18",//sync
 //	"G1 X0. Z0. F1",
-	"Z0.1",
+	"Z0.01",
 	"Z0.",
 
 	
@@ -538,6 +538,7 @@ int main(void)
 				precalculating_task->precalculate_callback_ref(&state_precalc);
 				if(state_precalc.precalculating_task_ref->unlocked  == true){ // precalc finished, load next task to precalc
 					precalculating_task = cb_pop_front_ref2(&task_cb);
+					state_precalc.precalculating_task_ref = precalculating_task;
 					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
 
 					if(precalculating_task && precalculating_task->precalculate_init_callback_ref)

@@ -272,9 +272,9 @@ void TIM4_IRQHandler(void)
 	state_hw.function(&state_hw);
 
 
-//	state_hw.prescaler = TIM2->CNT;
-//	TIM2->CNT = 0;
-//	state_hw.rpm = 2400000 / state_hw.prescaler;
+	state_hw.prescaler = TIM2->CNT;
+	TIM2->CNT = 0;
+	state_hw.rpm = 2400000 / state_hw.prescaler;
 
 	
 	

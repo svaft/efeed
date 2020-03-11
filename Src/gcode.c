@@ -32,7 +32,7 @@ void load_next_task(state_t* s){
 				s->current_task.init_callback_ref(s); // task specific init
 			}
 
-			s->Q824set = s->current_task.F; // load feed value
+//			s->Q824set = s->current_task.F; // load feed value
 			if(s->current_task.stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
 				do_fsm_move_start2(s);
 			}
@@ -41,6 +41,28 @@ void load_next_task(state_t* s){
 }
 
 
+void G94init_callback_precalculate(state_t* s){
+	s->G94G95 = G94code;
+	s->precalculating_task_ref->unlocked = true;
+}
+
+void G94(state_t* s){
+	s->G94G95 = G94code;
+
+  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+
+	LL_TIM_DisableCounter(TIM2); // pause async timer
+// calibrate timer delay
+	LL_TIM_DisableUpdateEvent(TIM2);
+
+	// connect async timer:
+	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+
+	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
+	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+
+	s->task_lock = false; // all processing is done here so unlock task to next
+}
 
 void G95init_callback_precalculate(state_t* s){
 	s->G94G95 = G95code;
@@ -73,28 +95,7 @@ void G95(state_t* s){
 }
 
 
-void G94init_callback_precalculate(state_t* s){
-	s->G94G95 = G94code;
-	s->precalculating_task_ref->unlocked = true;
-}
 
-void G94(state_t* s){
-	s->G94G95 = G94code;
-
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-
-	LL_TIM_DisableCounter(TIM2); // pause async timer
-// calibrate timer delay
-	LL_TIM_DisableUpdateEvent(TIM2);
-
-	// connect async timer:
-	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
-
-	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
-	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-
-	s->task_lock = false; // all processing is done here so unlock task to next
-}
 
 void do_fsm_move_start2(state_t* s){
 //	load_next_task(s); // load first task from queue
@@ -127,8 +128,12 @@ void do_fsm_move_start2(state_t* s){
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	LL_TIM_EnableCounter(s->syncbase);
-	LL_TIM_EnableIT_UPDATE(s->syncbase);
+
+	LL_TIM_DisableIT_UPDATE(s->syncbase);
+
 	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
+	LL_TIM_ClearFlag_UPDATE(s->syncbase);
+	LL_TIM_EnableIT_UPDATE(s->syncbase);
 }
 uint32_t move_cnt = 0;
 

@@ -70,6 +70,9 @@ void G01init_callback(state_t* s){
 //	3. set channels
 	s->function = do_fsm_move2;
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
+
+	s->Q824set = s->current_task.F;
+
 	s->prescaler = s->syncbase->PSC;
 //	TIM3->CCER = 0;
 	XDIR = s->current_task.x_direction;
@@ -169,6 +172,8 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	} else { 											// unit(mm) per min
 		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 	}
+//	if(G00G01 == G00code) // rapid movement,
+		
 	gt_new_task->init_callback_ref = G01init_callback;
 	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
 	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;

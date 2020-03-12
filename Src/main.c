@@ -95,7 +95,7 @@ G96, G97 Spindle Control Mode, G97 (RPM Mode)
 */
 
 #ifdef _SIMU
-int preload = 3;
+int preload = 2;
 #else
 int preload = 1;
 #endif
@@ -111,10 +111,11 @@ static const char * ga1[] = {
 //"G94",
 //"G97 S4547 M3",
 "G90 G94 G18",//async
-"G1 X0. Z0. F120",
+"G1 X0. Z0. F740",
 
 //	"G90 G95 G18",//sync
 //	"G1 X0. Z0. F1",
+  "X10. Z10.",
 	"Z0.01",
 	"Z0.",
 
@@ -822,7 +823,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
-  TIM_InitStruct.Prescaler = 0;
+  TIM_InitStruct.Prescaler = 15;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 0;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
@@ -882,7 +883,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
-  TIM_InitStruct.Prescaler = 2400;
+  TIM_InitStruct.Prescaler = 2399;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 50;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;

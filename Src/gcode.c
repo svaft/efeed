@@ -138,18 +138,24 @@ void do_fsm_move_start2(state_t* s){
 uint32_t move_cnt = 0;
 
 
-
+int break1;
 /**
 * @brief  do_fsm_move2
 * @retval void.
   */
 void do_fsm_move2(state_t* s){
 	move_cnt++;
+	if(move_cnt>460 && move_cnt<470) 
+		break1 = 1;
 	substep_t *sb = substep_cb.tail; //get ref to current substep
 	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+		delay >>=4;
+		if(delay>65500)
+			Error_Handler(); // owerflow error, enlarge tim1 prescaler, timer1 is too fast
+			
 		TIM1->CCR1	= delay + 1;
-		TIM1->ARR 	= delay + min_pulse + 1;
+		TIM1->ARR 	= delay + 46;//min_pulse + 1;
 		TIM1->SR = 0;
 		if(LL_TIM_IsEnabledCounter(TIM1))
 			Error_Handler(); // some error?
@@ -322,7 +328,7 @@ G_pipeline_t* G_parse(char *line){
 void calibrate_init_callback(state_t *s){ 
 	// todo not sure if it's working from timer interrupt where load_task is started...
 	if(s->syncbase == TIM2){
-		s->prescaler = s->syncbase->PSC;
+		s->prescaler = s->syncbase->PSC + 1;
 		return;
 	}
 	LL_TIM_DisableCounter(s->syncbase); // pause current timer

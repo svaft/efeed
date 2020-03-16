@@ -99,7 +99,10 @@ __STATIC_INLINE void cb_pop_front(circular_buffer *cb, void *item){
         // handle error
     }
     memcpy(item, cb->tail, cb->sz);
-    cb->tail = (char*)cb->tail + cb->sz;
+    if(cb->tail == cb->tail2)
+			cb->count2--;
+			
+		cb->tail = (char*)cb->tail + cb->sz;
     if(cb->tail == cb->buffer_end)
         cb->tail = cb->buffer;
     cb->count--;
@@ -121,6 +124,8 @@ __STATIC_INLINE void* cb_pop_front_ref(circular_buffer *cb){
         // handle error
     }
     void *ref = cb->tail; // get ref to stored value to return at the end and step to next
+    if(cb->tail == cb->tail2)
+			cb->count2--;
     cb->tail = (char*)cb->tail + cb->sz;
     if(cb->tail == cb->buffer_end) // if reach the end go to head of buffer
         cb->tail = cb->buffer;

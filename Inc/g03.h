@@ -17,7 +17,9 @@ void G03init_callback_precalculate(state_t* s);
 	//void arc_dx_callback(void);// arc movement callback
 //void arc_dz_callback(void); // arc movement callback
 
+uint8_t get_quadrant(int x0, int z0);
 
+void arc_q1_callback_light(state_t* s);
 void arc_q1_callback(state_t* s);
 void arc_q2_callback(state_t* s);
 void arc_q3_callback(state_t* s);

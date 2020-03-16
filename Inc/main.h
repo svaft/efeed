@@ -175,6 +175,8 @@ typedef struct state_s
 	// arc variables for precalculated in task init callback for current task:	
 	int64_t arc_aa, arc_bb, arc_dx, arc_dz; // error increment
 	int64_t arc_err; // error of 1.step
+	int32_t arc_equator;
+	int32_t arc_total_steps;
 	
 	uint32_t prescaler; // used for calculating substep delay
 	uint16_t rpm; // current sindle speed in rpm
@@ -508,6 +510,54 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 
 //#define z_to_x_factor2210	3074 //1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch) //1024*200*61/16/1,27/(400/2)
 #define z_to_x_factor2210	(uint32_t)(1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch)) //1024*200*61/16/1,27/(400/2)
+
+
+/*
+ellipse_total_steps2210: total steps to finish full ellipse quadrant arc, 
+for a=1 and b=a*z_to_x_factor2210 total_steps = sqrt(1 + z_to_x_factor2210*z_to_x_factor2210)
+*/
+#define ellipse_total_steps2210 6233
+
+
+#define z_to_x_ellipse_equator2210	6064 //a*a/b*b*sqrt(а*а+b*b)/(1+a*a/b*b), for a=1 and b=a*z_to_x_factor, equator = z_to_x_factor*z_to_x_factor*sqrt(1+z_to_x_factor*z_to_x_factor)/(1+z_to_x_factor*z_to_x_factor)
+/*
+z_to_x_ellipse_equator2210: под экватором подразумевается точка, в которой дуга квадранта эллипса меняет основную ось, 
+по которой идет основной шаг. что имеется ввиду: 
+на схеме ниже, квадрант 1: при построении дуги эллипса из точки x0z0 в x1z1 дуга быстро растет по иси z, 
+и от нуля плавно начинает расти по оси х. Соответственно ось z будет основной, ось х - вторичной.
+В точке "экватора" роли осей меняются, по оси Х прирост дуги идет на каждом шаге, а скорость роста оси Z плавно спадает до нуля.
+Соответственно до экватора мы на кадом тике таймера/шпинделя делаем  шаг мотором по оси Z, и по нему вычисляем Х.
+ПОсле экватора Х основная ось(шагаем по ней на каждом тике), Z - вторичная(substep_axis).
+Так  вот, экватор это точка касательной к эллипсу, проведенная под углом 45 градусов. 
+вычисляется как eqator=a*a/b*b*sqrt(а*а+b*b)/(1+a*a/b*b),(возможно есть более простой путь),
+где а - большая полуось, b - меньшая полуось эллипса.
+Каждый раз считать экватор для эллипса нет смысла, т.к. у нас полуоси а и b связаны 
+и вычисляются от оси Z как произведение Z*z_to_x_factor2210
+Следовательно достаточно один раз вычислить коэффициент, на который будет умножаться полуось Z для вычисления экватора.
+
+
+                  ^ Z
+                  |
+                  |x1z1
+            ******x******
+         ***      |      ***
+			 **         |         **<------ экватор
+      *      2   b|   1       *
+     *            |            *
+		                           *
+                               * x0z0
+------------------0------------x------->
+     *            |     a      *       X
+*/
+/*
+ellipse_arc_len_factor2210: коэффициент, на который нужно умножить радиус окружности(будущего эллипса), для вычисления значения длины одного квадранта эллипса
+r*3,14/2/(ПИ()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
+ ellipse_arc_len_factor2210=1024*2*КОРЕНЬ((1+z_to_x_factor*z_to_x_factor)/8)
+
+*/
+#define ellipse_arc_len_factor2210 4407 
+
+
 
 #define SUBSTEP_AXIS_Z 0
 #define SUBSTEP_AXIS_X 1

@@ -25,6 +25,7 @@ void load_next_task(state_t* s){
 	if(s->task_lock == false && task_cb.count > 0) {
 		G_task_t *next_task = cb_get_front_ref(&task_cb);
 		if(next_task){// && next_task->unlocked == true) {
+//		if(next_task && next_task->unlocked == true) {
 //	debug();
 			s->task_lock = true;
 			cb_pop_front(&task_cb, &s->current_task);
@@ -145,8 +146,8 @@ int break1;
   */
 void do_fsm_move2(state_t* s){
 	move_cnt++;
-	if(move_cnt>460 && move_cnt<470) 
-		break1 = 1;
+//	if(move_cnt>460 && move_cnt<470) 
+//		break1 = 1;
 	substep_t *sb = substep_cb.tail; //get ref to current substep
 	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?

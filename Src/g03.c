@@ -122,7 +122,7 @@ void substep_recalc(int64_t e2, int64_t dzdx){
 }
 
 
-
+bool equator_init = false;
 /**
 * @brief  precalculate arc 1st quadrant with substeps
 * @retval void.
@@ -137,10 +137,14 @@ void arc_q1_callback_precalculate(state_t* s){
 		s->current_task.x++;
 		s->arc_err += s->arc_dx += s->arc_bb;
 	} else {
+		if(equator_init == false){
+			equator_init  = true;
+			cb_push_back_empty_ref()->skip = 1;
+		}
 // main axis is Z, subaxis - X	
 		s->arc_equator=0;
 		if (e2 < s->arc_dx) {
-			substep_recalc(e2, -s->arc_dx);
+			substep_recalc(-e2, -s->arc_dx);
 			s->current_task.x++;
 			s->arc_err += s->arc_dx += s->arc_bb;
 		} else {

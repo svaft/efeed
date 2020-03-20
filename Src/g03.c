@@ -16,7 +16,8 @@ bool brk=0;
 
 //substep_t substep[substep_size];
 
-uint8_t prev_delay = 0, prev_delay_sma = 0;
+uint8_t prev_delay = 0;
+int32_t prev_delay_sma = 0;
 uint32_t avgSum = 0, directSum = 0;
 
 #define arrNumbers_len 8
@@ -62,16 +63,23 @@ void substep_recalc(int64_t e2, int64_t dzdx){
 	prev_delay = delay;
 //		last_skip = 0;
 
-	// calculate moving sum:
-	sma = sma - arrNumbers[pos] + last_delay_total;
-	arrNumbers[pos++] = last_delay_total;
-	if (pos >= arrNumbers_len){
-		pos = 0;
+	sma += last_delay_total;
+	if(sma_cb.count == 8) {
+	sma -= *(uint32_t *)cb_pop_front_ref(&sma_cb);
+//		sma -= *(uint32_t *)sma_cb.tail;
 	}
+	cb_push_back(&sma_cb,&last_delay_total);
+	
+	// calculate moving sum:
+//	sma = sma - arrNumbers[pos] + last_delay_total;
+//	arrNumbers[pos++] = last_delay_total;
+//	if (pos >= arrNumbers_len){
+//		pos = 0;
+//	}
 
 	// dumb condition when to start applying smooth steps:
-//	if(last_delay_total <700)
-//		start_smooth_flag = true;
+	if(last_delay_total <700)
+		start_smooth_flag = true;
 
 	if(start_smooth_flag == true) {
 		// calculate moving average:
@@ -89,11 +97,15 @@ void substep_recalc(int64_t e2, int64_t dzdx){
 			step_back = false;
 		}
 		sb = substep_cb.top;
-		if(sb->skip > 0)
+		if(sb->skip > 0) {
 			sb->skip = skip_sma_steps;
+			if(skip_sma_steps == 0)
+				cb_step_back(&substep_cb);
+		}
 		else if(skip_sma_steps > 0){
 			cb_push_back_empty_ref()->skip = skip_sma_steps;
 		}
+		prev_delay_sma = prev_delay_sma - (skip_sma_steps << 8);
 		delay = prev_delay_sma;
 	} else {
 		avgSum += last_delay_total;
@@ -208,7 +220,8 @@ void arc_q1_callback_light(state_t* s){
 	} else if (s->arc_equator == 0) {
 		s->arc_equator = -1; 
 		LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-		
+//		s->Q824set = s->current_task.F;
+
 //		MOTOR_X_BlockPulse(); 
 		s->substep_axis = SUBSTEP_AXIS_X;
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
@@ -223,80 +236,25 @@ void arc_q1_callback_light(state_t* s){
 		s->current_task.steps_to_end = 0;
 }
 
-void arc_q1_callback(state_t* s){
-//	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
-	int64_t e2 = s->arc_err<<1;
-	
-	if (e2 < s->arc_dx) {
-		s->arc_err += s->arc_dx += s->arc_bb; 
-		s->current_task.x++;
-	} else {
-		// x is subaxis now
-//	if (e2 > s->arc_dx) {
-//		return;
-//	}
-		s->substep_axis = SUBSTEP_AXIS_X;
-//		LL_TIM_CC_DisableChannel(s->syncbase,MOTOR_X_CHANNEL);
-		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
-		s->substep_pulse_on = 1;
-		s->substep_pulse_off = 0;
 
-		MOTOR_Z_AllowPulse(); 
-		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
-		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
-	}
-
-	if (e2 > s->arc_dz) { // z step 
-		s->current_task.z--;
-		s->arc_err += s->arc_dz += s->arc_aa; 
-	} else {
-		s->substep_axis = SUBSTEP_AXIS_Z;
-
-		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
-		s->substep_pulse_on = 0;
-		s->substep_pulse_off = 1;
-		
-		MOTOR_X_AllowPulse(); 
-		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
-		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
-		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
-	}
-
-	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
-		s->current_task.steps_to_end = 0; // end of arc
-		return;
-	}
-
-	if(s->current_task.z == 0){ // end of quadrant
-		s->current_task.steps_to_end = 0;
-	}
-
-	
-}
-
-
-
-int64_t dddz=0;
+//int64_t dddz=0;
 // on new task loading callback
 void G03init_callback(state_t* s){
 	// set initial delay for pulse
-	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
+
+	s->arc_equator = fixedpt_xmul2210( s->current_task.b, z_to_x_ellipse_equator2210); //todo move to task
+	s->arc_total_steps = fixedpt_xmul2210( s->current_task.b, ellipse_total_steps2210);
+	
 	s->Q824set = s->current_task.F;
+//	s->Q824set = fixedpt_toint(f) - 1; //s->current_task.F;
 	// set callback iterator for feed speed:
 	s->function = do_fsm_move2; 
 	s->prescaler = s->syncbase->PSC;
-
-	s->arc_equator = fixedpt_xmul2210( s->current_task.b, z_to_x_ellipse_equator2210);
-	s->arc_total_steps = fixedpt_xmul2210( s->current_task.b, ellipse_total_steps2210);
-
+	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
+	
 	//precalculate variables:
-	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
-	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;
-
-	s->current_task.z  = fixedpt_toint2210(s->current_task.z);
-	s->current_task.x  = fixedpt_toint2210(s->current_task.x);
-	s->current_task.z1 = fixedpt_toint2210(s->current_task.z1);
-	s->current_task.x1 = fixedpt_toint2210(s->current_task.x1);
+//	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
+//	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;
 
 	uint8_t q_from 	= get_quadrant(s->current_task.x, s->current_task.z);
 //	uint8_t q_to 		= get_quadrant(s->current_task.x1, s->current_task.z1);
@@ -324,13 +282,11 @@ void G03init_callback(state_t* s){
 					s->arc_equator = 0;
 				}
 
-
-
 				s->arc_total_steps -= (s->current_task.x + s->current_task.z1);
 				break;
 			case 4:
-				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
-				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
+//				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
+//				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
 	//			gt_new_task->x_direction = xdir_backward;
 				break;
 			default: Error_Handler(); // impossible case trap
@@ -341,16 +297,16 @@ void G03init_callback(state_t* s){
 		switch(q_from){
 			case 2:
 				// Q2
-				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
-				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
+//				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
+//				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
 				break;
 			case 3:
-				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
-				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
+//				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
+//				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
 				break;
 			default: Error_Handler(); // impossible case trap
 		}
-		s->arc_err = s->arc_dx+s->arc_dz;
+//		s->arc_err = s->arc_dx+s->arc_dz;
 	}
 //	s->substep_axis = -1;
 	// use this variable as flag, set it in callback when arc is done:
@@ -365,21 +321,18 @@ void G03init_callback_precalculate(state_t* s){
 //	s->precalculate_end = false;
 	//precalculate variables:
 
-//	uint32_t aa = s->current_task.a * s->current_task.a;
-//	uint32_t bb = s->current_task.b * s->current_task.b;
+	s->arc_equator = fixedpt_xmul2210( s->current_task.b, z_to_x_ellipse_equator2210);
+	s->arc_total_steps = fixedpt_xmul2210( s->current_task.b, ellipse_total_steps2210);
 
+	// recalculate feed rate from arc length:
+	uint32_t ff = (9000 * (s->current_task.len>>10) / s->arc_total_steps)<<10;
+//	uint32_t ff = 1800000 / s->arc_total_steps;
+//	ff = ff * s->current_task.len / 200; // 200 = z motor 400steps/2mm
 
-//	uint32_t sr = SquareRootRounded(aa+bb)<<FIXEDPT_FBITS2210;
-//	uint32_t aabb    = fixedpt_xdiv2210(fixedpt_toint2210(aa),fixedpt_toint2210(bb));
-//	uint32_t aabbsr  = fixedpt_xmul2210( aabb, sr);
-//	uint32_t equator = fixedpt_xdiv2210( aabbsr, 1<<FIXEDPT_FBITS2210+aabb) >> FIXEDPT_FBITS2210;// equator - first steps to change subaxis, sr - equator = steps after subaxis changed
+	fixedptu f = fixedpt_xdiv2210(ff, s->current_task.F);
+	s->current_task.F = f << 14; // translate to 8.24 format used for delays
 	
-//	if(s->current_task.a > s->current_task.b)
-		s->arc_equator = fixedpt_xmul2210( s->current_task.b, z_to_x_ellipse_equator2210);
-		s->arc_total_steps = fixedpt_xmul2210( s->current_task.b, ellipse_total_steps2210);
-//	else 
-//		s->arc_equator = fixedpt_xmul2210( s->current_task.b, z_to_x_ellipse_equator2210);
-	
+
 	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
 	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;
 
@@ -434,7 +387,6 @@ void G03init_callback_precalculate(state_t* s){
 	s->current_task.steps_to_end = 1; 
 	// init and prepare corresponding output channels to generate first step pulse:
 	s->current_task.precalculate_callback_ref(s);
-	
 }
 
 
@@ -495,19 +447,37 @@ chuck|  |     *            |            *
 
 
 */
-	state_t *s = &state_hw;
+	state_t *s = &state_precalc;
 	int x0 = init_gp.X & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
+	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
 	int z0 = init_gp.Z & ~1uL<<(FIXEDPT_FBITS2210-1);
 	G_pipeline_t *gref = G_parse(line);
+
+	ik = (int64_t)gref->I*gref->I + (int64_t)gref->K*gref->K;
+	ik  = SquareRoot64(ik); // ik - radius of circle in 2210 format.
+
 
 	int x0z = -gref->I; //x0+xdelta;
 	int z0z = -gref->K; //z0+zdelta;
 	int x1z = gref->X - x0 - gref->I;
 	int z1z = gref->Z - z0 - gref->K;
+	int x1zr = gref->Xr - x0r - gref->I;
 
-	ik = (int64_t)gref->I*gref->I + (int64_t)gref->K*gref->K;
-	ik  = SquareRoot64(ik); // ik - radius of circle in 2210 format.
 
+/*
+	int x1zr = gref->Xr - (init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1)) - gref->I;
+
+	int ikz0 = (ik + gref->K)/1024;
+	int ikx0 = -gref->I/1024;
+	
+
+	int x1 = gref->Xr - x0r - gref->I;
+
+	int ikx1 = (gref->Xr - x0r + ikx0)/1024;
+	int ikz1 = (gref->Z -  z0  - ikz0)/1024;
+
+	int lenint = SquareRoot((ikx1 - ikx0)*(ikx1 - ikx0) + (ikz1 - ikz0)*(ikz1 - ikz0));
+*/
 //	int ii 	= gref->I >> 10, kk = gref->K >> 10; //back from 2210 to steps
 //	uint32_t rr = SquareRoot(ii*ii + kk*kk); // find arc radius
 
@@ -529,15 +499,23 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 	zf = fixedpt_toint2210(ik);
 
 	G_task_t *gt_new_task;
-	gt_new_task 		= add_empty_task();
+	gt_new_task = add_empty_task();
 	gt_new_task->stepper = true;
-
+	
+/*	// вычисляем расстояние между точками x0z0-x1z1 на дуге. 
+умножив расстояние на len_to_arc_factor2210 получим длину дуги.
+по длине дуги сможем скорректировать скорость движения(F)
+*/	
+	uint64_t il = (int64_t)(x1zr-x0z)*(x1zr-x0z)+(int64_t)(z0z-z1z)*(z0z-z1z);
+	gt_new_task->len = fixedpt_xmul2210(len_to_arc_factor2210,SquareRoot64(il));
+//	uint32_t len = 0;
 //feed:
 	if(s->G94G95 == G95code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 	} else { 											// unit(mm) per min
-		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+		gt_new_task->F = gref->F;//str_f824mm_min_to_delay824(gref->F);
 	}
+
 
 	gt_new_task->precalculate_init_callback_ref =  G03init_callback_precalculate;
 	gt_new_task->init_callback_ref = G03init_callback;
@@ -1434,3 +1412,55 @@ uint8_t get_quadrant(int x0, int z0){
 		}
 	}
 }
+
+
+/*
+void arc_q1_callback(state_t* s){
+//	TIM3->CCER = 0;	//	LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
+	int64_t e2 = s->arc_err<<1;
+	
+	if (e2 < s->arc_dx) {
+		s->arc_err += s->arc_dx += s->arc_bb; 
+		s->current_task.x++;
+	} else {
+		// x is subaxis now
+//	if (e2 > s->arc_dx) {
+//		return;
+//	}
+		s->substep_axis = SUBSTEP_AXIS_X;
+//		LL_TIM_CC_DisableChannel(s->syncbase,MOTOR_X_CHANNEL);
+		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
+		s->substep_pulse_on = 1;
+		s->substep_pulse_off = 0;
+
+		MOTOR_Z_AllowPulse(); 
+		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
+	}
+
+	if (e2 > s->arc_dz) { // z step 
+		s->current_task.z--;
+		s->arc_err += s->arc_dz += s->arc_aa; 
+	} else {
+		s->substep_axis = SUBSTEP_AXIS_Z;
+
+		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
+		s->substep_pulse_on = 0;
+		s->substep_pulse_off = 1;
+		
+		MOTOR_X_AllowPulse(); 
+		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
+	}
+
+	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+		s->current_task.steps_to_end = 0; // end of arc
+		return;
+	}
+
+	if(s->current_task.z == 0){ // end of quadrant
+		s->current_task.steps_to_end = 0;
+	}
+}
+*/

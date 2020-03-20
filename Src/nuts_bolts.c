@@ -6,6 +6,8 @@ circular_buffer task_cb;
 circular_buffer substep_cb;
 circular_buffer substep_job_cb;
 
+circular_buffer sma_cb;
+
 
 void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref){
     cb->buffer = ref;

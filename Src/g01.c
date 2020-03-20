@@ -130,6 +130,7 @@ void dxdz_callback(state_t* s){
 
 void G01parse(char *line, bool G00G01){ //~60-70us
 	int x0 = init_gp.X & ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
+	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
 	int z0 = init_gp.Z & ~1uL<<(FIXEDPT_FBITS2210-1);
 	state_t *s = &state_precalc;
 
@@ -156,7 +157,18 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 		dx = x0 - gref->X;
 		xdir = xdir_backward;
 	}
+
+	uint64_t il = (int64_t)(gref->Xr-x0r)*(gref->Xr-x0r)+(int64_t)dz*dz;
+
 	G_task_t *gt_new_task = add_empty_task();
+
+	gt_new_task->len = SquareRoot64(il);
+
+	uint32_t ff = (9000 * (gt_new_task->len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10;
+	fixedptu f = fixedpt_xdiv2210(ff, gref->F);
+	gt_new_task->F = f << 14; // translate to 8.24 format used for delays
+	
+	
 	gt_new_task->stepper = true;
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
@@ -170,7 +182,7 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	if(s->G94G95 == G95code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 	} else { 											// unit(mm) per min
-		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+//		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 	}
 //	if(G00G01 == G00code) // rapid movement,
 		

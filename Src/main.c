@@ -94,128 +94,6 @@ G54-G59.3 Select Coordinate System
 G96, G97 Spindle Control Mode, G97 (RPM Mode)
 */
 
-#ifdef _SIMU
-int preload = 2;
-#else
-int preload = 1;
-#endif
-		
-static const char * ga1[] = {
-//"G71",
-//"LIMS=S6000",
-//"G53 G0 X0.",
-//"",
-//"; Profile3",
-//"T1 D1",
-//"G54",
-//"G94",
-//"G97 S4547 M3",
-"G90 G94 G18",//async
-"G1 X0. Z0. F140",
-
- //	"G3 X.2 Z-0.1 K-0.1",
-	"G3 X12 Z-6 K-6",
-//	"G3 X.6 Z-0.3 K-0.3",
-	
-//	"X4.2 Z-0.379",
-//	"G3 X12. Z-6 I-2.1 K-5.62",
-
-	
-//	"G90 G95 G18",//sync
-//	"G1 X0. Z0. F1",
-  "X10. Z10.",
-	"Z0.0",
-	"X0.",
-	"Z10.0",
-	"X0.2",
-	"Z0.",
-	"X0.",
-	"Z10.0",
-	"X0.2",
-	"Z0.",
-	"X0.",
-  "X10. Z10.",
-
-	
-	"G3 X12. Z-6 K-6",
-
-	
-	
-"G0 X14.2 Z0. F500",
-//"G1 Z-0.05",
-//"G1 Z0.05 X14.05",
-//"X14. Z-1.",
-//"Z-1.",
-//"Z0. X15.",
-//"X14.",
-
-	//"G96 S200 M3",
-//"LIMS=S5000",
-//"G1 X14.2 ",
-"X16.028 Z1.307",
-"G4 P.01",
-"G1 X13.2 Z-0.107",
-"Z-30.8",
-"X14.",
-"X18.",
-"G0 Z1.414",
-"X15.228",
-"G1 X12.4 Z0 F500",
-"Z-30.8",
-"X13.2",
-"X17.2",
-"G0 Z1.414",
-"X14.428",
-"G1 X11.6 Z0 F500",
-"Z-30.8",
-"X12.4",
-"X16.4",
-"G0 Z1.414",
-"X13.728",
-"G1 X10.9 Z0 F500",
-"Z-30.8",
-"X11.6",
-"X14.428 Z-29.386",
-"G0 Z1.414",
-"X13.028",
-"G1 X10.2 Z0 F500",
-"Z-30.8",
-"X10.9",
-"X13.728 Z-29.386",
-"G0 Z0.614",
-"X12.828",
-"G1 X10. Z-0.8 F500",
-"Z-30.8",
-"X12.828 Z-29.386",
-"X14.",
-"G0 Z0",
-//"G97 S4547 M3",
-};
-
-/*
-	static const char * const garray[] = {
-		"G90 G94 F900",
-		"G1 X0.02 Z0.",
-		"G4 P.01",
-		"G1 X0. Z0.",
-		"G3 X12. Z-6 K-6",		
-//		"G1 X2.828 F1",
-		"G1 X.05 F600",
-		"G1 X0.02 Z0.",
-		"G4 P.01",
-		"G3 X2.3 Z-1.15 I-0.01 K-1.15",
-
-		"X0. Z-1",
-		"X3.",
-		"G3 X4. Z-6 K-5",
-		"G1 Z-11.056",
-		"G2 Z-26.056 I8.597 K-7.5",
-
-		"G1 X0. Z-2.5 F.3",
-		"G1 X10.", 
-		"G3 X12. Z-4.5 I-1.99 K-2.245" 
-	};
-*/
 
 // ***** Stepper Motor *****
 
@@ -374,6 +252,8 @@ void USART_CharReception_Callback(void)
 	}
 }
 
+
+
 /* USER CODE END 0 */
 
 /**
@@ -383,6 +263,34 @@ void USART_CharReception_Callback(void)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	#ifdef _SIMU
+	int preload = 2;
+	#else
+	int preload = 1;
+	#endif
+			
+	static const char * ga1[] = {
+	"G90 G94 G18",//async
+//	"G1 X0. Z0. F500",
+
+	"G1 X0. Z0. F56.55",
+//	"G3 X12. Z-6 K-6",
+		
+	"X80. Z-30",
+//	"G3 X94. Z-37 K-7",
+		
+	"X94. Z-42",
+		"G3 X97.017 Z-42.915 I-2. K-5",
+	//"G3 X100.561 Z-45.944 I-2. K-5", // r=5.385
+		
+		
+	"X0. Z-30",
+	"X80.",
+	"G3 X94. Z-37 K-7", //r=7
+	"G1 Z-42",
+	//"G3 X100.561 Z-45.944 I-2. K-5", // r=5.385
+	"G3 X97.017 Z-42.915 I-2. K-5",
+	};
 
   /* USER CODE END 1 */
   
@@ -406,12 +314,14 @@ int main(void)
   /* USER CODE BEGIN Init */
 	memset(&state_hw,0,sizeof(state_hw));
 	state_hw.function = do_fsm_menu_lps;
-
+	
 	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
 //	cb_init_ref(&task_precalc_cb, task_precalc_size, sizeof(G_task_t), &gt_precalc);
-	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
+//	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
 	cb_init_ref(&substep_cb, substep_size, sizeof(substep_t),&substep_delay);
 	cb_init_ref(&substep_job_cb, substep_job_size, sizeof(substep_job_t),&substep_delay);
+
+	cb_init_ref(&sma_cb,  8, sizeof(uint32_t), &smaNumbers);
 
   /* USER CODE END Init */
 

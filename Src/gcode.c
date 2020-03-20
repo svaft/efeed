@@ -6,9 +6,14 @@ G_pipeline_t init_gp={0,0,0,0,0};
 
 //G_task_t gt_precalc[task_precalc_size];
 G_task_t gt[task_size];
-G_pipeline_t gp[gp_size];
+//G_pipeline_t gp[gp_size];
 substep_t substep_delay[substep_size]; // todo check how its work with small substep buffer size 
 substep_job_t substep_job[substep_job_size];
+
+
+#define smaNumbers_len 8
+uint32_t smaNumbers[smaNumbers_len] = {0};
+
 
 substep_t* cb_push_back_empty_ref(void){
 	cb_push_back_empty(&substep_cb);
@@ -299,8 +304,9 @@ G_pipeline_t* G_parse(char *line){
     letter = line[char_counter++];
 		switch(letter){
 			case 'X':
-				init_gp.X = fixedpt_xmul2210(str_f_to_steps2210(line, &char_counter),z_to_x_factor2210);
-				init_gp.X >>= 1; //Fusion360 generate X in diameter mode, so divide by 2
+				init_gp.Xr = str_f_to_steps2210(line, &char_counter) >> 1;
+				init_gp.X = fixedpt_xmul2210(init_gp.Xr,z_to_x_factor2210);
+//				init_gp.X >>= 1; //Fusion360 generate X in diameter mode, so divide by 2
 				break;
 			case 'Z':
 				init_gp.Z = str_f_to_steps2210(line, &char_counter);

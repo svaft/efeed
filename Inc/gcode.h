@@ -35,6 +35,7 @@ extern G_task_t gt[];
 extern G_pipeline_t gp[];
 extern G_pipeline_t init_gp;
 extern substep_job_t substep_job[];
+extern uint32_t smaNumbers[];
 
 
 

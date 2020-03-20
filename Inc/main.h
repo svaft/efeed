@@ -119,13 +119,15 @@ typedef struct {
 	uint8_t infeed_strategy;
 } S_WORK_SETUP;
 
-typedef struct G_pipeline{
+
+
+typedef struct G_pipeline{ //todo remove this struct? what it used for?
 	int 
+		Xr, // x axis not corrected
 		X, // x axis
 		Z, // z axis
 		F, // feed
 		P; // dwell
-
 	int 
 		I, // arc X axis delta
 		K; // arc Z axis delta
@@ -136,6 +138,7 @@ typedef struct G_pipeline{
 typedef struct G_task{
 	int32_t dx, dz;
 	int32_t 	x, z, x1, z1; // delta
+	uint32_t len;
 	uint32_t steps_to_end;
 	fixedptu F; //Q824, feed value. For mm/min lowest value is 35.16 mm/min
 	callback_func_t callback_ref; //callback ref to iterate line or arc
@@ -511,6 +514,11 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 //#define z_to_x_factor2210	3074 //1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch) //1024*200*61/16/1,27/(400/2)
 #define z_to_x_factor2210	(uint32_t)(1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch)) //1024*200*61/16/1,27/(400/2)
 
+#define len_to_arc_factor2210 1137
+#define async_steps_factor 9000 // 30000hz fot 60 sec 400 steps for 2mm screw
+
+#define z_to_x_factor824	100729348
+
 
 /*
 ellipse_total_steps2210: total steps to finish full ellipse quadrant arc, 
@@ -550,12 +558,13 @@ z_to_x_ellipse_equator2210: под экватором подразумевает
      *            |     a      *       X
 */
 /*
-ellipse_arc_len_factor2210: коэффициент, на который нужно умножить радиус окружности(будущего эллипса), для вычисления значения длины одного квадранта эллипса
+ellipse_arc_len_factor2210: коэффициент, на который нужно умножить радиус окружности(будущего эллипса), 
+для вычисления значения длины одного квадранта эллипса
 r*3,14/2/(ПИ()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
  ellipse_arc_len_factor2210=1024*2*КОРЕНЬ((1+z_to_x_factor*z_to_x_factor)/8)
 
-*/
 #define ellipse_arc_len_factor2210 4407 
+*/
 
 
 

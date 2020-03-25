@@ -2,6 +2,7 @@
 #include "fsm.h"
 #include "g03.h"
 
+#include "math.h"
 int count = 0;
 int count_total = 0;
 //uint8_t bufx[2000];
@@ -9,7 +10,7 @@ int count_total = 0;
 
 int subdelay_x=0, subdelay_z=0, subdelay_zfast = 0;
 //int x=0, z=0;
-int acnt = 0, ecnt=0, exx=0, ezz=0;
+int acnt = 0, ecnt=0, exx=0, ezz=0, ldt = 0;
 float e2e2, edx,edz;
 float ff, ffx;
 bool brk=0;
@@ -24,13 +25,17 @@ uint32_t avgSum = 0, directSum = 0;
 int arrNumbers[arrNumbers_len] = {0};
 bool start_smooth_flag = false;
 uint8_t pos = 0;
-int32_t sma = 0;
+int32_t moving_sum = 0, ms2 = 0;
+
+#define smooth_direction_front 0
+#define smooth_direction_back  1
+substep_t *sb_head = 0; 
 
 /**
 * @brief  find substep delay value for arc point
 * @retval void.
   */
-void substep_recalc(int64_t e2, int64_t dzdx){
+void substep_recalc(int64_t e2, int64_t dzdx, char smooth_direction){
 	substep_t *sb = substep_cb.top;
 
 	int16_t delay = (1<<subdelay_precision); //s->prescaler * (s->syncbase->ARR+1); // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
@@ -58,79 +63,155 @@ void substep_recalc(int64_t e2, int64_t dzdx){
 	}
 	// subdelay found, let's smooth it:
 	// find delay from previous calculated step to current:
-	int last_delay_total = 255 - prev_delay + delay + (sb->skip << 8);
-	directSum += last_delay_total; //debug info
-	prev_delay = delay;
-//		last_skip = 0;
-
-	sma += last_delay_total;
-	if(sma_cb.count == 8) {
-	sma -= *(uint32_t *)cb_pop_front_ref(&sma_cb);
-//		sma -= *(uint32_t *)sma_cb.tail;
+	int last_delay_total;
+	if(step_back){
+		last_delay_total = 255 - prev_delay + (sb->skip << subdelay_precision) - delay;
+		prev_delay = 256 - delay;
 	}
-	cb_push_back(&sma_cb,&last_delay_total);
-	
+	else {
+		last_delay_total = 255 - prev_delay + delay + (sb->skip << subdelay_precision);
+		prev_delay = delay;
+	}
+	ldt = 0;
+	ldt = last_delay_total;
+
+//	substep_sma_ref_t *sma_head_ref = 0;
+		substep_sma_ref_t sb_sma;
+		substep_sma_ref_t sb_sma_head;
 	// calculate moving sum:
-//	sma = sma - arrNumbers[pos] + last_delay_total;
-//	arrNumbers[pos++] = last_delay_total;
-//	if (pos >= arrNumbers_len){
-//		pos = 0;
-//	}
+	moving_sum += last_delay_total;//for step back last delay total calculation wrong
+	if(sma_cb.count == arrNumbers_len) {
+		cb_pop_front(&sma_cb, &sb_sma_head);
+//		sma_head_ref = (substep_sma_ref_t *)cb_pop_front_ref(&sma_cb);
+		moving_sum -= sb_sma_head.delay; // *(uint32_t *)cb_pop_front_ref(&sma_cb);
+//		cb_pop_front_ref(&sma_substep_cb);
+//		cb_push_back(&sma_substep_cb,sb);
+	}
+	sb_sma.delay = last_delay_total;
+	sb_sma.ref = sb;
+	sb_sma.count = substep_cb.count;
+	cb_push_back(&sma_cb,&sb_sma);
+
+  ms2 = moving_sum;
+	int sma = moving_sum >> 3; /// arrNumbers_len;
 
 	// dumb condition when to start applying smooth steps:
-	if(last_delay_total <700)
+	if(sma <700)
+//		start_smooth_flag = false;
 		start_smooth_flag = true;
 
-	if(start_smooth_flag == true) {
-		// calculate moving average:
-		int sma_avg = sma / arrNumbers_len;
-		avgSum += sma_avg;
-		prev_delay_sma = (sma_avg - (255 - prev_delay_sma));
-		if(prev_delay_sma < 0)
-			Error_Handler();
-		int skip_sma_steps = prev_delay_sma >> 8;
-		if(step_back){
-			if(sb->delay > 0){
-			// ellipse equator?
-				subdelay_x++;
+	if(smooth_direction == smooth_direction_back) { //shift smoothed step to front
+		if(start_smooth_flag == true) {
+			// calculate moving average:
+			prev_delay_sma = (sma - (255 - prev_delay_sma));
+			if(prev_delay_sma < 0)
+				Error_Handler();
+			int skip_sma_steps = prev_delay_sma >> subdelay_precision;
+			if(step_back){
+				if(sb->delay > 0){
+				// ellipse equator?
+					subdelay_x++;
+				}
+				step_back = false;
 			}
-			step_back = false;
-		}
-		sb = substep_cb.top;
-		if(sb->skip > 0) {
-			sb->skip = skip_sma_steps;
-			if(skip_sma_steps == 0)
-				cb_step_back(&substep_cb);
-		}
-		else if(skip_sma_steps > 0){
-			cb_push_back_empty_ref()->skip = skip_sma_steps;
-		}
-		prev_delay_sma = prev_delay_sma - (skip_sma_steps << 8);
-		delay = prev_delay_sma;
-	} else {
-		avgSum += last_delay_total;
-		prev_delay_sma = prev_delay;
-	}
-
-	if(!step_back){
-		cb_push_back_empty_ref()->delay = delay;
-	} else { // delay in negative, so we need to step back and modify previous step
-		delay = (1 << subdelay_precision) - delay;
-		sb = substep_cb.top;
-		if(sb->skip > 0){
-			sb->skip--; // 1 step back
-			if(sb->skip > 0){ // if we stil have some to skip add new substep, if not - just modify current substep
-				sb = cb_push_back_empty_ref();
+			sb = substep_cb.top;
+			if(sb->skip > 0) {
+				sb->skip = skip_sma_steps;
+				if(skip_sma_steps == 0)
+					cb_step_back(&substep_cb);
 			}
-			sb->delay = delay;
-			cb_push_back_empty_ref()->skip = 1;
+			else if(skip_sma_steps > 0){
+				cb_push_back_empty_ref()->skip = skip_sma_steps;
+			}
+			prev_delay_sma = prev_delay_sma - (skip_sma_steps << subdelay_precision);
+			delay = prev_delay_sma;
 		} else {
-			// in this case we need to do two substeps in one main step  :( 
-//			Error_Handler();
+			prev_delay_sma = prev_delay;
+		}
+
+		if(!step_back){
+			cb_push_back_empty_ref()->delay = delay;
+		} else { // delay in negative, so we need to step back and modify previous step
+			delay = (1 << subdelay_precision) - delay;
+			sb = substep_cb.top;
+			if(sb->skip > 0){
+				sb->skip--; // 1 step back
+				if(sb->skip > 0){ // if we stil have some to skip add new substep, if not - just modify current substep
+					sb = cb_push_back_empty_ref();
+				}
+				sb->delay = delay;
+				cb_push_back_empty_ref()->skip = 1;
+			} else {
+				// in this case we need to do two substeps in one main step  :( 
+	//			Error_Handler();
 				cb_push_back_empty_ref()->delay = delay;
 				cb_push_back_empty_ref()->skip = 1;
+			}
+		}
+	} else {
+		// for back smooth strategy at first we add delay at current time position, then recalculate previous steps to avoid extremal stepper accel\deccelerations 
+		if(!step_back){
+			cb_push_back_empty_ref()->delay = delay;
+		} else { // delay in negative, so we need to step back and modify previous step
+			delay = (1 << subdelay_precision) - delay;
+			sb = substep_cb.top;
+			if(sb->skip > 0){
+				sb->skip--; // 1 step back
+				if(sb->skip > 0){ // if we stil have some to skip add new substep, if not - just modify current substep
+					sb = cb_push_back_empty_ref();
+				}
+				sb->delay = delay;
+				cb_push_back_empty_ref()->skip = 1;
+			} else {
+				// in this case we need to do two substeps in one main step  :( 
+	//			Error_Handler();
+				cb_push_back_empty_ref()->delay = delay;
+				cb_push_back_empty_ref()->skip = 1;
+			}
+		}
+		if (start_smooth_flag == true) {
+//			float fsma = sma * 0.7f; //98 ticks
+			uint32_t isma = ((sma<<10)*800)>>20;//6 ticks
+			if(last_delay_total < isma){
+				//перематываем назад к указателю, записанному в sma_head.ref, и вставляем 8 значений sma итоговой суммой moveing_sum
+			substep_t *sb2 = sb;
+			substep_cb.top = (char *)sb_sma_head.ref;// + substep_cb.sz;
+			sb = substep_cb.top;
+
+			substep_cb.count2 -= (substep_cb.count - sb_sma_head.count);
+			substep_cb.count = sb_sma_head.count;
+			substep_cb.head = (char *)substep_cb.top + substep_cb.sz;
+
+			int a = subdelay_precision, b, delta = moving_sum - sma*subdelay_precision;
+				
+			while(a > 0){
+				b = sma - (255 - sb->delay);
+				int c = b >> subdelay_precision;
+				if (c > 0){
+					cb_push_back_empty_ref()->skip = c;
+					b -= (c<<subdelay_precision);
+				}
+				if (b <= 0)
+					b = 1;
+				cb_push_back_empty_ref()->delay = b;
+				a--;
+				sb = substep_cb.top;
+				//refresh SMA buffer with new values:
+				cb_pop_front(&sma_cb, &sb_sma_head);
+				sb_sma.delay = sma;
+				sb_sma.ref = sb;
+				sb_sma.count = substep_cb.count;
+				cb_push_back(&sma_cb,&sb_sma);
+			}
+			sb = substep_cb.top;
+			sb->delay += delta;
+			prev_delay = sb->delay;
+			if (step_back)
+				cb_push_back_empty_ref()->skip = 1;
+			}
 		}
 	}
+	
 }
 
 
@@ -142,7 +223,9 @@ bool equator_init = false;
 void arc_q1_callback_precalculate(state_t* s){
 	int64_t e2 = s->arc_err<<1;
 	substep_t *sb = substep_cb.top;
-	
+	if(s->current_task.x == 7089){
+	brk =1;
+	}
 	if(s->arc_equator > 0){
 // main axis is X, subaxis - Z	
 		s->arc_equator--;		
@@ -156,7 +239,7 @@ void arc_q1_callback_precalculate(state_t* s){
 // main axis is Z, subaxis - X	
 		s->arc_equator=0;
 		if (e2 < s->arc_dx) {
-			substep_recalc(-e2, -s->arc_dx);
+			substep_recalc(-e2, -s->arc_dx, smooth_direction_front);
 			s->current_task.x++;
 			s->arc_err += s->arc_dx += s->arc_bb;
 		} else {
@@ -184,7 +267,7 @@ void arc_q1_callback_precalculate(state_t* s){
 
 	if (e2 > s->arc_dz) { // z step 
 		if(s->arc_equator>0)
-			substep_recalc(e2, s->arc_dz);
+			substep_recalc(e2, s->arc_dz, smooth_direction_front);
 		s->current_task.z--;
 		s->arc_err += s->arc_dz += s->arc_aa;
 	} else {
@@ -221,7 +304,7 @@ void arc_q1_callback_light(state_t* s){
 		s->arc_equator = -1; 
 		LL_TIM_CC_DisableChannel(TIM3, LL_TIM_CHANNEL_CH1 | LL_TIM_CHANNEL_CH3);
 //		s->Q824set = s->current_task.F;
-
+		MOTOR_X_Enable(); // for debug to see equator
 //		MOTOR_X_BlockPulse(); 
 		s->substep_axis = SUBSTEP_AXIS_X;
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
@@ -320,18 +403,27 @@ void G03init_callback(state_t* s){
 void G03init_callback_precalculate(state_t* s){
 //	s->precalculate_end = false;
 	//precalculate variables:
-
+//	TIM1->ARR = 0xffff;
+//	TIM1->PSC = 0;
+//	TIM1->SR = 0;
+//	LL_TIM_EnableCounter(TIM1);
+	
 	s->arc_equator = fixedpt_xmul2210( s->current_task.b, z_to_x_ellipse_equator2210);
 	s->arc_total_steps = fixedpt_xmul2210( s->current_task.b, ellipse_total_steps2210);
 
 	// recalculate feed rate from arc length:
-	uint32_t ff = (9000 * (s->current_task.len>>10) / s->arc_total_steps)<<10;
+
+//	uint32_t ff = (9000 * (s->current_task.len>>10) / s->arc_total_steps)<<20;
 //	uint32_t ff = 1800000 / s->arc_total_steps;
 //	ff = ff * s->current_task.len / 200; // 200 = z motor 400steps/2mm
-
-	fixedptu f = fixedpt_xdiv2210(ff, s->current_task.F);
-	s->current_task.F = f << 14; // translate to 8.24 format used for delays
-	
+//	s->current_task.F = fixedpt_xdiv2210(ff, s->current_task.F) << 14; // translate to 8.24 format used for delays
+//150994944000.0f
+//167713215111.444f = 30000hz*60sec/(400steps/2mmrev)*2^24*len_2_arc, see defines.ods
+	float f1 = 167713215111.444f * s->current_task.len_f / s->arc_total_steps / s->current_task.F;
+//	s->current_task.F = f1;
+	s->precalculating_task_ref->F = f1;
+//	s->current_task.F = SquareRoot64(s->current_task.F);
+//	f1 = sqrtf(f1); //380;
 
 	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
 	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;
@@ -394,7 +486,6 @@ void G03init_callback_precalculate(state_t* s){
 * @brief  G33 parse to tasks. New version with ellipse
 * @retval void.
   */
-	int64_t ik;
 void G03parse(char *line, int8_t cwccw){
 /*
                            | -X
@@ -448,13 +539,14 @@ chuck|  |     *            |            *
 
 */
 	state_t *s = &state_precalc;
-	int x0 = init_gp.X & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
+	int x0  = init_gp.X  & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
 	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
-	int z0 = init_gp.Z & ~1uL<<(FIXEDPT_FBITS2210-1);
+	int z0  = init_gp.Z  & ~1uL<<(FIXEDPT_FBITS2210-1);
 	G_pipeline_t *gref = G_parse(line);
 
-	ik = (int64_t)gref->I*gref->I + (int64_t)gref->K*gref->K;
-	ik  = SquareRoot64(ik); // ik - radius of circle in 2210 format.
+	uint64_t iklong = (int64_t)gref->I*gref->I + (int64_t)gref->K*gref->K;
+	uint32_t ik = sqrtf((float)iklong);// ik - radius of circle in 2210 format.
+//	ik  = SquareRoot64(ik); // ik - radius of circle in 2210 format.
 
 
 	int x0z = -gref->I; //x0+xdelta;
@@ -507,8 +599,13 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 по длине дуги сможем скорректировать скорость движения(F)
 */	
 	uint64_t il = (int64_t)(x1zr-x0z)*(x1zr-x0z)+(int64_t)(z0z-z1z)*(z0z-z1z);
-	gt_new_task->len = fixedpt_xmul2210(len_to_arc_factor2210,SquareRoot64(il));
+//	gt_new_task->len = fixedpt_xmul2210(len_to_arc_factor2210,sqrtf(il));
+//	gt_new_task->len_f = 1.110720735f * sqrtf(il); //fixedpt_xmul2210(len_to_arc_factor2210,sqrtf(il));
+	gt_new_task->len_f = sqrtf(il); //fixedpt_xmul2210(len_to_arc_factor2210,sqrtf(il));
+//	gt_new_task->len = fixedpt_xmul2210(len_to_arc_factor2210,SquareRoot64(il));
 //	uint32_t len = 0;
+
+
 //feed:
 	if(s->G94G95 == G95code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
@@ -561,7 +658,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
 				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 			} else { 											// unit(mm) per min
-				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+				gt_new_task->F = gref->F; //str_f824mm_min_to_delay824(gref->F);
 			}
 			
 			gt_new_task->init_callback_ref = G03init_callback;
@@ -612,7 +709,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
 				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 			} else { 											// unit(mm) per min
-				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+				gt_new_task->F = gref->F; //str_f824mm_min_to_delay824(gref->F);
 			}
 			
 			gt_new_task->init_callback_ref = G03init_callback;

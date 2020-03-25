@@ -274,7 +274,7 @@ int main(void)
 //	"G1 X0. Z0. F500",
 
 	"G1 X0. Z0. F56.55",
-//	"G3 X12. Z-6 K-6",
+	"G3 X12. Z-6 K-6",
 		
 	"X80. Z-30",
 //	"G3 X94. Z-37 K-7",
@@ -321,7 +321,8 @@ int main(void)
 	cb_init_ref(&substep_cb, substep_size, sizeof(substep_t),&substep_delay);
 	cb_init_ref(&substep_job_cb, substep_job_size, sizeof(substep_job_t),&substep_delay);
 
-	cb_init_ref(&sma_cb,  8, sizeof(uint32_t), &smaNumbers);
+	cb_init_ref(&sma_cb,  8, sizeof(substep_sma_ref_t), &smaNumbers);
+	cb_init_ref(&sma_substep_cb,  8, sizeof(uint32_t), &smaSubstepRefs);
 
   /* USER CODE END Init */
 
@@ -495,7 +496,7 @@ int main(void)
 					if(precalculating_task->precalculate_init_callback_ref){
 						precalculating_task->precalculate_init_callback_ref(&state_precalc);
 						if(precalculating_task->precalculate_callback_ref) {
-//							for(int a = 0; a<10;a++)
+							for(int a = 0; a<10;a++)
 								precalculating_task->precalculate_callback_ref(&state_precalc);
 						}
 					}
@@ -531,7 +532,7 @@ int main(void)
 				command_parser((char *)ga1[command++]);
 //				buttons_flag_set = 4;
 			}
-			switch(buttons_flag_set) {
+/*			switch(buttons_flag_set) {
 				case single_click_Msk:
 					// emulate receive g-code line by usart interrupt(bluetooth) 
 			switch(testcommand) {
@@ -556,7 +557,7 @@ int main(void)
 				case 5:
 					command_parser("X0. Z0.");
 					break;
-			}
+			} 
 			testcommand++;
 			if(testcommand > 5 )
 				testcommand = 0;
@@ -570,7 +571,7 @@ int main(void)
 					feed_direction = feed_direction == feed_direction_left ? feed_direction_right : feed_direction_left;
 					menu_changed = 1;
 					break;
-			}
+			}//*/
 			buttons_flag_set = 0; // reset button flags
 		}
 #ifdef _SIMU

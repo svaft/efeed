@@ -7,6 +7,7 @@ circular_buffer substep_cb;
 circular_buffer substep_job_cb;
 
 circular_buffer sma_cb;
+circular_buffer sma_substep_cb;
 
 
 void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref){
@@ -88,7 +89,11 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
 */
 //z_steps_unit*z_steps_unit/z_screw_pitch
 //	return fixedptu_div(18<<24,feed);
-	return fixedptu_div(rev_to_delay,feed<<14); // feed<<14 - convert feed value in 22.10 to 8.24 format
+	
+	float f2 = feed<<14;
+	float f3 = rev_to_delay_f / f2; //float divide is faster then long?
+	return (fixedptu) f3;
+//	return fixedptu_div(rev_to_delay,feed<<14); // feed<<14 - convert feed value in 22.10 to 8.24 format
 }
 
 
@@ -98,11 +103,12 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
  *
  * \return 
  */
-	fixedptu str_f824mm_min_to_delay824(fixedptu feed){
-	fixedptu f = fixedpt_xdiv2210(hzminps_z, feed);
-	f = f << 14; // translate to 8.24 format used for delays
-	return f;
-}
+
+//fixedptu str_f824mm_min_to_delay824(fixedptu feed){
+//	fixedptu f = fixedpt_xdiv2210(hzminps_z, feed);
+//	f = f << 14; // translate to 8.24 format used for delays
+//	return f;
+//}
 
 
 /*

@@ -14,7 +14,7 @@ int str_f_to_824(char *line, uint8_t *char_counter);
 int str_f_to_2210(char *line, uint8_t *char_counter);
 
 fixedptu str_f824mm_rev_to_delay824(fixedptu feed); //mm/rev
-fixedptu str_f824mm_min_to_delay824(fixedptu feed); //mm/min
+//fixedptu str_f824mm_min_to_delay824(fixedptu feed); //mm/min
 typedef struct circular_buffer{
     void *buffer;     // data buffer
     void *buffer_end; // end of data buffer
@@ -33,7 +33,7 @@ extern circular_buffer substep_cb;
 extern circular_buffer task_precalc_cb;
 extern circular_buffer substep_job_cb;
 extern circular_buffer sma_cb;
-
+extern circular_buffer sma_substep_cb;
 
 void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref);
 
@@ -58,6 +58,34 @@ __STATIC_INLINE void cb_free(circular_buffer *cb){
     // clear out other fields too, just to be safe
 }
 
+__STATIC_INLINE void sysFastMemCopy2( void *pDest,const void *pSrc )
+{
+    uint32_t *pLongSrc;
+    uint32_t *pLongDest;
+    // Convert byte addressing to long addressing
+    pLongSrc = (uint32_t*) pSrc;
+    pLongDest = (uint32_t*) pDest;
+		*pLongDest = *pLongSrc;
+}
+
+
+__STATIC_INLINE void cb_push_back32(circular_buffer *cb, const void *item){
+    if(cb->count == cb->capacity){
+        Error_Handler();
+            // handle error
+    }
+		sysFastMemCopy2(cb->head, item);
+//    memcpy(cb->head, item, cb->sz);
+		cb->top = cb->head;
+    cb->head = (uint8_t *)cb->head + cb->sz;
+    if(cb->head == cb->buffer_end)
+        cb->head = cb->buffer;
+    cb->count++;
+}
+
+
+
+
 __STATIC_INLINE void cb_push_back(circular_buffer *cb, const void *item){
     if(cb->count == cb->capacity){
         Error_Handler();
@@ -70,6 +98,15 @@ __STATIC_INLINE void cb_push_back(circular_buffer *cb, const void *item){
         cb->head = cb->buffer;
     cb->count++;
     cb->count2++;
+}
+
+__STATIC_INLINE void* cb_iterate_back(circular_buffer *cb, int step){
+	void *ref1 = (char*)cb->top - cb->sz*step;
+	if (ref1 < cb->buffer) {
+		char aa = (char*)cb->buffer - (char*)ref1;
+		ref1 = (char*)cb->buffer_end - cb->sz*aa;
+	}
+	return ref1;
 }
 
 __STATIC_INLINE void cb_push_back_empty(circular_buffer *cb){

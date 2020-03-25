@@ -19,6 +19,19 @@
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
 #define substep_job_size task_size*2
 
+
+typedef struct substep{
+	uint8_t delay;
+	uint8_t skip;
+} substep_t;
+
+typedef struct substep_sma_ref{
+	uint16_t delay;
+	uint16_t count;
+	substep_t *ref;
+} substep_sma_ref_t;
+
+
 void command_parser(char *line);
 
 void G94init_callback_precalculate(state_t* s);
@@ -35,7 +48,8 @@ extern G_task_t gt[];
 extern G_pipeline_t gp[];
 extern G_pipeline_t init_gp;
 extern substep_job_t substep_job[];
-extern uint32_t smaNumbers[];
+extern substep_sma_ref_t smaNumbers[];
+extern substep_t* smaSubstepRefs[];
 
 
 
@@ -48,10 +62,6 @@ void do_fsm_move2(state_t*);
 void do_fsm_move_end2(state_t* );
 void load_next_task(state_t* s);
 
-typedef struct substep{
-	uint8_t delay;
-	uint8_t skip;
-} substep_t;
 
 extern substep_t substep_delay[];
 substep_t* cb_push_back_empty_ref(void);

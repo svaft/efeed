@@ -139,6 +139,7 @@ typedef struct G_task{
 	int32_t dx, dz;
 	int32_t 	x, z, x1, z1; // delta
 	uint32_t len;
+	float len_f;
 	uint32_t steps_to_end;
 	fixedptu F; //Q824, feed value. For mm/min lowest value is 35.16 mm/min
 	callback_func_t callback_ref; //callback ref to iterate line or arc
@@ -490,7 +491,7 @@ void Error_Handler(void);
 //#define hzminps_x  (uint32_t)((async_spindle_resolution*60*x_screw_pitch/x_steps_unit)*1024) // 11430<<10 //async_spindle_resolution*60sec*x_screw_pitch/x_steps_unit 
 
 #define rev_to_delay (uint32_t)(encoder_resolution/(z_steps_unit/z_screw_pitch)*16777216) //(encoder_resolution/(z_steps_unit/z_screw_pitch))<<24
-
+#define rev_to_delay_f 301989888.0f
 // minimum processed value is 0.001mm
 //#define steps_per_unit_Z_2210   273066 //z_steps_unit<<10/z_screw_pitch (1,5mm screw)
 #define steps_per_unit_Z_2210   (uint32_t)(z_steps_unit*1024/z_screw_pitch) //204800
@@ -515,6 +516,8 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 #define z_to_x_factor2210	(uint32_t)(1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch)) //1024*200*61/16/1,27/(400/2)
 
 #define len_to_arc_factor2210 1137
+#define len_to_feed824	167713215111.444f
+
 #define async_steps_factor 9000 // 30000hz fot 60 sec 400 steps for 2mm screw
 
 #define z_to_x_factor824	100729348

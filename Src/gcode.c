@@ -12,7 +12,9 @@ substep_job_t substep_job[substep_job_size];
 
 
 #define smaNumbers_len 8
-uint32_t smaNumbers[smaNumbers_len] = {0};
+
+substep_sma_ref_t smaNumbers[smaNumbers_len] = {0};
+substep_t* smaSubstepRefs[smaNumbers_len] = {0};
 
 
 substep_t* cb_push_back_empty_ref(void){

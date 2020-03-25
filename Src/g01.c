@@ -1,7 +1,7 @@
 #include "gcode.h"
 #include "fsm.h"
 #include "g01.h"
-
+#include "math.h"
 
 
 // called from load_task
@@ -162,10 +162,16 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 
 	G_task_t *gt_new_task = add_empty_task();
 
-	gt_new_task->len = SquareRoot64(il);
+	gt_new_task->len = sqrtf(il); // SquareRoot64(il);
 
-	uint32_t ff = (9000 * (gt_new_task->len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10;
-	fixedptu f = fixedpt_xdiv2210(ff, gref->F);
+	uint32_t ff = (9000 * (gt_new_task->len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
+//	fixedptu f = fixedpt_xdiv2210(ff, gref->F);
+
+	float f1 = ff;
+	float f2 = gref->F;
+	float f3 = f1 / f2;
+	fixedptu f = f3;
+
 	gt_new_task->F = f << 14; // translate to 8.24 format used for delays
 	
 	

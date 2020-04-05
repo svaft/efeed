@@ -217,6 +217,8 @@ typedef struct state_s
 extern uint8_t Menu_Step;																					// выборка из массива по умолчанию (1.5mm)
 extern bool menu_changed;
 
+extern __IO uint8_t ubI2C_slave_addr;
+extern __IO uint8_t  ubMasterRequestDirection;
 
 extern state_t state_precalc;
 extern state_t state_hw;

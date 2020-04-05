@@ -20,7 +20,54 @@ __IO uint8_t  ubTransferComplete = 1;
  * @return
  */
 error_code_t i2c_device_init(I2C_TypeDef *hi2c){
-/*
+
+  hi2c_ref = hi2c;
+	uint8_t  handShake[2];
+	handShake[0]=0xf0;
+	handShake[1]=0x55;
+  LL_mDelay(250);
+
+	Handle_I2C_MasterDMA_IT(hi2c, i2c_device_id, handShake, 2, 10);
+
+//Handle_I2C_MasterDMA_IT
+	
+//	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
+//		LL_mDelay(250);
+//	}
+
+//	Handle_I2C_MasterDMA_IT(hi2c, i2c_device_id, handShake, 2, 10);
+	
+//	if (HAL_I2C_Master_Transmit_DMA(hi2c_ref,i2c_device_id,handShake, 2) != HAL_OK){
+//		return ERROR_INIT_I2C;
+//	}
+	LL_mDelay(20);
+//	LL_mDelay(20);
+	dma_delay = 0;
+//	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
+//		dma_delay++;
+		LL_mDelay(1);
+//	}	
+//	LL_mDelay(100);
+	handShake[0]=0xfb;
+	handShake[1]=0x00;
+
+	dma_delay = 0;
+	Handle_I2C_MasterDMA_IT(hi2c, i2c_device_id, handShake, 2, 10);
+
+//if (HAL_I2C_Master_Transmit_DMA(hi2c_ref,i2c_device_id,handShake, 2)!= HAL_OK){
+		dma_delay++;
+//		return ERROR_INIT_I2C;
+//	}
+	LL_mDelay(20);
+//	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
+//	}	
+//	LL_mDelay(100);
+	device_ready = 1;
+	return ERROR_OK;
+
+	
+	
+	/*
   hi2c_ref = hi2c;
 	uint8_t  handShake[2];
 	handShake[0]=0xf0;
@@ -61,45 +108,44 @@ error_code_t i2c_device_init(I2C_TypeDef *hi2c){
 	return ERROR_OK;
 }
 
-error_code_t reqest_sample_i2c_dma(){
-/*
+error_code_t reqest_sample_i2c_dma(I2C_TypeDef *hi2c){
+
 	if (device_ready == 0)
 		return ERROR_OK;
 	uint8_t cmd[1];
 	cmd[0]=0x00;
 //	dma_delay = 0;
-	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
+//	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
 //		dma_delay++;
-		LL_mDelay(1);
-	}	
+//		LL_mDelay(1);
+//	}	
 
-	if (HAL_I2C_Master_Transmit_DMA(hi2c_ref,i2c_device_id,cmd, 1) != HAL_OK){
-		return ERROR_I2C_SAMPLE;
-	}
+	Handle_I2C_MasterDMA_IT(hi2c, i2c_device_id, cmd, 1, 10);
+//	if (HAL_I2C_Master_Transmit_DMA(hi2c_ref,i2c_device_id,cmd, 1) != HAL_OK){
+//		return ERROR_I2C_SAMPLE;
+//	}
 	
 //	dma_delay = 0;
-	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
+//	while(hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY){
 //		dma_delay++;
-		LL_mDelay(1);
-	}	
+//		LL_mDelay(1);
+//	}	
 //	LL_mDelay(1);
 
 //	dma_delay = 0;
-	while(hi2c_ref->hdmarx->State != HAL_DMA_STATE_READY){
-//		dma_delay++;
-		LL_mDelay(1);
-	}	
-	if(hi2c_ref->hdmarx->State == HAL_DMA_STATE_READY)
-		HAL_I2C_Master_Receive_DMA(hi2c_ref, i2c_device_id, dma_data,6);
+
+//	if(hi2c_ref->hdmarx->State == HAL_DMA_STATE_READY)
+
+//HAL_I2C_Master_Receive_DMA(hi2c_ref, i2c_device_id, dma_data,6);
 
 //	dma_delay = 0;
-	LL_mDelay(1);
-	while(hi2c_ref->hdmarx->State != HAL_DMA_STATE_READY){
+//	LL_mDelay(1);
+//	while(hi2c_ref->hdmarx->State != HAL_DMA_STATE_READY){
 //		dma_delay++;
-		LL_mDelay(1);
-	}
+//		LL_mDelay(1);
+//	}
 //	dma_delay2 = dma_delay;
-*/
+
 return ERROR_OK;
 
 }
@@ -111,6 +157,7 @@ return ERROR_OK;
  * @return error code
  */
 error_code_t read_sample_i2c(i2c_sample_t *sample){
+//	LL_I
 /*
 	if (device_ready == 0) //|| 	hi2c_ref->hdmatx->State != HAL_DMA_STATE_READY)
 		return ERROR_OK;
@@ -201,6 +248,100 @@ void sampling_task(void const * argument)
 
 */
 
+
+/**
+  * @brief  This Function handle Master events to perform a transmission then a reception process
+  * @note   This function is composed in different steps :
+  *         -1- Configure DMA parameters for Command Code transfer.
+  *         -2- Enable DMA transfer.
+  *         -3- Prepare acknowledge for Master data reception.
+  *         -4- Initiate a Start condition to the Slave device.
+  *         -5- Loop until end of transfer completed (DMA TC raised).
+  *         -6- Prepare acknowledge for Master data reception.
+  *         -7- Initiate a ReStart condition to the Slave device.
+  *         -8- Loop until end of transfer completed (DMA TC raised).
+  *         -9- Generate a Stop condition to the Slave device.
+  *         -10- Clear pending flags, Data Command Code are checking into Slave process.
+  * @param  None
+  * @retval None
+  */
+void Handle_I2C_Master_Receive(I2C_TypeDef *I2Cx, uint8_t address, uint8_t *data, uint16_t count, uint8_t timeout)
+{
+  /* Reset ubMasterTransferComplete flag */
+  ubTransferComplete = 0;
+
+	ubI2C_slave_addr = address;
+
+
+  /* (6) Configure DMA to receive data from slave *****************************/
+  LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+  LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_5, 6);
+  LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_5);
+
+  /* (6) Prepare acknowledge for Master data reception ************************/
+  LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_ACK);
+
+  /* (7) Initiate a ReStart condition to the Slave device *********************/
+  /* Master Request direction READ */
+  ubMasterRequestDirection = I2C_REQUEST_READ;
+
+  /* Master Generate ReStart condition */
+  LL_I2C_GenerateStartCondition(I2Cx);
+
+  /* (8) Loop until end of transfer completed (DMA TC raised) *****************/
+#if (USE_TIMEOUT == 1)
+//  Timeout = DMA_SEND_TIMEOUT_TC_MS;
+#endif /* USE_TIMEOUT */
+
+  /* Loop until DMA transfer complete event */
+  while(!ubTransferComplete)
+  {
+#if (USE_TIMEOUT == 1)
+		int Timeout = timeout;
+    /* Check Systick counter flag to decrement the time-out value */
+    if (LL_SYSTICK_IsActiveCounterFlag()) 
+    {
+      if(Timeout-- == 0)
+      {
+        /* Time-out occurred. Set LED to blinking mode */
+//        LED_Blinking(LED_BLINK_SLOW);
+      }
+    }
+#endif /* USE_TIMEOUT */
+  }
+  /* (9) Generate a Stop condition to the Slave device ************************/
+  LL_I2C_GenerateStopCondition(I2Cx);
+
+  /* (10) Clear pending flags, Data Command Code are checking into Slave process */
+  /* Disable Last DMA bit */
+  LL_I2C_DisableLastDMA(I2Cx);
+
+  /* Disable acknowledge for Master next data reception */
+  LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_NACK);
+
+  /* End of Master Process */
+  LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_5);
+  /* Display through external Terminal IO the Slave Answer received */
+//  printf("%s : %s\n\r", (char*)(aCommandCode[ubMasterCommandIndex][0]), (char*)aMasterReceiveBuffer);
+
+  /* Turn LED2 On */
+  /* Master sequence completed successfully*/
+//  LED_On();
+  /* Keep LED2 On, 500 MilliSeconds */
+//  LL_mDelay(500);
+// LED_Off();
+
+  /* Clear and Reset process variables and arrays */
+  ubTransferComplete = 0;
+//  ubNbDataToTransmit = 0;
+//  ubReceiveIndex     = 0;
+//  FlushBuffer8(aMasterReceiveBuffer);
+}
+
+
+
+
+
 /**
   * @brief  This Function handle Master events to perform a transmission process
   * @note  This function is composed in different steps :
@@ -218,6 +359,9 @@ int Handle_I2C_MasterDMA_IT(I2C_TypeDef *I2Cx, uint8_t address, uint8_t *data, u
 	#ifdef _SIMU
 		return 0;
 	#endif	
+	ubI2C_slave_addr = address;
+	ubMasterRequestDirection = I2C_REQUEST_WRITE;
+
 
 	if(ubTransferComplete == 1){
 		ubTransferComplete = 0;
@@ -272,6 +416,9 @@ int Handle_I2C_MasterDMA_IT_async(uint8_t address, uint8_t *data, uint16_t count
 	#ifdef _SIMU
 	return 0;
 	#endif	
+
+	ubI2C_slave_addr = address;
+  ubMasterRequestDirection = I2C_REQUEST_WRITE;
 
 	if(ubTransferComplete == 1){
 		ubTransferComplete = 0;
@@ -328,11 +475,12 @@ void Activate_I2C_Master(void)
 void Transfer_Complete_Callback()
 {
   /* Generate Stop condition */
+
 	while(!LL_I2C_IsActiveFlag_BTF(I2C2))
 	{
 	}
   LL_I2C_GenerateStopCondition(I2C2);
-  LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+//  LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
   /* DMA transfer completed */
   ubTransferComplete = 1;
 }

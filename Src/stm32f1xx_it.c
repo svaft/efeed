@@ -145,6 +145,9 @@ void DMA1_Channel4_IRQHandler(void)
   if(LL_DMA_IsActiveFlag_TC4(DMA1))
   {
     LL_DMA_ClearFlag_GI4(DMA1);
+		
+		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+		LL_DMA_ClearFlag_TC4(DMA1);
     Transfer_Complete_Callback();
 //    DMA1_Transfer_Complete_Callback();
   }
@@ -325,7 +328,11 @@ void I2C2_EV_IRQHandler(void)
   if(LL_I2C_IsActiveFlag_SB(I2C2))
   {
     /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a write request */
-    LL_I2C_TransmitData8(I2C2, SSD1306_I2C_ADDR);
+    LL_I2C_TransmitData8(I2C2, ubI2C_slave_addr | ubMasterRequestDirection);
+
+    /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a ubMasterRequestDirection request */
+//    LL_I2C_TransmitData8(I2C2, SLAVE_OWN_ADDRESS | ubMasterRequestDirection);
+		
   }
   /* Check ADDR flag value in ISR register */
   else if(LL_I2C_IsActiveFlag_ADDR(I2C2))

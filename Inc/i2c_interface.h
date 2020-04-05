@@ -88,6 +88,6 @@ extern uint8_t dma_data[];
 void sampling_task(void const * argument);
 error_code_t i2c_device_init(I2C_TypeDef *hi2c);
 error_code_t read_sample_i2c(i2c_sample_t *sample);
-error_code_t reqest_sample_i2c_dma(void);
+error_code_t reqest_sample_i2c_dma(I2C_TypeDef *hi2c);
 
 #endif /* I2C_INTERFACE_H_ */

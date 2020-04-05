@@ -51,13 +51,7 @@ uint8_t SSD1306_Init(I2C_TypeDef *hi2c) {
 
 	hi2c_screen = hi2c;
 	/* Init I2C */
-	ssd1306_I2C_Init();
-/* haltodo	
-	// Check if LCD connected to I2C
-	if (HAL_I2C_IsDeviceReady(hi2c_screen, SSD1306_I2C_ADDR, 5, 1000) != HAL_OK) {
-		return 0;
-	}
-	*/
+//	ssd1306_I2C_Init();
 	/* A little delay */
 	uint32_t p = 2500;
 	while(p>0)

@@ -83,6 +83,10 @@
 state_t state_hw;
 state_t state_precalc;
 
+__IO uint8_t ubI2C_slave_addr = 0;
+__IO uint8_t  ubMasterRequestDirection  = 0;
+
+
 //int count;
 extern bool demo;
 /*
@@ -374,7 +378,7 @@ int main(void)
 	while(ubTransferComplete==0);
 	update_screen();
 	SSD1306_UpdateScreen();
-	//	i2c_device_init(I2C2);
+	i2c_device_init(I2C2);
 //	LL_mDelay(250);
 	#endif
 	init_buttons();
@@ -594,9 +598,9 @@ int main(void)
 //		}
 
 // update display info
-		if(menu_changed == 1){ // haltodo && hi2c2.hdmatx->State == HAL_DMA_STATE_READY) {
+		if(menu_changed == 1){
 			menu_changed = update_screen();
-			SSD1306_UpdateScreen();
+//			SSD1306_UpdateScreen();
 		}
 #endif		
 		

@@ -164,6 +164,33 @@ void DMA1_Channel4_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA1 channel5 global interrupt.
+  */
+void DMA1_Channel5_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
+  if(LL_DMA_IsActiveFlag_TC5(DMA1))
+  {
+    LL_DMA_ClearFlag_GI5(DMA1);
+
+		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_5);
+		LL_DMA_ClearFlag_TC5(DMA1);
+
+    Transfer_Complete_Callback();
+  }
+  else if(LL_DMA_IsActiveFlag_TE5(DMA1))
+  {
+    Transfer_Error_Callback();
+  }
+
+  /* USER CODE END DMA1_Channel5_IRQn 0 */
+  
+  /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel5_IRQn 1 */
+}
+
+/**
   * @brief This function handles DMA1 channel7 global interrupt.
   */
 void DMA1_Channel7_IRQHandler(void)
@@ -337,9 +364,39 @@ void I2C2_EV_IRQHandler(void)
   /* Check ADDR flag value in ISR register */
   else if(LL_I2C_IsActiveFlag_ADDR(I2C2))
   {
-    /* Enable DMA transmission requests */
-    LL_I2C_EnableDMAReq_TX(I2C2);
+    /* Verify the transfer direction */
+    if(LL_I2C_GetTransferDirection(I2C2) == LL_I2C_DIRECTION_READ)
+    {
+      ubMasterXferDirection = LL_I2C_DIRECTION_READ;
 
+      if(ubMasterNbDataToReceive == 1)
+      {
+        /* Prepare the generation of a Non ACKnowledge condition after next received byte */
+        LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_NACK);
+
+        /* Enable DMA transmission requests */
+        LL_I2C_EnableDMAReq_RX(I2C2);
+      }
+      else if(ubMasterNbDataToReceive == 2)
+      {
+        /* Prepare the generation of a Non ACKnowledge condition after next received byte */
+        LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_NACK);
+
+        /* Enable Pos */
+        LL_I2C_EnableBitPOS(I2C2);
+      }
+      else
+      {
+        /* Enable Last DMA bit */
+        LL_I2C_EnableLastDMA(I2C2);
+
+        /* Enable DMA transmission requests */
+        LL_I2C_EnableDMAReq_RX(I2C2);
+      }
+    } else {
+			/* Enable DMA transmission requests */
+			LL_I2C_EnableDMAReq_TX(I2C2);
+		}
     /* Clear ADDR flag value in ISR register */
     LL_I2C_ClearFlag_ADDR(I2C2);
   }

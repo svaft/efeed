@@ -219,6 +219,9 @@ extern bool menu_changed;
 
 extern __IO uint8_t ubI2C_slave_addr;
 extern __IO uint8_t  ubMasterRequestDirection;
+extern __IO uint8_t  ubMasterXferDirection;
+//uint8_t       aMasterReceiveBuffer[0xF] = {0};
+extern __IO uint8_t  ubMasterNbDataToReceive;
 
 extern state_t state_precalc;
 extern state_t state_hw;

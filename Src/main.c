@@ -84,7 +84,7 @@ state_t state_hw;
 state_t state_precalc;
 
 __IO uint8_t ubI2C_slave_addr = 0;
-__IO uint8_t  ubMasterRequestDirection  = 0;
+__IO uint8_t ubMasterRequestDirection  = 0;
 
 
 //int count;
@@ -187,6 +187,9 @@ __IO uint8_t ubUART2ReceptionComplete = 0;
 const uint8_t aTxBuffer[] = "ok\r\n";
 uint8_t ubNbDataToTransmit = sizeof(aTxBuffer);
 __IO uint8_t ubTransmissionComplete = 0;
+__IO uint8_t  ubMasterXferDirection     = 0;
+uint8_t       aMasterReceiveBuffer[0xF] = {0};
+__IO uint8_t  ubMasterNbDataToReceive   = sizeof(aMasterReceiveBuffer);
 
 
 /* USER CODE END PV */
@@ -297,7 +300,6 @@ int main(void)
 	};
 
   /* USER CODE END 1 */
-  
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -383,6 +385,13 @@ int main(void)
 	#endif
 	init_buttons();
 
+	uint8_t  jdata[6];
+	while(1){
+		reqest_sample_i2c_dma(I2C2);	
+		Handle_I2C_Master_Receive(I2C2, i2c_device_id, jdata, 6, 10);
+		LL_mDelay(250);
+	}
+	
 //  LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
 //  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
 //	TIM4->SR = 0; 																			// reset interrup flags
@@ -392,8 +401,6 @@ int main(void)
 
 
   /* USER CODE END 2 */
- 
- 
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -646,7 +653,6 @@ void SystemClock_Config(void)
   
   }
   LL_Init1msTick(72000000);
-  LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
   LL_SetSystemCoreClock(72000000);
 }
 
@@ -698,6 +704,21 @@ static void MX_I2C2_Init(void)
   LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_4, LL_DMA_PDATAALIGN_BYTE);
 
   LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_4, LL_DMA_MDATAALIGN_BYTE);
+
+  /* I2C2_RX Init */
+  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_5, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+  LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MODE_NORMAL);
+
+  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PDATAALIGN_BYTE);
+
+  LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MDATAALIGN_BYTE);
 
   /* I2C2 interrupt Init */
   NVIC_SetPriority(I2C2_EV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 0));
@@ -1091,6 +1112,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel4_IRQn interrupt configuration */
   NVIC_SetPriority(DMA1_Channel4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 0));
   NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  NVIC_SetPriority(DMA1_Channel5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 0));
+  NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel7_IRQn interrupt configuration */
   NVIC_SetPriority(DMA1_Channel7_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 1));
   NVIC_EnableIRQ(DMA1_Channel7_IRQn);

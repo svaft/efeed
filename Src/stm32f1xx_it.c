@@ -266,7 +266,8 @@ void TIM2_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles TIM3 global interrupt.
+* @brief This function handles TIM3 global interrupt. Прерывание срабатывает в конце пульса, в нем обрабатываем
+пересчет для следующего шага, а так же выполняются функции обработки конца задания и инициализации следующего задания
   */
 void TIM3_IRQHandler(void)
 {

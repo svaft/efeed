@@ -172,7 +172,7 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	float f3 = f1 / f2;
 	fixedptu f = f3;
 
-	gt_new_task->F = f << 14; // translate to 8.24 format used for delays
+	gt_new_task->F = f << 24; // translate to 8.24 format used for delays
 	
 	
 	gt_new_task->stepper = true;
@@ -186,7 +186,7 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 
 //		bool G94G95; // 0 - unit per min, 1 - unit per rev
 	if(s->G94G95 == G95code){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+//		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
 	} else { 											// unit(mm) per min
 //		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 	}

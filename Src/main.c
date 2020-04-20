@@ -269,9 +269,12 @@ void USART_CharReception_Callback(void)
   */
 int main(void)
 {
+#define LOOP_FROM 1
+#define LOOP_COUNT 9
+	
   /* USER CODE BEGIN 1 */
 	#ifdef _SIMU
-	int preload = 2;
+	int preload = LOOP_COUNT;
 	#else
 	int preload = 1;
 	#endif
@@ -280,8 +283,34 @@ int main(void)
 	"G90 G94 G18",//async
 //	"G1 X0. Z0. F500",
 
-	"G1 X0. Z0. F56.55",
-	"G3 X12. Z-6 K-6",
+	"G1 X0. Z0. F156.55",
+
+//		"Z-.02",
+//	"Z0. F200",
+//	"Z-.02 F300",
+
+//	"Z0. F400",
+//	"Z-.02 F500",
+
+
+
+		"Z-.02",
+		"G95",
+
+	"Z0.",
+	"Z-.02",
+
+	"Z0.",
+	"Z-.02",
+
+
+	"Z0.",
+		
+	"Z-.02",
+
+
+		
+		"G3 X12. Z-6 K-6",
 		
 	"X80. Z-30",
 //	"G3 X94. Z-37 K-7",
@@ -385,19 +414,19 @@ int main(void)
 	#endif
 	init_buttons();
 
-	uint8_t  jdata[6];
-	while(1){
-		reqest_sample_i2c_dma(I2C2);	
-		Handle_I2C_Master_Receive(I2C2, i2c_device_id, jdata, 6, 10);
-		LL_mDelay(250);
-	}
+//	uint8_t  jdata[6];
+//	while(1){
+//		reqest_sample_i2c_dma(I2C2);	
+//		Handle_I2C_Master_Receive(I2C2, i2c_device_id, jdata, 6, 10);
+//		LL_mDelay(250);
+//	}
 	
 //  LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
 //  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
 //	TIM4->SR = 0; 																			// reset interrup flags
 
 	do_fsm_menu(&state_hw);
-	LED_OFF();
+//	LED_OFF();
 
 
   /* USER CODE END 2 */
@@ -539,10 +568,11 @@ int main(void)
 //		}
 
 		if(buttons_flag_set || preload >= 0) {
-			if(preload-- >= 0){
-				command_parser((char *)ga1[command++]);
-//				buttons_flag_set = 4;
-			}
+//			if(task_cb.count2 < (task_cb.capacity - 1)) {
+				if(task_cb.count < (task_cb.capacity - 1) &&  preload-- >= 0){
+					command_parser((char *)ga1[command++]);
+				}
+//			}
 			switch(buttons_flag_set) {
 				case single_click_Msk:
 					// emulate receive g-code line by usart interrupt(bluetooth) 
@@ -584,6 +614,9 @@ int main(void)
 					break;
 			}//
 			buttons_flag_set = 0; // reset button flags
+		} else {
+			command = LOOP_FROM;
+			preload = LOOP_COUNT -1;
 		}
 #ifdef _SIMU
 #endif
@@ -953,7 +986,7 @@ static void MX_TIM3_Init(void)
   LL_GPIO_AF_RemapPartial_TIM3();
 
 }
-
+#ifdef _USEENCODER
 /**
   * @brief TIM4 Initialization Function
   * @param None
@@ -980,7 +1013,8 @@ static void MX_TIM4_Init(void)
   PB8   ------> TIM4_CH3 
   */
   GPIO_InitStruct.Pin = ENC_A_Pin|ENC_B_Pin|ENC_ZERO_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* TIM4 interrupt Init */
@@ -1016,6 +1050,50 @@ static void MX_TIM4_Init(void)
   /* USER CODE END TIM4_Init 2 */
 
 }
+#else
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
+
+  /* TIM4 interrupt Init */
+  NVIC_SetPriority(TIM4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(TIM4_IRQn);
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  TIM_InitStruct.Prescaler = 1000;
+  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+  TIM_InitStruct.Autoreload = 50;
+  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
+  LL_TIM_Init(TIM4, &TIM_InitStruct);
+  LL_TIM_EnableARRPreload(TIM4);
+  LL_TIM_SetClockSource(TIM4, LL_TIM_CLOCKSOURCE_INTERNAL);
+  LL_TIM_OC_EnablePreload(TIM4, LL_TIM_CHANNEL_CH3);
+  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
+  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.CompareValue = 48;
+  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
+  LL_TIM_OC_Init(TIM4, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
+  LL_TIM_OC_DisableFast(TIM4, LL_TIM_CHANNEL_CH3);
+  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
+  LL_TIM_EnableMasterSlaveMode(TIM4);
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+#endif
 
 /**
   * @brief USART2 Initialization Function

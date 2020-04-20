@@ -157,9 +157,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>146</LineNumber>
+          <LineNumber>214</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134221272</Address>
+          <Address>134230236</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -168,14 +168,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\gcode.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/gcode.c\146</Expression>
+          <Expression>\\efeed\../Src/gcode.c\214</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>89</LineNumber>
+          <LineNumber>270</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134221212</Address>
+          <Address>134230008</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -184,7 +184,7 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\gcode.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/gcode.c\89</Expression>
+          <Expression>\\efeed\../Src/gcode.c\270</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>

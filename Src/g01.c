@@ -87,7 +87,9 @@ void G00G01init_callback(state_t* s){
 //	3. set channels
 	s->function = do_fsm_move2;
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
-
+	if(s->syncbase->ARR < 75) // todo костыль, нулевое значение в таблице ускорения
+		s->syncbase->ARR = 75;
+		
 	s->Q824set = s->current_task.F;
 
 	s->prescaler = s->syncbase->PSC;
@@ -96,23 +98,19 @@ void G00G01init_callback(state_t* s){
 	ZDIR = s->current_task.z_direction;
 	if(s->current_task.dz > s->current_task.dx){
 		s->current_task.steps_to_end = s->current_task.dz;
-
-		
 //#define XSTP	*((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 ))))
-
 //#define BITBAND_PERI2(a,b) ((PERIPH_BB_BASE + (a-PERIPH_BASE)*32 + (b*4)))		
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
 
 //		BITBAND_PERI2(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin_num); //(unsigned int *)((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 )));
 		s->substep_pulse_on = 1;
 		s->substep_pulse_off = 0;
-		
+
 		s->substep_axis = SUBSTEP_AXIS_X;
 		s->err = -s->current_task.dz >> 1;
 		MOTOR_Z_AllowPulse(); 
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
 		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
-
 	} else{
 		s->current_task.steps_to_end = s->current_task.dx;
 		s->err = s->current_task.dx >> 1;
@@ -129,9 +127,6 @@ void G00G01init_callback(state_t* s){
 		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 	}
-
-//	dxdz_callback(s);
-//	s->current_task.steps_to_end = 1; 
 }
 
 
@@ -203,7 +198,7 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	float f1 = ff;
 	float f2 = gref->F;
 	if(G00G01 == G00code)
-		f2 = 1024*400;//204800;
+		f2 = 1024*1500;
 	float f3 = f1 / f2;
 	fixedptu f = f3;
 

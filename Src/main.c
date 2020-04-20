@@ -279,12 +279,12 @@ int main(void)
 	#endif
 
 	static const char * ga1[] = {
-	"G90 G95 G18",//async
+	"G90 G94 G18",//async
 //	"G1 X0. Z0. F500",
 
-	"G0 X0. Z0.",
+	"G1 X0. Z0. F1500",
 	
-		"G1 X0. -Z50. F400",
+		"G1 X0. -Z20. F1500",
 
 //		"Z-.02",
 //	"Z0. F200",

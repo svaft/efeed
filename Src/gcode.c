@@ -16,6 +16,51 @@ substep_job_t substep_job[substep_job_size];
 substep_sma_ref_t smaNumbers[smaNumbers_len] = {0};
 substep_t* smaSubstepRefs[smaNumbers_len] = {0};
 
+//профиль ускорения при 300000pps/ps расчитан в файле rapmup.xls
+uint8_t ramp_pos = 0;
+uint32_t steps2end_equator = 0;
+const uint8_t rampup[] = {
+	75,
+	65,
+	50,
+	33,
+	28,
+	24,
+	20,
+	18,
+	16,
+	15,
+	14,
+	13,
+	13,
+	12,
+	11,
+	11,
+	11,
+	10,
+	10,
+	10,
+	9,
+	9,
+	9,
+	9,
+	8,
+	8,
+	8,
+	8,
+	8,
+	8,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	6,
+};
 
 substep_t* cb_push_back_empty_ref(void){
 	cb_push_back_empty(&substep_cb);
@@ -39,7 +84,8 @@ void load_next_task(state_t* s){
 			if(s->current_task.init_callback_ref){
 				s->current_task.init_callback_ref(s); // task specific init
 			}
-
+			ramp_pos = 0; //todo костыль. надо смотреть по вектору движения, скорости и относительно этого корректировать ускорение,
+			//например при смене направления нужно остановиться и снуля ускориться, при движении в том же направлении можно продолжить на той же скорости			
 //			s->Q824set = s->current_task.F; // load feed value
 			if(s->current_task.stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
 				do_fsm_move_start2(s);
@@ -92,14 +138,6 @@ void G94(state_t* s){
 }
 
 bool msm;
-/*
-  LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-  LL_TIM_DisableIT_TRIG(TIM3);
-  LL_TIM_DisableDMAReq_TRIG(TIM3);
-  LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_RESET);
-  LL_TIM_DisableMasterSlaveMode(TIM3);
-*/
 void switch_to_sync(state_t* s){
 	// отключаем TIM3 как ведомый таймер от мастера
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
@@ -165,14 +203,21 @@ void do_fsm_move_start2(state_t* s){
 	// disclamer: why not to generate	update event by setting in EGR UG bit? with hardware logic analyzer all works fine,
 	// but in simulator this first pulse not generater propertly by UG
 //	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
-
+	ramp_pos = 0;
+	steps2end_equator = s->current_task.steps_to_end>>1;
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
 
+	
 // reload value in stored in ARR from preload to shadow register without update event 	
 	LL_TIM_DisableARRPreload(s->syncbase);
-	s->syncbase->ARR = s->syncbase->ARR;
+	if(s->syncbase->ARR < rampup[0]){
+		s->syncbase->ARR = rampup[ramp_pos++];
+	} else{
+		s->syncbase->ARR = s->syncbase->ARR;
+	}
 	LL_TIM_EnableARRPreload(s->syncbase);
+	
 	
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
@@ -221,7 +266,16 @@ void do_fsm_move2(state_t* s){
 
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
-	s->fract_part = fixedpt_fracpart( set_with_fract ); 							// save fract part for future use on next step
+	if(ramp_pos > s->current_task.steps_to_end){
+		s->syncbase->ARR = rampup[--ramp_pos];
+	} else {
+		if(s->syncbase->ARR < rampup[ramp_pos] && ramp_pos < steps2end_equator){
+			s->syncbase->ARR = rampup[ramp_pos++];
+		} else{
+			s->fract_part = fixedpt_fracpart( set_with_fract ); 							// save fract part for future use on next step
+		}
+	}
+		
 //	s->current_task.steps_to_end--; // migrated to callback
 }
 

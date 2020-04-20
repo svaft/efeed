@@ -157,9 +157,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>136</LineNumber>
+          <LineNumber>146</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134230100</Address>
+          <Address>134221272</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -168,14 +168,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\gcode.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/gcode.c\136</Expression>
+          <Expression>\\efeed\../Src/gcode.c\146</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>84</LineNumber>
+          <LineNumber>89</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134221184</Address>
+          <Address>134221212</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -184,55 +184,7 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\gcode.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/gcode.c\84</Expression>
-        </Bp>
-        <Bp>
-          <Number>2</Number>
-          <Type>0</Type>
-          <LineNumber>302</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134227034</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>../Src/stm32f1xx_it.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/stm32f1xx_it.c\302</Expression>
-        </Bp>
-        <Bp>
-          <Number>3</Number>
-          <Type>0</Type>
-          <LineNumber>139</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>..\Src\gcode.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-        <Bp>
-          <Number>4</Number>
-          <Type>0</Type>
-          <LineNumber>301</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>../Src/stm32f1xx_it.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
+          <Expression>\\efeed\../Src/gcode.c\89</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -249,7 +201,7 @@
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>next_task</ItemText>
+          <ItemText>gt</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
@@ -294,7 +246,7 @@
         <Ww>
           <count>11</count>
           <WinNumber>1</WinNumber>
-          <ItemText>TIM1-&gt;CCR1,0x0A</ItemText>
+          <ItemText>TIM1</ItemText>
         </Ww>
         <Ww>
           <count>12</count>
@@ -543,12 +495,12 @@
         <Wi>
           <IntNumber>0</IntNumber>
           <FirstString>`PORTB</FirstString>
-          <SecondString>FF0000000000000000000000000000000000F03F00000000000000000000000000000000504F5254420000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000001000000000000000000E03F0C00000000000000000000000000000000000000E8310008</SecondString>
+          <SecondString>FF0000000000000000000000000000000000F03F00000000000000000000000000000000504F5254420000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000001000000000000000000E03F1200000000000000000000000000000000000000E8310008</SecondString>
         </Wi>
         <Wi>
           <IntNumber>1</IntNumber>
           <FirstString>`PORTA</FirstString>
-          <SecondString>000080000000000000000000000000000000604000000000000000000000000000000000504F5254410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000002000000000000000000E03F0C00000000000000000000000000000000000000CA230008</SecondString>
+          <SecondString>000080000000000000000000000000000000604000000000000000000000000000000000504F5254410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000002000000000000000000E03F1200000000000000000000000000000000000000CA230008</SecondString>
         </Wi>
       </LogicAnalyzers>
       <SystemViewers>
@@ -689,7 +641,7 @@
       <GroupNumber>2</GroupNumber>
       <FileNumber>9</FileNumber>
       <FileType>1</FileType>
-      <tvExp>0</tvExp>
+      <tvExp>1</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\Src\g01.c</PathWithFileName>

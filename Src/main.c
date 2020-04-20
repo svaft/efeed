@@ -259,8 +259,7 @@ void USART_CharReception_Callback(void)
 	}
 }
 
-
-
+//#define _USEENCODER
 /* USER CODE END 0 */
 
 /**
@@ -270,7 +269,7 @@ void USART_CharReception_Callback(void)
 int main(void)
 {
 #define LOOP_FROM 1
-#define LOOP_COUNT 9
+#define LOOP_COUNT 2
 	
   /* USER CODE BEGIN 1 */
 	#ifdef _SIMU
@@ -278,12 +277,14 @@ int main(void)
 	#else
 	int preload = 1;
 	#endif
-			
+
 	static const char * ga1[] = {
-	"G90 G94 G18",//async
+	"G90 G95 G18",//async
 //	"G1 X0. Z0. F500",
 
-	"G1 X0. Z0. F156.55",
+	"G0 X0. Z0.",
+	
+		"G1 X0. -Z50. F400",
 
 //		"Z-.02",
 //	"Z0. F200",
@@ -294,13 +295,14 @@ int main(void)
 
 
 
-		"Z-.02",
-		"G95",
-
-	"Z0.",
 	"Z-.02",
+	"G95",
 
-	"Z0.",
+	"G1 Z0.",
+	"Z-.02",
+	"G94",
+
+  "G1 Z0.",
 	"Z-.02",
 
 
@@ -309,7 +311,7 @@ int main(void)
 	"Z-.02",
 
 
-		
+
 		"G3 X12. Z-6 K-6",
 		
 	"X80. Z-30",
@@ -536,7 +538,7 @@ int main(void)
 					if(precalculating_task->precalculate_init_callback_ref){
 						precalculating_task->precalculate_init_callback_ref(&state_precalc);
 						if(precalculating_task->precalculate_callback_ref) {
-							for(int a = 0; a<10;a++)
+							for(int a = 0; a<3;a++)
 								precalculating_task->precalculate_callback_ref(&state_precalc);
 						}
 					}
@@ -569,7 +571,7 @@ int main(void)
 
 		if(buttons_flag_set || preload >= 0) {
 //			if(task_cb.count2 < (task_cb.capacity - 1)) {
-				if(task_cb.count < (task_cb.capacity - 1) &&  preload-- >= 0){
+				if(task_cb.count < (task_cb.capacity - 2) &&  preload-- >= 0){
 					command_parser((char *)ga1[command++]);
 				}
 //			}
@@ -871,7 +873,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE END TIM2_Init 1 */
   TIM_InitStruct.Prescaler = 2399;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 50;
+  TIM_InitStruct.Autoreload = 0xFF;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM2, &TIM_InitStruct);
   LL_TIM_EnableARRPreload(TIM2);
@@ -1071,9 +1073,9 @@ static void MX_TIM4_Init(void)
   /* USER CODE BEGIN TIM4_Init 1 */
 
   /* USER CODE END TIM4_Init 1 */
-  TIM_InitStruct.Prescaler = 1000;
+  TIM_InitStruct.Prescaler = 4000;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 50;
+  TIM_InitStruct.Autoreload = 0xFFF;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM4, &TIM_InitStruct);
   LL_TIM_EnableARRPreload(TIM4);

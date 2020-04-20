@@ -9,6 +9,8 @@
 #include "main.h"
 #include "nuts_bolts.h"
 
+void G00G01init_callback(state_t* s);
+void G00init_callback(state_t* s);
 void G01init_callback(state_t* s);
 void dxdz_callback(state_t* s); // line movement callback
 

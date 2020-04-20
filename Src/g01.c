@@ -63,8 +63,25 @@ void dxdz_callback_precalculate(state_t* s){
 	}
 }
 
-// called from load_task
+void G00init_callback(state_t* s){
+	if(s->G94G95 == G95code){
+		s->G94G00tmp = true;
+		switch_to_async(s);
+	}
+	G00G01init_callback(s);
+}
+
 void G01init_callback(state_t* s){
+	if(s->G94G00tmp == true){
+		s->G94G00tmp = false;
+		switch_to_sync(s);
+	}
+	G00G01init_callback(s);
+}
+
+
+// called from load_task
+void G00G01init_callback(state_t* s){
 //	1. set state.function
 //	2. set ARR
 //	3. set channels
@@ -159,8 +176,24 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	}
 
 	uint64_t il = (int64_t)(gref->Xr-x0r)*(gref->Xr-x0r)+(int64_t)dz*dz;
-
-	G_task_t *gt_new_task = add_empty_task();
+	G_task_t *gt_new_task = 0;
+/*
+	if(G00G01 == G01code && s->G94G95_G00tmp == G94code && s->G94G95 == G95code) {
+		// синхронизация по шпинделю, но предыдущий код был G00, нужно переключиться c временной асинхронной синхронизации обратно на синхронизацию по шпинделю
+		gt_new_task = add_empty_task();
+		gt_new_task->init_callback_ref = G95;
+		gt_new_task->precalculate_init_callback_ref = G95init_callback_precalculate;
+		s->G94G95_G00tmp = G95code;
+	}
+	if(s->G94G95 == G95code && G00G01 == G00code){
+		// синхронизация по шпинделю, но нужно временно переключиться на асихронный таймер для быстрого перемещения каретки
+		gt_new_task = add_empty_task();
+		gt_new_task->init_callback_ref = G94;
+		gt_new_task->precalculate_init_callback_ref = G94init_callback_precalculate;
+		s->G94G95_G00tmp = G94code;
+	}
+*/
+	gt_new_task = add_empty_task();
 
 	gt_new_task->len = sqrtf(il); // SquareRoot64(il);
 
@@ -169,6 +202,8 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 
 	float f1 = ff;
 	float f2 = gref->F;
+	if(G00G01 == G00code)
+		f2 = 1024*400;//204800;
 	float f3 = f1 / f2;
 	fixedptu f = f3;
 
@@ -191,8 +226,10 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 //		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
 	}
 //	if(G00G01 == G00code) // rapid movement,
-		
-	gt_new_task->init_callback_ref = G01init_callback;
+	if(G00G01 == G00code)	
+		gt_new_task->init_callback_ref = G00init_callback;
+	else
+		gt_new_task->init_callback_ref = G01init_callback;
 	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
 	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
 //	gref->code = 1;

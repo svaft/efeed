@@ -195,7 +195,8 @@ typedef struct state_s
 	bool task_lock;
 //	bool precalculate_end; // moved to task structure
 	
-	bool G94G95; // 0 - unit per min, 1 - unit per rev
+	int8_t G94G95; // 0 - unit per min, 1 - unit per rev
+	int8_t G94G00tmp; // 0 - unit per min, 1 - unit per rev
 //	uint32_t substep_mask;
   state_func_t function;
 //  callback_func_t callback;
@@ -424,8 +425,8 @@ void Error_Handler(void);
 	#define MOTOR_X_STEP_Pin_num 15
 #endif 	
 
-#define zdir_forward	1
-#define zdir_backward	0
+#define zdir_forward	0
+#define zdir_backward	1
 #define xdir_forward	1
 #define xdir_backward	0
 
@@ -592,8 +593,8 @@ r*3,14/2/(П�?()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
 
 
 
-#define G94code 0
-#define G95code 1
+#define G94code 94
+#define G95code 95
 
 #define G00code 0
 #define G01code 1

@@ -54,18 +54,40 @@ void G94init_callback_precalculate(state_t* s){
 	s->precalculating_task_ref->unlocked = true;
 }
 
-void G94(state_t* s){
-	s->G94G95 = G94code;
-
+void switch_to_async(state_t* s){
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR0);
+
+
+// unattach sync master TIM4 from slave	
+  LL_TIM_DisableMasterSlaveMode(TIM4);
+  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_RESET);
+	LL_TIM_DisableCounter(TIM4); // pause sync timer
+	
 	LL_TIM_DisableCounter(TIM2); // pause async timer
-// calibrate timer delay
-	LL_TIM_DisableUpdateEvent(TIM2);
-	// connect async timer:
+	// connect sync timer:
 	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+
+  LL_TIM_EnableMasterSlaveMode(TIM2);
+  LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_UPDATE);
+
+
+// calibrate timer delay
+//	LL_TIM_DisableUpdateEvent(TIM2);
+	// connect async timer:
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+}
 
+void G94(state_t* s){
+	if(s->G94G95 == G94code){ //если мы уже в асинхронном режиме переконфигурацию таймеров не проводим
+		s->task_lock = false;
+		return;
+	}
+	
+	if(s->G94G00tmp != true)
+		s->G94G95 = G94code;
+	switch_to_async(s);
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
@@ -78,12 +100,7 @@ bool msm;
   LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_RESET);
   LL_TIM_DisableMasterSlaveMode(TIM3);
 */
-
-void G95(state_t* s){
-//	MOTOR_X_Enable();
-	if(s->G94G95 == G95code) //если мы уже в синхронном режиме переконфигурацию таймеров не проводим
-		return;
-	s->G94G95 = G95code;
+void switch_to_sync(state_t* s){
 	// отключаем TIM3 как ведомый таймер от мастера
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR0);
@@ -93,20 +110,23 @@ void G95(state_t* s){
   LL_TIM_DisableMasterSlaveMode(TIM2);
   LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_RESET);
 
-	LL_mDelay(2);
+//	LL_mDelay(2);
 	// reconfigure async timer:
 	LL_TIM_DisableCounter(TIM2); // pause async timer
 
-	TIM2->PSC = 0; // reset prescaler and set tim2 to max speed to use it as delay measure
-	TIM2->ARR = 0xFFFF;
+//	TIM2->PSC = 0; // reset prescaler and set tim2 to max speed to use it as delay measure
+//	TIM2->ARR = 0xFFFF;
 	// to set prescaler register we need to generate update event, so disable IT first to prevent call of IT routine:
 	LL_TIM_DisableIT_UPDATE(TIM2); 
 	// and then generate UPDATE event:
 	LL_TIM_GenerateEvent_UPDATE(TIM2); 
 
-	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+//	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 	LL_TIM_DisableCounter(TIM4); // pause sync timer
 //	LL_TIM_DisableUpdateEvent(TIM4);
+  LL_TIM_EnableMasterSlaveMode(TIM4);
+  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
+
 
 	// connect sync timer:
 	s->syncbase = TIM4; 									// sync with main spindle encoder
@@ -115,7 +135,16 @@ void G95(state_t* s){
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 
 //	MOTOR_X_Enable();
-	LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+//	LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+}
+void G95(state_t* s){
+//	MOTOR_X_Enable();
+	if(s->G94G95 == G95code){ //если мы уже в синхронном режиме переконфигурацию таймеров не проводим
+		s->task_lock = false;
+		return;
+	}
+	s->G94G95 = G95code;
+	switch_to_sync(s);
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
@@ -135,19 +164,28 @@ void do_fsm_move_start2(state_t* s){
 //	s->syncbase->CNT = 1; // set ARR=CNT to start pulse generation on next count increment after EnableCounter.
 	// disclamer: why not to generate	update event by setting in EGR UG bit? with hardware logic analyzer all works fine,
 	// but in simulator this first pulse not generater propertly by UG
+//	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
 
+// reload value in stored in ARR from preload to shadow register without update event 	
+	LL_TIM_DisableARRPreload(s->syncbase);
+	s->syncbase->ARR = s->syncbase->ARR;
+	LL_TIM_EnableARRPreload(s->syncbase);
+	
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	LL_TIM_EnableCounter(s->syncbase);
 
-	LL_TIM_DisableIT_UPDATE(s->syncbase);
+	
+//	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
-	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
+//	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableIT_UPDATE(s->syncbase);
+
+//	LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 }
 uint32_t move_cnt = 0;
 

@@ -425,8 +425,8 @@ void Error_Handler(void);
 	#define MOTOR_X_STEP_Pin_num 15
 #endif 	
 
-#define zdir_forward	0
-#define zdir_backward	1
+#define zdir_forward	1
+#define zdir_backward	0
 #define xdir_forward	0
 #define xdir_backward	1
 

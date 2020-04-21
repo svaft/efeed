@@ -231,23 +231,32 @@ void do_fsm_move_start2(state_t* s){
 		s->syncbase->ARR = s->syncbase->ARR;
 	}
 	LL_TIM_EnableARRPreload(s->syncbase);
-	
-	
+
+
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	LL_TIM_EnableCounter(s->syncbase);
 
-	if(s->syncbase == TIM4){
+	if(s->syncbase == TIM4){ // if sync wait for tacho event and continue. While waiting disable stepper motors to correct position manually if needed
+		LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+		LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
+
 		LL_TIM_DisableUpdateEvent(s->syncbase);
 		LL_TIM_ClearFlag_CC3(s->syncbase);
+		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
 		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase))
 			LL_mDelay(1);
 		LL_TIM_EnableUpdateEvent(s->syncbase);
+		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
+		LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+		LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
 	}
 	
 //	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
 //	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
+	s->syncbase->CNT = 0;
+	s->syncbase->SR = 0;
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 //	LL_TIM_EnableIT_CC3(s->syncbase);
 	LL_TIM_EnableIT_UPDATE(s->syncbase);
@@ -382,6 +391,7 @@ void command_parser(char *line){
 							//cutting tool under Z axis
 						return;	
 					case 33*steps_per_unit_Z_2210: //G33
+						G33parse(line+char_counter - 1);
 						return;	
 				}
 				break;
@@ -398,6 +408,7 @@ void command_parser(char *line){
 						G03parse(line+char_counter - 1,0);
 						return;	
 					case 33*steps_per_unit_Z_2210: //G33
+						G33parse(line+char_counter - 1);
 						return;	
 				}
 				break;
@@ -437,7 +448,7 @@ G_pipeline_t* G_parse(char *line){
 				init_gp.I = str_f_to_steps2210(line, &char_counter);
 				break;
 			case 'K':
-				init_gp.K = str_f_to_steps2210(line, &char_counter);
+				init_gp.K = str_f_to_2210(line, &char_counter); //str_f_to_steps2210(line, &char_counter);
 				break;
 			case 'F':
 				init_gp.F = str_f_to_2210(line, &char_counter);

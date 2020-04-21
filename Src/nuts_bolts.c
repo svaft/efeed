@@ -206,22 +206,34 @@ int str_f_to_2210(char *line, uint8_t *char_counter){
 	}
 
 	if(fract == true) {
-		switch(ten){
-				case 1:{
-						number *= 1677721; // div 10
-						break;
+		switch(number){
+			case 5:
+				t2210 +=512;
+				break;
+			case 25:
+				t2210 +=256;
+				break;
+			case 75:
+				t2210 +=768;
+				break;
+			default:
+				switch(ten){
+						case 1:{
+								number *= 1677721; // div 10
+								break;
+						}
+						case 2:{
+								number *= 167772; // div 100
+								break;
+						}
+						case 3:{
+								number *= 16777; // div 1000
+								break;
+						}
 				}
-				case 2:{
-						number *= 167772; // div 100
-						break;
-				}
-				case 3:{
-						number *= 16777; // div 1000
-						break;
-				}
+				number >>=14;
+				t2210 |= number;//fixedpt_xdiv(number,ten);
 		}
-		number >>=14;
-		t2210 |= number;//fixedpt_xdiv(number,ten);
 	} else {
 		t2210 = fixedpt_fromint2210(number);
 	}

@@ -63,6 +63,8 @@ void dxdz_callback_precalculate(state_t* s){
 	}
 }
 
+
+
 void G00init_callback(state_t* s){
 	if(s->G94G95 == G95code){
 		s->G94G00tmp = true;
@@ -78,6 +80,15 @@ void G01init_callback(state_t* s){
 	}
 	G00G01init_callback(s);
 }
+
+void G33init_callback(state_t* s){
+	if(s->G94G00tmp == true){
+		s->G94G00tmp = false;
+		switch_to_sync(s);
+	}
+	G00G01init_callback(s);
+}
+
 
 
 // called from load_task
@@ -103,8 +114,8 @@ void G00G01init_callback(state_t* s){
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
 
 //		BITBAND_PERI2(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin_num); //(unsigned int *)((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 )));
-		s->substep_pulse_on = 0;
-		s->substep_pulse_off = 1;
+		s->substep_pulse_on = 1;
+		s->substep_pulse_off = 0;
 
 		s->substep_axis = SUBSTEP_AXIS_X;
 		s->err = -s->current_task.dz >> 1;
@@ -119,8 +130,8 @@ void G00G01init_callback(state_t* s){
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
 
 //		s->substep_pin = &ZSTP;
-		s->substep_pulse_on = 0;
-		s->substep_pulse_off = 1;
+		s->substep_pulse_on = 1;
+		s->substep_pulse_off = 0;
 
 		MOTOR_X_AllowPulse(); 
 //		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
@@ -140,6 +151,58 @@ void dxdz_callback(state_t* s){
 }
 
 
+
+void G33parse(char *line){
+	int x0 =  init_gp.X  & ~1uL<<(FIXEDPT_FBITS2210-1); //округляем предыдущее значение до целого числа шагов
+	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
+	int z0 =  init_gp.Z  & ~1uL<<(FIXEDPT_FBITS2210-1);
+	state_t *s = &state_precalc;
+
+	G_pipeline_t *gref = G_parse(line);
+	if(s->init == false){
+		init_gp.X = gref->X;
+		init_gp.Z = gref->Z;
+		s->init = true;
+		return;
+	}
+
+	int dx,dz, xdir,zdir;
+	if(gref->Z > z0){ // go from left to right
+		dz = gref->Z - z0;
+		zdir = zdir_forward;
+	} else { // go back from right to left
+		dz = z0 - gref->Z;
+		zdir = zdir_backward;
+	}
+	if(gref->X > x0){ // go forward
+		dx = gref->X - x0;
+		xdir = xdir_forward;
+	} else { // go back
+		dx = x0 - gref->X;
+		xdir = xdir_backward;
+	}
+
+//	uint64_t il = (int64_t)(gref->Xr-x0r)*(gref->Xr-x0r)+(int64_t)dz*dz;
+	G_task_t *gt_new_task = 0;
+
+	gt_new_task = add_empty_task();
+
+	gt_new_task->F = str_f824mm_rev_to_delay824(gref->K); //todo inch support
+
+	gt_new_task->stepper = true;
+	gt_new_task->callback_ref = dxdz_callback;
+	gt_new_task->dx =  fixedpt_toint2210(dx);
+	gt_new_task->dz =  fixedpt_toint2210(dz);
+
+//	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
+	gt_new_task->x_direction = xdir;
+	gt_new_task->z_direction = zdir;
+
+	gt_new_task->init_callback_ref = G33init_callback;
+	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
+	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
+}
+
 void G01parse(char *line, bool G00G01){ //~60-70us
 	int x0 = init_gp.X & ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
 	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
@@ -150,6 +213,7 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	if(s->init == false){
 		init_gp.X = gref->X;
 		init_gp.Z = gref->Z;
+		init_gp.Xr = gref->Xr;
 		s->init = true;
 		return;
 	}

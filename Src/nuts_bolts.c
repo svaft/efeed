@@ -91,7 +91,7 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
 //	return fixedptu_div(18<<24,feed);
 	
 	float f2 = feed<<14;
-	float f3 = rev_to_delay_f / f2; //float divide is faster then long?
+	float f3 = (rev_to_delay_f / f2)*16777216; //float divide is faster then long?
 	return (fixedptu) f3;
 //	return fixedptu_div(rev_to_delay,feed<<14); // feed<<14 - convert feed value in 22.10 to 8.24 format
 }

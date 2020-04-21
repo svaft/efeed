@@ -269,8 +269,8 @@ void USART_CharReception_Callback(void)
 int main(void)
 {
 #define LOOP_FROM 1
-#define LOOP_COUNT 2
-	
+#define LOOP_COUNT 4
+#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
   /* USER CODE BEGIN 1 */
 	#ifdef _SIMU
 	int preload = LOOP_COUNT;
@@ -279,12 +279,14 @@ int main(void)
 	#endif
 
 	static const char * ga1[] = {
-	"G90 G94 G18",//async
+	"G90 G95 G18",//async
 //	"G1 X0. Z0. F500",
 
-	"G1 X0. Z0. F1500",
-	
-		"G1 X0. -Z20. F1500",
+	"G0 X0. Z0.",
+	"G1 X0. -Z20 F1.5",
+	"G0 X1.",
+	"Z0.",
+		
 
 //		"Z-.02",
 //	"Z0. F200",

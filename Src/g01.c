@@ -190,37 +190,33 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 */
 	gt_new_task = add_empty_task();
 
-	gt_new_task->len = sqrtf(il); // SquareRoot64(il);
 
-	uint32_t ff = (9000 * (gt_new_task->len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
-//	fixedptu f = fixedpt_xdiv2210(ff, gref->F);
+//		bool G94G95; // 0 - unit per min, 1 - unit per rev
+	if(s->G94G95 == G95code && G00G01 == G01code){ 	// unit(mm) per rev
+		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F); //todo inch support
+	} else { 											// unit(mm) per min
+		if(G00G01 == G00code){
+			gt_new_task->F = 7<<24; //4285pps
+		} else {
+			gt_new_task->len = sqrtf(il); // SquareRoot64(il);
+			uint32_t ff = (async_steps_factor * (gt_new_task->len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
+			float f1 = ff;
+			float f2 = gref->F;
+			float f3 = f1 / f2;
+			fixedptu f = f3;
+			gt_new_task->F = f << 24; // translate to 8.24 format used for delays
+		}
+	}
 
-	float f1 = ff;
-	float f2 = gref->F;
-	if(G00G01 == G00code)
-		f2 = 1024*1500;
-	float f3 = f1 / f2;
-	fixedptu f = f3;
-
-	gt_new_task->F = f << 24; // translate to 8.24 format used for delays
-	
-	
 	gt_new_task->stepper = true;
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
 	gt_new_task->dz =  fixedpt_toint2210(dz);
-		
+
 //	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
 
-//		bool G94G95; // 0 - unit per min, 1 - unit per rev
-	if(s->G94G95 == G95code){ 	// unit(mm) per rev
-//		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
-	} else { 											// unit(mm) per min
-//		gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
-	}
-//	if(G00G01 == G00code) // rapid movement,
 	if(G00G01 == G00code)	
 		gt_new_task->init_callback_ref = G00init_callback;
 	else
@@ -229,8 +225,6 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
 //	gref->code = 1;
 }
-
-
 
 
 /*

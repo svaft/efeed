@@ -60,6 +60,20 @@ const uint8_t rampup[] = {
 	7,
 	7,
 	6,
+	6,
+	6,
+	6,
+	6,
+	5,
+	5,
+	5,
+	5,
+	4,
+	4,
+	4,
+	3,
+	2,
+	1,
 };
 
 substep_t* cb_push_back_empty_ref(void){
@@ -266,13 +280,13 @@ void do_fsm_move2(state_t* s){
 
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
-	if(ramp_pos > s->current_task.steps_to_end){
+	if(ramp_pos >= s->current_task.steps_to_end){
 		s->syncbase->ARR = rampup[--ramp_pos];
 	} else {
-		if(s->syncbase->ARR < rampup[ramp_pos] && ramp_pos < steps2end_equator){
+		if(s->syncbase->ARR < rampup[ramp_pos]){
 			s->syncbase->ARR = rampup[ramp_pos++];
 		} else{
-			s->fract_part = fixedpt_fracpart( set_with_fract ); 							// save fract part for future use on next step
+			s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
 		}
 	}
 		

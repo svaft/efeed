@@ -427,8 +427,8 @@ void Error_Handler(void);
 
 #define zdir_forward	0
 #define zdir_backward	1
-#define xdir_forward	1
-#define xdir_backward	0
+#define xdir_forward	0
+#define xdir_backward	1
 
 
 

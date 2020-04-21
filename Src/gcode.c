@@ -237,11 +237,19 @@ void do_fsm_move_start2(state_t* s){
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	LL_TIM_EnableCounter(s->syncbase);
 
+	if(s->syncbase == TIM4){
+		LL_TIM_DisableUpdateEvent(s->syncbase);
+		LL_TIM_ClearFlag_CC3(s->syncbase);
+		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase))
+			LL_mDelay(1);
+		LL_TIM_EnableUpdateEvent(s->syncbase);
+	}
 	
 //	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
 //	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
+//	LL_TIM_EnableIT_CC3(s->syncbase);
 	LL_TIM_EnableIT_UPDATE(s->syncbase);
 
 //	LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);

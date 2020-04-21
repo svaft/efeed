@@ -103,8 +103,8 @@ void G00G01init_callback(state_t* s){
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
 
 //		BITBAND_PERI2(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin_num); //(unsigned int *)((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 )));
-		s->substep_pulse_on = 1;
-		s->substep_pulse_off = 0;
+		s->substep_pulse_on = 0;
+		s->substep_pulse_off = 1;
 
 		s->substep_axis = SUBSTEP_AXIS_X;
 		s->err = -s->current_task.dz >> 1;
@@ -123,7 +123,7 @@ void G00G01init_callback(state_t* s){
 		s->substep_pulse_off = 1;
 
 		MOTOR_X_AllowPulse(); 
-		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+//		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 	}
@@ -196,7 +196,7 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F); //todo inch support
 	} else { 											// unit(mm) per min
 		if(G00G01 == G00code){
-			gt_new_task->F = 7<<24; //4285pps
+			gt_new_task->F = 9<<24; //4285pps
 		} else {
 			gt_new_task->len = sqrtf(il); // SquareRoot64(il);
 			uint32_t ff = (async_steps_factor * (gt_new_task->len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?

@@ -1,5 +1,4 @@
 #include "gcode.h"
-#include "fsm.h"
 #include "g03.h"
 
 #include "math.h"

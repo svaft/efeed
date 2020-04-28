@@ -39,10 +39,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "fixedptc.h"
-#include "buttons.h"
-#include "fsm.h"
-#include "i2c_interface.h"
-#include "ssd1306.h"
+#include "nuts_bolts.h"
+#include "gcode.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -122,10 +120,6 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 1 */
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
-	for(int a = 0; a<BT_TOTAL;a++){
-		if( bt[a].buttons_mstick > 0 )
-			bt[a].buttons_mstick++;
-	}
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -142,19 +136,6 @@ void SysTick_Handler(void)
 void DMA1_Channel4_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
-  if(LL_DMA_IsActiveFlag_TC4(DMA1))
-  {
-    LL_DMA_ClearFlag_GI4(DMA1);
-		
-		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
-		LL_DMA_ClearFlag_TC4(DMA1);
-    Transfer_Complete_Callback();
-//    DMA1_Transfer_Complete_Callback();
-  }
-  else if(LL_DMA_IsActiveFlag_TE4(DMA1))
-  {
-    Transfer_Error_Callback();
-  }
 
   /* USER CODE END DMA1_Channel4_IRQn 0 */
   
@@ -169,19 +150,6 @@ void DMA1_Channel4_IRQHandler(void)
 void DMA1_Channel5_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
-  if(LL_DMA_IsActiveFlag_TC5(DMA1))
-  {
-    LL_DMA_ClearFlag_GI5(DMA1);
-
-		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_5);
-		LL_DMA_ClearFlag_TC5(DMA1);
-
-    Transfer_Complete_Callback();
-  }
-  else if(LL_DMA_IsActiveFlag_TE5(DMA1))
-  {
-    Transfer_Error_Callback();
-  }
 
   /* USER CODE END DMA1_Channel5_IRQn 0 */
   
@@ -352,55 +320,6 @@ void TIM4_IRQHandler(void)
 void I2C2_EV_IRQHandler(void)
 {
   /* USER CODE BEGIN I2C2_EV_IRQn 0 */
-  /* Check SB flag value in ISR register */
-  if(LL_I2C_IsActiveFlag_SB(I2C2))
-  {
-    /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a write request */
-    LL_I2C_TransmitData8(I2C2, ubI2C_slave_addr | ubMasterRequestDirection);
-
-    /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a ubMasterRequestDirection request */
-//    LL_I2C_TransmitData8(I2C2, SLAVE_OWN_ADDRESS | ubMasterRequestDirection);
-		
-  }
-  /* Check ADDR flag value in ISR register */
-  else if(LL_I2C_IsActiveFlag_ADDR(I2C2))
-  {
-    /* Verify the transfer direction */
-    if(LL_I2C_GetTransferDirection(I2C2) == LL_I2C_DIRECTION_READ)
-    {
-      ubMasterXferDirection = LL_I2C_DIRECTION_READ;
-
-      if(ubMasterNbDataToReceive == 1)
-      {
-        /* Prepare the generation of a Non ACKnowledge condition after next received byte */
-        LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_NACK);
-
-        /* Enable DMA transmission requests */
-        LL_I2C_EnableDMAReq_RX(I2C2);
-      }
-      else if(ubMasterNbDataToReceive == 2)
-      {
-        /* Prepare the generation of a Non ACKnowledge condition after next received byte */
-        LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_NACK);
-
-        /* Enable Pos */
-        LL_I2C_EnableBitPOS(I2C2);
-      }
-      else
-      {
-        /* Enable Last DMA bit */
-        LL_I2C_EnableLastDMA(I2C2);
-
-        /* Enable DMA transmission requests */
-        LL_I2C_EnableDMAReq_RX(I2C2);
-      }
-    } else {
-			/* Enable DMA transmission requests */
-			LL_I2C_EnableDMAReq_TX(I2C2);
-		}
-    /* Clear ADDR flag value in ISR register */
-    LL_I2C_ClearFlag_ADDR(I2C2);
-  }
 
   /* USER CODE END I2C2_EV_IRQn 0 */
   
@@ -424,50 +343,6 @@ void I2C2_ER_IRQHandler(void)
   /* USER CODE END I2C2_ER_IRQn 1 */
 }
 
-/**
-  * @brief This function handles USART2 global interrupt.
-  */
-void USART2_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART2_IRQn 0 */
-  if(LL_USART_IsActiveFlag_RXNE(USART2) && LL_USART_IsEnabledIT_RXNE(USART2))
-  {
-    /* RXNE flag will be cleared by reading of DR register (done in call) */
-    /* Call function in charge of handling Character reception */
-    USART_CharReception_Callback();
-  }
-  /* USER CODE END USART2_IRQn 0 */
-  /* USER CODE BEGIN USART2_IRQn 1 */
-
-  /* USER CODE END USART2_IRQn 1 */
-}
-
-/* USER CODE BEGIN 1 */
-
-//void TIM1_UP_IRQHandler_old(void)
-//{
-//  /* USER CODE BEGIN TIM1_UP_IRQn 0 */
-////	debug7();
-//	// enable corresponding channel for sub-step:
-//	debug1();
-//	TIM3->CCER = state_hw.substep_mask;
-//	// start pulse:
-//	LL_TIM_EnableCounter(TIM3); 
-//	// stop sub-step timer:
-//	LL_TIM_DisableCounter(TIM1);
-//	LL_TIM_SetCounter(TIM1,0);
-//	TIM1->SR = 0;
-//	return;
-//  /* USER CODE END TIM1_UP_IRQn 0 */
-//  /* USER CODE BEGIN TIM1_UP_IRQn 1 */
-//  if(LL_TIM_IsActiveFlag_UPDATE(TIM1) == 1)
-//  {
-//    /* Clear the update interrupt flag*/
-//    LL_TIM_ClearFlag_UPDATE(TIM1);
-//  }
-
-//  /* USER CODE END TIM1_UP_IRQn 1 */
-//}
 
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -20,7 +20,7 @@ void G01init_callback_precalculate(state_t* s){
 }
 
 //int pcc = 0;
-
+int break5972 = 0;
 void dxdz_callback_precalculate(state_t* s){
 //	pcc++;
 //	s->precalculate_end = false;
@@ -28,7 +28,8 @@ void dxdz_callback_precalculate(state_t* s){
 	substep_t *sb = substep_cb.top;
 	int e2 = s->err;
 	int32_t delay = -1;
-
+	if(substep_cb.count2 == 5972)
+		break5972 = 1;
 	if (e2 >= -s->current_task.dx)	{ // step X axis
 		s->err -= s->current_task.dz;
 		if(s->substep_axis == SUBSTEP_AXIS_X){
@@ -86,7 +87,10 @@ void G33init_callback(state_t* s){
 		s->G94G00tmp = false;
 		switch_to_sync(s);
 	}
+	s->gcode = 33;
+
 	G00G01init_callback(s);
+	s->function = do_fsm_move33;
 }
 
 
@@ -98,9 +102,9 @@ void G00G01init_callback(state_t* s){
 //	3. set channels
 	s->function = do_fsm_move2;
 	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
-	if(s->syncbase->ARR < 75) // todo костыль, нулевое значение в таблице ускорения
+	if(s->syncbase->ARR < 75 ) // todo костыль, нулевое значение в таблице ускорения
 		s->syncbase->ARR = 75;
-		
+
 	s->Q824set = s->current_task.F;
 
 	s->prescaler = s->syncbase->PSC;
@@ -188,7 +192,12 @@ void G33parse(char *line){
 	gt_new_task = add_empty_task();
 
 	gt_new_task->F = str_f824mm_rev_to_delay824(gref->K); //todo inch support
+	if(dx > dz){
+//		float f2 = gref->K<<14;
+//		float f3 = (rev_to_delay_f / f2)*2794369.09f; //float divide is faster then long?
 
+//		gt_new_task->F = f3;
+	}
 	gt_new_task->stepper = true;
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
@@ -198,7 +207,7 @@ void G33parse(char *line){
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
 
-	gt_new_task->init_callback_ref = G33init_callback;
+	gt_new_task->init_callback_ref = G01init_callback;
 	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
 	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
 }
@@ -291,64 +300,3 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 }
 
 
-/*
-void dxdz_callback(state_t* s){
-	debug();
-	if(s->substep_mask){
-		// sub-step done, restore channel config
-//		debug1();
-		// inverse substep channel activity:
-		if(s->substep_mask == MOTOR_Z_CHANNEL){ 
-			MOTOR_X_OnlyPulse();
-		} else {
-			MOTOR_Z_OnlyPulse();
-		}
-		s->substep_mask = 0;
-		return;
-	}
-
-	TIM3->CCER = 0;
-	int e2 = s->err;
-	if (e2 >= -s->current_task.dx)	{ // step X axis
-		if(s->err == 0 || s->substep_axis == SUBSTEP_AXIS_Z){
-//			lx++;
-			MOTOR_X_AllowPulse(); 
-		} else {
-			s->substep_mask = MOTOR_X_CHANNEL;
-			MOTOR_X_BlockPulse(); // block pulse on next timer2 tick but set it by substep timer1
-			uint32_t delay = s->prescaler * s->syncbase->ARR;
-			// explanations: prescaler value for timer connected to encoder is unknown because its depend on rotating speed of the spindle,
-			// so we trying to detect it with calibrate_callback and use it here. For an async(predefined) timer	we can use TI2->PSC. 		
-			delay = delay*(abs(e2))/s->current_task.dx;// + min_pulse;
-			LL_TIM_SetAutoReload(TIM1,delay);
-//			debug1();
-			LL_TIM_EnableCounter(TIM1);
-		}
-		s->err -= s->current_task.dz;
-	}
-	if (e2 <= s->current_task.dz)	{ // step Z axis
-		if(s->err == 0 || s->substep_axis == SUBSTEP_AXIS_X){
-//			ly++;
-			MOTOR_Z_AllowPulse();
-		} else {
-			s->substep_mask = MOTOR_Z_CHANNEL;
-			MOTOR_Z_BlockPulse(); // block pulse on next timer2 tick but set it by substep timer1
-			uint32_t delay = s->prescaler * s->syncbase->ARR;
-			// explanations: prescaler for timer connecter to encoder is unknown because its depend on rotating speed of the encoder,
-			// so we trying to detect it with calibrate_callback and use it here. For async(predefined) timer	we can use TI2->PSC for it. 		
-			delay = delay*(abs(e2))/s->current_task.dz;// + min_pulse;
-			LL_TIM_SetAutoReload(TIM1,delay);
-//			debug1();
-			LL_TIM_EnableCounter(TIM1);
-		}
-		s->err += s->current_task.dx;
-	}
-
-//	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
-//		s->current_task.steps_to_end = 0; // end of arc
-//		return;
-//	}
-
-	s->current_task.steps_to_end--;
-}
-*/

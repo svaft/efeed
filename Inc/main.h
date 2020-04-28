@@ -194,7 +194,7 @@ typedef struct state_s
 	G_task_t *precalculating_task_ref;
 	bool task_lock;
 //	bool precalculate_end; // moved to task structure
-	
+	int8_t gcode;
 	int8_t G94G95; // 0 - unit per min, 1 - unit per rev
 	int8_t G94G00tmp; // 0 - unit per min, 1 - unit per rev
 //	uint32_t substep_mask;
@@ -527,6 +527,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 #define async_steps_factor 9000 // 30000hz fot 60 sec 400 steps for 2mm screw
 
 #define z_to_x_factor824	100729348
+#define z_to_x_factor_f 6.003937008f
 
 
 /*

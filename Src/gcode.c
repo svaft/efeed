@@ -81,7 +81,8 @@ substep_t* cb_push_back_empty_ref(void){
 	return substep_cb.top;
 }
 
-
+int current_step = 0;
+int break1 = 0;
 
 /**
 * @brief  Extract new task from queue and start to process it
@@ -91,6 +92,9 @@ void load_next_task(state_t* s){
 	if(s->task_lock == false && task_cb.count > 0) {
 		G_task_t *next_task = cb_get_front_ref(&task_cb);
 		if(next_task){// && next_task->unlocked == true) {
+			current_step++;
+			if(current_step == 46)
+				break1 = 1;
 //		if(next_task && next_task->unlocked == true) {
 //	debug();
 			s->task_lock = true;
@@ -225,7 +229,7 @@ void do_fsm_move_start2(state_t* s){
 	
 // reload value in stored in ARR from preload to shadow register without update event 	
 	LL_TIM_DisableARRPreload(s->syncbase);
-	if(s->syncbase->ARR < rampup[0]){
+	if(s->syncbase->ARR < rampup[0] ){
 		s->syncbase->ARR = rampup[ramp_pos++];
 	} else{
 		s->syncbase->ARR = s->syncbase->ARR;
@@ -309,6 +313,49 @@ void do_fsm_move2(state_t* s){
 		
 //	s->current_task.steps_to_end--; // migrated to callback
 }
+
+void do_fsm_move33(state_t* s){
+	move_cnt++;
+//	if(move_cnt>460 && move_cnt<470) 
+//		break1 = 1;
+	substep_t *sb = substep_cb.tail; //get ref to current substep
+	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
+		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+		delay >>=4;
+		if(delay>65500)
+			Error_Handler(); // owerflow error, enlarge tim1 prescaler, timer1 is too fast
+			
+		TIM1->CCR1	= delay + 1;
+		TIM1->ARR 	= delay + 46;//min_pulse + 1;
+		TIM1->SR = 0;
+		if(LL_TIM_IsEnabledCounter(TIM1))
+			Error_Handler(); // some error?
+		LL_TIM_EnableCounter(TIM1);
+		cb_pop_front_ref(&substep_cb); 		// timer to substep pulse started, move substep ref to next value in circular buffer to get in on next iteration
+	} else { 														// substep contain packed value of skipped steps, continue to skip steps until skip = 0
+		sb->skip--;
+		if(sb->skip == 0)
+			cb_pop_front_ref(&substep_cb); 	// substep reach zero, move substep ref to next value in circular buffer to get in on next iteration
+	}
+
+	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
+	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
+
+	s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
+
+	if(ramp_pos >= s->current_task.steps_to_end){
+	//	s->syncbase->ARR = rampup[--ramp_pos];
+	} else {
+//		if(s->syncbase->ARR < rampup[ramp_pos]){
+//			s->syncbase->ARR = rampup[ramp_pos++];
+//		} else{
+//			s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
+//		}
+	}
+		
+//	s->current_task.steps_to_end--; // migrated to callback
+}
+
 
 
 

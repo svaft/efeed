@@ -59,6 +59,8 @@ void calibrate_init_callback(state_t* s);
 
 
 void do_fsm_move_start2(state_t* s);
+
+void do_fsm_move33(state_t*);
 void do_fsm_move2(state_t*);
 void do_fsm_move_end2(state_t* );
 void load_next_task(state_t* s);

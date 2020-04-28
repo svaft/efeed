@@ -327,42 +327,42 @@ void I2C2_EV_IRQHandler(void)
 {
   /* USER CODE BEGIN I2C2_EV_IRQn 0 */
   /* Check ADDR flag value in ISR register */
-  if(LL_I2C_IsActiveFlag_ADDR(I2C1))
+  if(LL_I2C_IsActiveFlag_ADDR(I2C2))
   {
     /* Verify the slave transfer direction, a read direction, Slave enters receiver mode */
-    if(LL_I2C_GetTransferDirection(I2C1) == LL_I2C_DIRECTION_READ)
+    if(LL_I2C_GetTransferDirection(I2C2) == LL_I2C_DIRECTION_READ)
     {
       /* Enable Buffer Interrupts */
-      LL_I2C_EnableIT_BUF(I2C1);
+      LL_I2C_EnableIT_BUF(I2C2);
 
       /* Clear ADDR flag value in ISR register */
-      LL_I2C_ClearFlag_ADDR(I2C1);
+      LL_I2C_ClearFlag_ADDR(I2C2);
     }
-    else if(LL_I2C_GetTransferDirection(I2C1) == LL_I2C_DIRECTION_WRITE)
+    else if(LL_I2C_GetTransferDirection(I2C2) == LL_I2C_DIRECTION_WRITE)
     {
       /* Enable Buffer Interrupts */
-      LL_I2C_EnableIT_BUF(I2C1);
+      LL_I2C_EnableIT_BUF(I2C2);
 
       /* Clear ADDR flag value in ISR register */
-      LL_I2C_ClearFlag_ADDR(I2C1);
+      LL_I2C_ClearFlag_ADDR(I2C2);
     }
   }
   /* Check RXNE flag value in ISR register */
-  else if(LL_I2C_IsActiveFlag_RXNE(I2C1))
+  else if(LL_I2C_IsActiveFlag_RXNE(I2C2))
   {
     /* Call function Slave Reception Callback */
     Slave_Reception_Callback();
   }
   /* Check TXE flag value in ISR register */
-  else if(LL_I2C_IsActiveFlag_TXE(I2C1))
+  else if(LL_I2C_IsActiveFlag_TXE(I2C2))
   {
     /* Call function Slave Ready to Transmit Callback */
     Slave_Ready_To_Transmit_Callback();
   }
   /* Check BTF flag value in ISR register */
-  else if(LL_I2C_IsActiveFlag_BTF(I2C1))
+  else if(LL_I2C_IsActiveFlag_BTF(I2C2))
   {
-    if(LL_I2C_GetTransferDirection(I2C1) == LL_I2C_DIRECTION_WRITE)
+    if(LL_I2C_GetTransferDirection(I2C2) == LL_I2C_DIRECTION_WRITE)
     {
       /* Send the next byte */
       /* Call function Slave Ready to Transmit Callback */
@@ -375,10 +375,10 @@ void I2C2_EV_IRQHandler(void)
     }
   }
   /* Check STOP flag value in ISR register */
-  else if(LL_I2C_IsActiveFlag_STOP(I2C1))
+  else if(LL_I2C_IsActiveFlag_STOP(I2C2))
   {
     /* Clear STOP flag value in ISR register */
-    LL_I2C_ClearFlag_STOP(I2C1);
+    LL_I2C_ClearFlag_STOP(I2C2);
     
     /* Call function Slave Complete Callback */
     Slave_Complete_Callback();
@@ -400,11 +400,11 @@ void I2C2_ER_IRQHandler(void)
   /* Normal use case, if all bytes are sent and Acknowledge failure appears */
   /* This correspond to the end of communication */
   if((ubSlaveNbDataToTransmit == 0) && \
-     (LL_I2C_IsActiveFlag_AF(I2C1)) && \
-     (LL_I2C_GetTransferDirection(I2C1) == LL_I2C_DIRECTION_WRITE))
+     (LL_I2C_IsActiveFlag_AF(I2C2)) && \
+     (LL_I2C_GetTransferDirection(I2C2) == LL_I2C_DIRECTION_WRITE))
   {
     /* Clear AF flag value in ISR register */
-    LL_I2C_ClearFlag_AF(I2C1);
+    LL_I2C_ClearFlag_AF(I2C2);
 
     /* Call function Slave Complete Callback */
     Slave_Complete_Callback();

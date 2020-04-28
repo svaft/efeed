@@ -1,6 +1,14 @@
 #include "i2c_slave.h"
 
 
+#define RX_BUFFER_SIZE   12
+uint8_t aRXBufferA[RX_BUFFER_SIZE];
+uint8_t aRXBufferB[RX_BUFFER_SIZE];
+
+uint8_t *pBufferReadyForUser;
+uint8_t *pBufferReadyForReception;
+
+
 /**
   * @brief  Flush 8-bit buffer.
   * @param  pBuffer1: pointer to the buffer to be flushed.
@@ -33,11 +41,9 @@ uint8_t Buffercmp8(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t BufferLength)
     {
       return 1;
     }
-
     pBuffer1++;
     pBuffer2++;
   }
-
   return 0;
 }
 
@@ -55,9 +61,6 @@ __IO uint8_t  ubSlaveNbDataToTransmit   = 0;
 uint8_t       ubSlaveInfoIndex          = 0xFF;
 __IO uint8_t  ubSlaveReceiveIndex       = 0;
 __IO uint8_t  ubSlaveReceiveComplete    = 0;
-
-
-
 
 /**
   * @brief  Function called from I2C IRQ Handler when TXE flag is set
@@ -98,15 +101,11 @@ void Slave_Reception_Callback(void)
 //  if(Buffercmp8((uint8_t*)aSlaveReceiveBuffer, (uint8_t*)(aCommandCode[0][0]), (ubSlaveReceiveIndex-1)) == 0)
   {
     ubSlaveInfoIndex = 0;//SLAVE_CHIP_NAME;
-    ubSlaveNbDataToTransmit = strlen(aSlaveInfo[ubSlaveInfoIndex]);
+    ubSlaveNbDataToTransmit =  strlen(aSlaveInfo[ubSlaveInfoIndex]);
     pSlaveTransmitBuffer = (uint8_t*)(aSlaveInfo[ubSlaveInfoIndex]);
+
   }
 //  else if(Buffercmp8((uint8_t*)aSlaveReceiveBuffer, (uint8_t*)(aCommandCode[1][0]), (ubSlaveReceiveIndex-1)) == 0)
-  {
-    ubSlaveInfoIndex = 1;//SLAVE_CHIP_REVISION;
-    ubSlaveNbDataToTransmit = strlen(aSlaveInfo[ubSlaveInfoIndex]);
-    pSlaveTransmitBuffer = (uint8_t*)(aSlaveInfo[ubSlaveInfoIndex]);
-  }
 }
 
 /**
@@ -119,8 +118,14 @@ void Slave_Reception_Callback(void)
 void Slave_Complete_Callback(void)
 {
   /* Clear and Reset process variables and arrays */
+	uint8_t *ptemp;
+	ptemp = pBufferReadyForUser;
+	pBufferReadyForUser = pBufferReadyForReception;
+	pBufferReadyForReception = ptemp;
+
   ubSlaveReceiveIndex       = 0;
   ubSlaveReceiveComplete    = 0;
+
   FlushBuffer8(aSlaveReceiveBuffer);
 }
 
@@ -207,6 +212,9 @@ void Activate_I2C_Slave(void)
   */
 void Configure_I2C_Slave(void)
 {
+	
+
+	
   /* (1) Enables GPIO clock */
   /* Enable the peripheral clock of GPIOB */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);

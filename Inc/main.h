@@ -468,6 +468,9 @@ void Error_Handler(void);
 #define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH3
 #define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH1
 //#define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
+
+#define t3ccer			((uint32_t *)((0x42000000  + ((0x40000420)-0x40000000)*32)))
+
 #define MOTOR_Z_AllowPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 1
 #define MOTOR_Z_BlockPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 0
 

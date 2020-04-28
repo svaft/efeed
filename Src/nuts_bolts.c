@@ -485,3 +485,5 @@ uint32_t SquareRootRounded(uint32_t a_nInput)
 
 	return res;
 }
+
+

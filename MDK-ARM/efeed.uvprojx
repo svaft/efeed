@@ -427,6 +427,11 @@
               <FileType>1</FileType>
               <FilePath>../Src/stm32f1xx_it.c</FilePath>
             </File>
+            <File>
+              <FileName>i2c_slave.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\i2c_slave.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

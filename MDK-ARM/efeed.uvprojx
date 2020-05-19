@@ -338,7 +338,7 @@
               <MiscControls>--C99</MiscControls>
               <Define>_SIMU,__TARGET_FPU_SOFTVFP,STM32F103xB,USE_FULL_LL_DRIVER,HSE_VALUE=8000000,HSE_STARTUP_TIMEOUT=100,LSE_STARTUP_TIMEOUT=5000,LSE_VALUE=32768,HSI_VALUE=8000000,LSI_VALUE=40000,VDD_VALUE=3300,PREFETCH_ENABLE=1</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;                                                          ../Drivers/STM32F1xx_HAL_Driver/Inc;                                                          ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;                                                          ../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Inc;                                                                  ../Drivers/STM32F1xx_HAL_Driver/Inc;                                                                  ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;                                                                  ../Drivers/CMSIS/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -393,31 +393,6 @@
           <GroupName>Application/User</GroupName>
           <Files>
             <File>
-              <FileName>fonts2.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\fonts2.c</FilePath>
-            </File>
-            <File>
-              <FileName>ssd1306.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\ssd1306.c</FilePath>
-            </File>
-            <File>
-              <FileName>i2c_interface.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\i2c_interface.c</FilePath>
-            </File>
-            <File>
-              <FileName>buttons.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\buttons.c</FilePath>
-            </File>
-            <File>
-              <FileName>fsm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\fsm.c</FilePath>
-            </File>
-            <File>
               <FileName>gcode.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\gcode.c</FilePath>
@@ -431,11 +406,6 @@
               <FileName>g01.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\g01.c</FilePath>
-            </File>
-            <File>
-              <FileName>screen.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\screen.c</FilePath>
             </File>
             <File>
               <FileName>g03.c</FileName>
@@ -478,14 +448,9 @@
               <FilePath>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_gpio.c</FilePath>
             </File>
             <File>
-              <FileName>stm32f1xx_ll_dma.c</FileName>
+              <FileName>stm32f1xx_ll_crc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_dma.c</FilePath>
-            </File>
-            <File>
-              <FileName>stm32f1xx_ll_i2c.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_i2c.c</FilePath>
+              <FilePath>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_crc.c</FilePath>
             </File>
             <File>
               <FileName>stm32f1xx_ll_rcc.c</FileName>
@@ -501,6 +466,11 @@
               <FileName>stm32f1xx_ll_exti.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_exti.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f1xx_ll_dma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_dma.c</FilePath>
             </File>
             <File>
               <FileName>stm32f1xx_ll_pwr.c</FileName>

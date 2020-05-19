@@ -39,10 +39,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "fixedptc.h"
-#include "buttons.h"
-#include "fsm.h"
-#include "i2c_interface.h"
-#include "ssd1306.h"
+#include "nuts_bolts.h"
+#include "gcode.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -122,10 +120,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 1 */
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
-	for(int a = 0; a<BT_TOTAL;a++){
-		if( bt[a].buttons_mstick > 0 )
-			bt[a].buttons_mstick++;
-	}
+
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -137,71 +132,29 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles DMA1 channel4 global interrupt.
+  * @brief This function handles DMA1 channel2 global interrupt.
   */
-void DMA1_Channel4_IRQHandler(void)
+void DMA1_Channel2_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
-  if(LL_DMA_IsActiveFlag_TC4(DMA1))
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+  if(LL_DMA_IsActiveFlag_TC2(DMA1))
   {
-    LL_DMA_ClearFlag_GI4(DMA1);
-		
-		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
-		LL_DMA_ClearFlag_TC4(DMA1);
-    Transfer_Complete_Callback();
-//    DMA1_Transfer_Complete_Callback();
+    LL_DMA_ClearFlag_GI2(DMA1);
+    /* Call function Transmission complete Callback */
+//    DMA1_TransmitComplete_Callback();
   }
-  else if(LL_DMA_IsActiveFlag_TE4(DMA1))
+  else if(LL_DMA_IsActiveFlag_TE2(DMA1))
   {
-    Transfer_Error_Callback();
+    /* Call Error function */
+	while(1);
+ //   USART_TransferError_Callback();
   }
 
-  /* USER CODE END DMA1_Channel4_IRQn 0 */
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
   
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
 
-  /* USER CODE END DMA1_Channel4_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA1 channel5 global interrupt.
-  */
-void DMA1_Channel5_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
-  if(LL_DMA_IsActiveFlag_TC5(DMA1))
-  {
-    LL_DMA_ClearFlag_GI5(DMA1);
-
-		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_5);
-		LL_DMA_ClearFlag_TC5(DMA1);
-
-    Transfer_Complete_Callback();
-  }
-  else if(LL_DMA_IsActiveFlag_TE5(DMA1))
-  {
-    Transfer_Error_Callback();
-  }
-
-  /* USER CODE END DMA1_Channel5_IRQn 0 */
-  
-  /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel5_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA1 channel7 global interrupt.
-  */
-void DMA1_Channel7_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel7_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel7_IRQn 0 */
-  
-  /* USER CODE BEGIN DMA1_Channel7_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel7_IRQn 1 */
+  /* USER CODE END DMA1_Channel2_IRQn 1 */
 }
 
 /**
@@ -266,8 +219,7 @@ void TIM2_IRQHandler(void)
 }
 
 /**
-* @brief This function handles TIM3 global interrupt. Прерывание срабатывает в конце пульса, в нем обрабатываем
-пересчет для следующего шага, а так же выполняются функции обработки конца задания и инициализации следующего задания
+  * @brief This function handles TIM3 global interrupt.
   */
 void TIM3_IRQHandler(void)
 {
@@ -347,84 +299,6 @@ void TIM4_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles I2C2 event interrupt.
-  */
-void I2C2_EV_IRQHandler(void)
-{
-  /* USER CODE BEGIN I2C2_EV_IRQn 0 */
-  /* Check SB flag value in ISR register */
-  if(LL_I2C_IsActiveFlag_SB(I2C2))
-  {
-    /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a write request */
-    LL_I2C_TransmitData8(I2C2, ubI2C_slave_addr | ubMasterRequestDirection);
-
-    /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a ubMasterRequestDirection request */
-//    LL_I2C_TransmitData8(I2C2, SLAVE_OWN_ADDRESS | ubMasterRequestDirection);
-		
-  }
-  /* Check ADDR flag value in ISR register */
-  else if(LL_I2C_IsActiveFlag_ADDR(I2C2))
-  {
-    /* Verify the transfer direction */
-    if(LL_I2C_GetTransferDirection(I2C2) == LL_I2C_DIRECTION_READ)
-    {
-      ubMasterXferDirection = LL_I2C_DIRECTION_READ;
-
-      if(ubMasterNbDataToReceive == 1)
-      {
-        /* Prepare the generation of a Non ACKnowledge condition after next received byte */
-        LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_NACK);
-
-        /* Enable DMA transmission requests */
-        LL_I2C_EnableDMAReq_RX(I2C2);
-      }
-      else if(ubMasterNbDataToReceive == 2)
-      {
-        /* Prepare the generation of a Non ACKnowledge condition after next received byte */
-        LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_NACK);
-
-        /* Enable Pos */
-        LL_I2C_EnableBitPOS(I2C2);
-      }
-      else
-      {
-        /* Enable Last DMA bit */
-        LL_I2C_EnableLastDMA(I2C2);
-
-        /* Enable DMA transmission requests */
-        LL_I2C_EnableDMAReq_RX(I2C2);
-      }
-    } else {
-			/* Enable DMA transmission requests */
-			LL_I2C_EnableDMAReq_TX(I2C2);
-		}
-    /* Clear ADDR flag value in ISR register */
-    LL_I2C_ClearFlag_ADDR(I2C2);
-  }
-
-  /* USER CODE END I2C2_EV_IRQn 0 */
-  
-  /* USER CODE BEGIN I2C2_EV_IRQn 1 */
-
-  /* USER CODE END I2C2_EV_IRQn 1 */
-}
-
-/**
-  * @brief This function handles I2C2 error interrupt.
-  */
-void I2C2_ER_IRQHandler(void)
-{
-  /* USER CODE BEGIN I2C2_ER_IRQn 0 */
-  Error_Handler();
-
-  /* USER CODE END I2C2_ER_IRQn 0 */
-  
-  /* USER CODE BEGIN I2C2_ER_IRQn 1 */
-
-  /* USER CODE END I2C2_ER_IRQn 1 */
-}
-
-/**
   * @brief This function handles USART2 global interrupt.
   */
 void USART2_IRQHandler(void)
@@ -434,12 +308,43 @@ void USART2_IRQHandler(void)
   {
     /* RXNE flag will be cleared by reading of DR register (done in call) */
     /* Call function in charge of handling Character reception */
-    USART_CharReception_Callback();
-  }
+//    USART_CharReception_Callback();
+  } else {
+		Error_Handler();
+	}
   /* USER CODE END USART2_IRQn 0 */
   /* USER CODE BEGIN USART2_IRQn 1 */
 
   /* USER CODE END USART2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USART3 global interrupt.
+  */
+void USART3_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART3_IRQn 0 */
+	if(LL_USART_IsActiveFlag_RXNE(USART3) && LL_USART_IsEnabledIT_RXNE(USART3))
+  {
+    /* RXNE flag will be cleared by reading of DR register (done in call) */
+    /* Call function in charge of handling Character reception */
+    USART_CharReception_Callback();
+  } else {
+		
+//		while(1);
+//		Error_Handler();
+	}
+	if(LL_USART_IsActiveFlag_TC(USART3) && LL_USART_IsEnabledIT_TC(USART3)){
+		LL_USART_ClearFlag_TC(USART3);
+		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_2);
+		
+//		while(1);
+	}
+
+  /* USER CODE END USART3_IRQn 0 */
+  /* USER CODE BEGIN USART3_IRQn 1 */
+
+  /* USER CODE END USART3_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

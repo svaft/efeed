@@ -1,5 +1,5 @@
 #include "gcode.h"
-#include "fsm.h"
+
 #include "g04.h"
 
 void G04parse(char *line){

@@ -3,6 +3,25 @@
 
 #include "main.h"
 
+#define CRC_BASE64_STRLEN 6
+
+uint32_t Calculate_CRC(uint32_t len, uint8_t *bfr, int clear);
+uint32_t atoui32(uint8_t* str);
+uint32_t atoui64(uint8_t* str);
+
+void ui10toa(uint32_t n, uint8_t s[]);
+void ui64toa(uint32_t n, uint8_t s[]);
+void sendResponce(uint32_t SrcAddress, uint32_t NbData);
+__STATIC_INLINE bool is_crc_ok(uint8_t *bfr, uint8_t len){
+	uint32_t crc = Calculate_CRC(len,bfr,1);
+	uint32_t atoi = atoui64((uint8_t *)(bfr+len));
+	if(crc == atoi)
+		return true;
+	else
+		return false;
+
+}
+
 uint64_t SquareRoot64(uint64_t a_nInput);
 uint32_t SquareRoot(uint32_t a_nInput);
 uint32_t SquareRootRounded(uint32_t a_nInput);
@@ -122,6 +141,22 @@ __STATIC_INLINE void cb_push_back_empty(circular_buffer *cb){
     cb->count++;
     cb->count2++;
 }
+
+__STATIC_INLINE void cb_push_back_item(circular_buffer *cb, void *item){
+    if(cb->count == cb->capacity){
+        Error_Handler();
+            // handle error
+    }
+//    memset(cb->head, 0, cb->sz);
+    memcpy(cb->head, item, cb->sz);
+		cb->top = cb->head;
+    cb->head = (uint8_t *)cb->head + cb->sz;
+    if(cb->head == cb->buffer_end)
+        cb->head = cb->buffer;
+    cb->count++;
+    cb->count2++;
+}
+
 
 __STATIC_INLINE void cb_init_by_top(circular_buffer *cb, void *item){
     if(cb->count == 0){

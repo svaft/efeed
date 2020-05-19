@@ -48,8 +48,9 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include "stm32f1xx_ll_crc.h"
 #include "stm32f1xx_ll_dma.h"
-#include "stm32f1xx_ll_i2c.h"
+#include "stm32f1xx_ll_iwdg.h"
 #include "stm32f1xx_ll_rcc.h"
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_system.h"
@@ -251,22 +252,18 @@ void Error_Handler(void);
 #define min_pulse 145*5
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_0
-#define MOTOR_X_ENABLE_GPIO_Port GPIOA
-#define MOTOR_X_DIR_Pin LL_GPIO_PIN_1
-#define MOTOR_X_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
+#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_0
+#define MOTOR_Z_ENABLE_GPIO_Port GPIOA
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_1
 #define MOTOR_Z_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_0
-#define MOTOR_Z_STEP_GPIO_Port GPIOB
-#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_1
-#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
-#define BUTTON_1_Pin LL_GPIO_PIN_8
-#define BUTTON_1_GPIO_Port GPIOA
-#define BUTTON_2_Pin LL_GPIO_PIN_9
-#define BUTTON_2_GPIO_Port GPIOA
-#define MOTOR_X_STEP_Pin LL_GPIO_PIN_4
+#define MOTOR_X_DIR_Pin LL_GPIO_PIN_7
+#define MOTOR_X_DIR_GPIO_Port GPIOA
+#define MOTOR_X_STEP_Pin LL_GPIO_PIN_0
 #define MOTOR_X_STEP_GPIO_Port GPIOB
+#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_1
+#define MOTOR_X_ENABLE_GPIO_Port GPIOB
+#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_4
+#define MOTOR_Z_STEP_GPIO_Port GPIOB
 #define ENC_A_Pin LL_GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
 #define ENC_B_Pin LL_GPIO_PIN_7
@@ -529,6 +526,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 #define z_to_x_factor824	100729348
 #define z_to_x_factor_f 6.003937008f
 
+#define t3ccer			((uint32_t *)((0x42000000  + ((0x40000420)-0x40000000)*32)))
 
 /*
 ellipse_total_steps2210: total steps to finish full ellipse quadrant arc, 
@@ -570,7 +568,7 @@ z_to_x_ellipse_equator2210: под экватором подразумевает
 /*
 ellipse_arc_len_factor2210: коэффициент, на который нужно умножить радиус окружности(будущего эллипса), 
 для вычисления значения длины одного квадранта эллипса
-r*3,14/2/(ПИ()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
+r*3,14/2/(П�?()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
  ellipse_arc_len_factor2210=1024*2*КОРЕНЬ((1+z_to_x_factor*z_to_x_factor)/8)
 
 #define ellipse_arc_len_factor2210 4407 

@@ -1,5 +1,5 @@
 #include "gcode.h"
-#include "fsm.h"
+
 
 fixedpt command;
 G_pipeline_t init_gp={0,0,0,0,0};

@@ -13,7 +13,7 @@
 #include "g04.h"
 
 #define task_precalc_size 20
-#define task_size 20
+#define task_size 70
 #define gp_size 10
 #define substep_size 6000
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 

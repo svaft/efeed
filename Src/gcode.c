@@ -248,7 +248,7 @@ void do_fsm_move_start2(state_t* s){
 		LL_TIM_DisableUpdateEvent(s->syncbase);
 		LL_TIM_ClearFlag_CC3(s->syncbase);
 		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
-		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase))
+		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase)) //wait tacho to sync move 
 			LL_mDelay(1);
 		LL_TIM_EnableUpdateEvent(s->syncbase);
 		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
@@ -267,7 +267,7 @@ void do_fsm_move_start2(state_t* s){
 
 //	LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 }
-uint32_t move_cnt = 0;
+int32_t move_cnt = 0;
 
 
 int break1;
@@ -276,7 +276,9 @@ int break1;
 * @retval void.
   */
 void do_fsm_move2(state_t* s){
-	move_cnt++;
+	
+	
+	s->current_task.z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
 //	if(move_cnt>460 && move_cnt<470) 
 //		break1 = 1;
 	substep_t *sb = substep_cb.tail; //get ref to current substep
@@ -315,6 +317,7 @@ void do_fsm_move2(state_t* s){
 }
 
 void do_fsm_move33(state_t* s){
+	s->current_task.z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
 	move_cnt++;
 //	if(move_cnt>460 && move_cnt<470) 
 //		break1 = 1;

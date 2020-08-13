@@ -223,13 +223,13 @@ bool equator_init = false;
 void arc_q1_callback_precalculate(state_t* s){
 	int64_t e2 = s->arc_err<<1;
 	substep_t *sb = substep_cb.top;
-	if(s->current_task.x == 7089){
+	if(s->current_task.dx == 7089){
 	brk =1;
 	}
 	if(s->arc_equator > 0){
 // main axis is X, subaxis - Z	
 		s->arc_equator--;		
-		s->current_task.x++;
+		s->current_task.dx++;
 		s->arc_err += s->arc_dx += s->arc_bb;
 	} else {
 		if(equator_init == false){
@@ -240,7 +240,7 @@ void arc_q1_callback_precalculate(state_t* s){
 		s->arc_equator=0;
 		if (e2 < s->arc_dx) {
 			substep_recalc(-e2, -s->arc_dx, smooth_direction_front);
-			s->current_task.x++;
+			s->current_task.dx++;
 			s->arc_err += s->arc_dx += s->arc_bb;
 		} else {
 			if(substep_cb.count == 0 || sb->skip == 0){
@@ -268,7 +268,7 @@ void arc_q1_callback_precalculate(state_t* s){
 	if (e2 > s->arc_dz) { // z step 
 		if(s->arc_equator>0)
 			substep_recalc(e2, s->arc_dz, smooth_direction_front);
-		s->current_task.z--;
+		s->current_task.dz--;
 		s->arc_err += s->arc_dz += s->arc_aa;
 	} else {
 		if(substep_cb.count == 0 || sb->skip == 0){
@@ -283,14 +283,14 @@ void arc_q1_callback_precalculate(state_t* s){
 //		last_skip++;
 	} // z step
 
-	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+	if(s->current_task.dx == s->current_task.x1 && s->current_task.dz == s->current_task.z1) {
 		s->precalculating_task_ref->unlocked = true;
 //		s->precalculate_end = true;
 //		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
 
-	if(s->current_task.z == 0){ // end of quadrant
+	if(s->current_task.dz == 0){ // end of quadrant
 		s->precalculating_task_ref->unlocked = true;
 //		s->precalculate_end = true;
 //		s->current_task.steps_to_end = 0;
@@ -339,18 +339,18 @@ void G03init_callback(state_t* s){
 //	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
 //	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;
 
-	uint8_t q_from 	= get_quadrant(s->current_task.x, s->current_task.z);
+	uint8_t q_from 	= get_quadrant(s->current_task.dx, s->current_task.dz);
 //	uint8_t q_to 		= get_quadrant(s->current_task.x1, s->current_task.z1);
 
 	int cwccw = 1;
 	if(cwccw>0){ //cw
 		switch(q_from){
 			case 1:
-//				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
-//				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
+//				s->arc_dx =  (2*s->current_task.dx+1)*s->arc_bb>>1;
+//				s->arc_dz = -(2*s->current_task.dz-1)*s->arc_aa>>1;
 				
-				if(s->current_task.x < s->arc_equator){
-					s->arc_equator -= s->current_task.x;
+				if(s->current_task.dx < s->arc_equator){
+					s->arc_equator -= s->current_task.dx;
 
 					s->substep_axis = SUBSTEP_AXIS_Z;
 					s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
@@ -365,11 +365,11 @@ void G03init_callback(state_t* s){
 					s->arc_equator = 0;
 				}
 
-				s->arc_total_steps -= (s->current_task.x + s->current_task.z1);
+				s->arc_total_steps -= (s->current_task.dx + s->current_task.z1);
 				break;
 			case 4:
-//				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
-//				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
+//				s->arc_dx = -(2*s->current_task.dx-1)*s->arc_bb>>1;
+//				s->arc_dz = -(2*s->current_task.dz-1)*s->arc_aa>>1;
 	//			gt_new_task->x_direction = xdir_backward;
 				break;
 			default: Error_Handler(); // impossible case trap
@@ -380,12 +380,12 @@ void G03init_callback(state_t* s){
 		switch(q_from){
 			case 2:
 				// Q2
-//				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
-//				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
+//				s->arc_dx =  (2*s->current_task.dx+1)*s->arc_bb>>1;
+//				s->arc_dz =  (2*s->current_task.dz+1)*s->arc_aa>>1;
 				break;
 			case 3:
-//				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
-//				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
+//				s->arc_dx = -(2*s->current_task.dx-1)*s->arc_bb>>1;
+//				s->arc_dz =  (2*s->current_task.dz+1)*s->arc_aa>>1;
 				break;
 			default: Error_Handler(); // impossible case trap
 		}
@@ -428,31 +428,31 @@ void G03init_callback_precalculate(state_t* s){
 	s->arc_aa = (uint64_t)s->current_task.a * s->current_task.a<<1;
 	s->arc_bb = (uint64_t)s->current_task.b * s->current_task.b<<1;
 
-	s->current_task.z  = fixedpt_toint2210(s->current_task.z);
-	s->current_task.x  = fixedpt_toint2210(s->current_task.x);
+	s->current_task.dz  = fixedpt_toint2210(s->current_task.dz);
+	s->current_task.dx  = fixedpt_toint2210(s->current_task.dx);
 	s->current_task.z1 = fixedpt_toint2210(s->current_task.z1);
 	s->current_task.x1 = fixedpt_toint2210(s->current_task.x1);
 
-	uint8_t q_from 	= get_quadrant(s->current_task.x, s->current_task.z);
+	uint8_t q_from 	= get_quadrant(s->current_task.dx, s->current_task.dz);
 //	uint8_t q_to 		= get_quadrant(s->current_task.x1, s->current_task.z1);
 
 	int cwccw = 1;
 	if(cwccw>0){ //cw
 		switch(q_from){
 			case 1:
-				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
-				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
+				s->arc_dx =  (2*s->current_task.dx+1)*s->arc_bb>>1;
+				s->arc_dz = -(2*s->current_task.dz-1)*s->arc_aa>>1;
 			
-				if(s->current_task.x < s->arc_equator){
-					s->arc_equator -= s->current_task.x;
+				if(s->current_task.dx < s->arc_equator){
+					s->arc_equator -= s->current_task.dx;
 				} else { //arc starts beyond equator, set it to zero
 					s->arc_equator = 0;
 				}
-				s->arc_total_steps -= (s->current_task.x + s->current_task.z1);
+				s->arc_total_steps -= (s->current_task.dx + s->current_task.z1);
 				break;
 			case 4:
-				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
-				s->arc_dz = -(2*s->current_task.z-1)*s->arc_aa>>1;
+				s->arc_dx = -(2*s->current_task.dx-1)*s->arc_bb>>1;
+				s->arc_dz = -(2*s->current_task.dz-1)*s->arc_aa>>1;
 	//			gt_new_task->x_direction = xdir_backward;
 				break;
 			default: Error_Handler(); // impossible case trap
@@ -463,12 +463,12 @@ void G03init_callback_precalculate(state_t* s){
 		switch(q_from){
 			case 2:
 				// Q2
-				s->arc_dx =  (2*s->current_task.x+1)*s->arc_bb>>1;
-				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
+				s->arc_dx =  (2*s->current_task.dx+1)*s->arc_bb>>1;
+				s->arc_dz =  (2*s->current_task.dz+1)*s->arc_aa>>1;
 				break;
 			case 3:
-				s->arc_dx = -(2*s->current_task.x-1)*s->arc_bb>>1;
-				s->arc_dz =  (2*s->current_task.z+1)*s->arc_aa>>1;
+				s->arc_dx = -(2*s->current_task.dx-1)*s->arc_bb>>1;
+				s->arc_dz =  (2*s->current_task.dz+1)*s->arc_aa>>1;
 				break;
 			default: Error_Handler(); // impossible case trap
 		}
@@ -619,8 +619,8 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 	gt_new_task->a = xf;
 	gt_new_task->b = zf;
 
-	gt_new_task->x = x0z;
-	gt_new_task->z = z0z;
+	gt_new_task->dx = x0z;
+	gt_new_task->dz = z0z;
 
 	gt_new_task->x1 = x1z;
 	gt_new_task->z1 = z1z;
@@ -671,8 +671,8 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 				gt_new_task->a = xf;
 				gt_new_task->b = zf;
 
-				gt_new_task->x = xf;
-				gt_new_task->z = 0;
+				gt_new_task->dx = xf;
+				gt_new_task->dz = 0;
 
 				gt_new_task->x1 = x1z;
 				gt_new_task->z1 = z1z;
@@ -722,8 +722,8 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 					gt_new_task->a = xf;
 					gt_new_task->b = zf;
 
-					gt_new_task->x = -xf;
-					gt_new_task->z = 0;
+					gt_new_task->dx = -xf;
+					gt_new_task->dz = 0;
 
 					gt_new_task->x1 = x1z;
 					gt_new_task->z1 = z1z;
@@ -745,7 +745,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 void arc_q1_callback_mod(void){
 	state_t *s = &state;
 
-//	if(s->current_task.x == 1709){
+//	if(s->current_task.dx == 1709){
 //		brk = true;
 //	}
 	
@@ -781,7 +781,7 @@ void arc_q1_callback_mod(void){
 //			subdelay_x = delay*e2/s->arc_dx;
 		}
 		MOTOR_X_AllowPulse();
-		s->current_task.x++;
+		s->current_task.dx++;
 		s->arc_err += s->arc_dx += s->arc_bb; 
 	} else {
 		// x is subaxis now
@@ -809,7 +809,7 @@ void arc_q1_callback_mod(void){
 //			subdelay_z = delay; // ~44us
 			
 		}
-		s->current_task.z--;
+		s->current_task.dz--;
 		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} else { // z axis is subaxis now
@@ -838,12 +838,12 @@ void arc_q1_callback_mod(void){
 //	}
 	}
 
-	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+	if(s->current_task.dx == s->current_task.x1 && s->current_task.dz == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
 
-	if(s->current_task.z == 0){ // end of quadrant
+	if(s->current_task.dz == 0){ // end of quadrant
 		s->current_task.steps_to_end = 0;
 	}
 }
@@ -856,21 +856,21 @@ void arc_q1_callback_old(void){
 
 	if (e2 < s->arc_dx) {
 		MOTOR_X_AllowPulse();
-		s->current_task.x++;
+		s->current_task.dx++;
 		s->arc_err += s->arc_dx += s->arc_bb; 
 	}// x step
 	if (e2 > s->arc_dz) { // z step 
-		s->current_task.z--;
+		s->current_task.dz--;
 		MOTOR_Z_AllowPulse();
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	}// z step
 
-	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+	if(s->current_task.dx == s->current_task.dx1 && s->current_task.dz == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
 
-	if(s->current_task.z == 0){ // end of quadrant
+	if(s->current_task.dz == 0){ // end of quadrant
 		s->current_task.steps_to_end = 0;
 	}
 
@@ -1445,20 +1445,20 @@ void arc_q3_callback(state_t* s){
 
 	if (e2 >= s->arc_dx) { 
 		MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
-		s->current_task.x++; 
+		s->current_task.dx++; 
 		s->arc_err += s->arc_dx += s->arc_bb; 
 	} // x step
 	if (e2 <= s->arc_dz) { 
-		s->current_task.z++;
+		s->current_task.dz++;
 		MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} // z step
 
-	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+	if(s->current_task.dx == s->current_task.x1 && s->current_task.dz == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
-	if(s->current_task.x == 0){ // end of quadrant
+	if(s->current_task.dx == 0){ // end of quadrant
 		Error_Handler(); // trap
 		s->current_task.steps_to_end = 0;
 	}
@@ -1472,21 +1472,21 @@ void arc_q4_callback(state_t* s){
 //		setPixel(xm, ym-y);
 		e2 = s->arc_err<<1;
 		if (e2 > s->arc_dx) { 
-			s->current_task.x--; 
+			s->current_task.dx--; 
 			MOTOR_X_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH1); 
 			s->arc_err += s->arc_dx += s->arc_bb; 
 		} // x step
 		if (e2 < s->arc_dz) { 
-			s->current_task.z--;
+			s->current_task.dz--;
 			MOTOR_Z_AllowPulse(); //		LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH3); 
 			s->arc_err += s->arc_dz += s->arc_aa; 
 		} // z step
 //	} while (x>0);
-	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+	if(s->current_task.dx == s->current_task.x1 && s->current_task.dz == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
-	if(s->current_task.x == 0){ // end of quadrant
+	if(s->current_task.dx == 0){ // end of quadrant
 		s->current_task.steps_to_end = 0;
 	}
 }
@@ -1518,7 +1518,7 @@ void arc_q1_callback(state_t* s){
 	
 	if (e2 < s->arc_dx) {
 		s->arc_err += s->arc_dx += s->arc_bb; 
-		s->current_task.x++;
+		s->current_task.dx++;
 	} else {
 		// x is subaxis now
 //	if (e2 > s->arc_dx) {
@@ -1536,7 +1536,7 @@ void arc_q1_callback(state_t* s){
 	}
 
 	if (e2 > s->arc_dz) { // z step 
-		s->current_task.z--;
+		s->current_task.dz--;
 		s->arc_err += s->arc_dz += s->arc_aa; 
 	} else {
 		s->substep_axis = SUBSTEP_AXIS_Z;
@@ -1551,12 +1551,12 @@ void arc_q1_callback(state_t* s){
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 	}
 
-	if(s->current_task.x == s->current_task.x1 && s->current_task.z == s->current_task.z1) {
+	if(s->current_task.dx == s->current_task.x1 && s->current_task.dz == s->current_task.z1) {
 		s->current_task.steps_to_end = 0; // end of arc
 		return;
 	}
 
-	if(s->current_task.z == 0){ // end of quadrant
+	if(s->current_task.dz == 0){ // end of quadrant
 		s->current_task.steps_to_end = 0;
 	}
 }

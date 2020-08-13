@@ -137,18 +137,6 @@ void SysTick_Handler(void)
 void DMA1_Channel2_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-  if(LL_DMA_IsActiveFlag_TC2(DMA1))
-  {
-    LL_DMA_ClearFlag_GI2(DMA1);
-    /* Call function Transmission complete Callback */
-//    DMA1_TransmitComplete_Callback();
-  }
-  else if(LL_DMA_IsActiveFlag_TE2(DMA1))
-  {
-    /* Call Error function */
-	while(1);
- //   USART_TransferError_Callback();
-  }
 
   /* USER CODE END DMA1_Channel2_IRQn 0 */
   

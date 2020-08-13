@@ -138,8 +138,8 @@ typedef struct G_pipeline{ //todo remove this struct? what it used for?
 
 typedef struct G_task{
 	int32_t dx, dz;
-	int32_t 	x, z, x1, z1; // delta
-	uint32_t len;
+	int32_t 	x1, z1; // delta
+//	uint32_t len;
 	float len_f;
 	uint32_t steps_to_end;
 	fixedptu F; //Q824, feed value. For mm/min lowest value is 35.16 mm/min
@@ -171,7 +171,7 @@ typedef struct state_s
 {
 	bool init;
 //	uint32_t steps_to_end;
-//	uint32_t current_pos;
+	int32_t global_Z_pos;
 //	uint32_t end_pos;
 //	uint8_t ramp_step;
 	uint32_t Q824set; // feed rate
@@ -252,18 +252,18 @@ void Error_Handler(void);
 #define min_pulse 145*5
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_0
-#define MOTOR_Z_ENABLE_GPIO_Port GPIOA
-#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_1
-#define MOTOR_Z_DIR_GPIO_Port GPIOA
-#define MOTOR_X_DIR_Pin LL_GPIO_PIN_7
+#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_0
+#define MOTOR_X_ENABLE_GPIO_Port GPIOA
+#define MOTOR_X_DIR_Pin LL_GPIO_PIN_1
 #define MOTOR_X_DIR_GPIO_Port GPIOA
-#define MOTOR_X_STEP_Pin LL_GPIO_PIN_0
-#define MOTOR_X_STEP_GPIO_Port GPIOB
-#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_1
-#define MOTOR_X_ENABLE_GPIO_Port GPIOB
-#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_4
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
+#define MOTOR_Z_DIR_GPIO_Port GPIOA
+#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_0
 #define MOTOR_Z_STEP_GPIO_Port GPIOB
+#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_1
+#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
+#define MOTOR_X_STEP_Pin LL_GPIO_PIN_4
+#define MOTOR_X_STEP_GPIO_Port GPIOB
 #define ENC_A_Pin LL_GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
 #define ENC_B_Pin LL_GPIO_PIN_7
@@ -502,6 +502,9 @@ void Error_Handler(void);
 // minimum processed value is 0.0001inch
 #define steps_per_inch_Z_2210   (uint32_t)(steps_per_unit_Z_2210*25.4)    //254*40*1024
 
+#define jog_Z_01_2210	(uint32_t)(0.1*z_steps_unit/z_screw_pitch*1024)
+#define jog_Z_10_2210	(uint32_t)(z_steps_unit/z_screw_pitch*1024)
+
 /*
 Due to the fact that the configuration of the stepper motor for the X and Z axes may not be equal 
 in the real world, our circle or line(in steps per/mm) will not be a circle/line but an ellipse.
@@ -521,7 +524,7 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 #define len_to_arc_factor2210 1137
 #define len_to_feed824	167713215111.444f
 
-#define async_steps_factor 9000 // 30000hz fot 60 sec 400 steps for 2mm screw
+#define async_steps_factor 9000 // 30000hz for 60 sec 400 steps for 2mm screw
 
 #define z_to_x_factor824	100729348
 #define z_to_x_factor_f 6.003937008f

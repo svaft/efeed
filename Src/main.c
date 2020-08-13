@@ -106,6 +106,7 @@ uint8_t *pBufferReadyForReception;
 __IO uint8_t ubUART3ReceptionComplete = 0;
 
 /* Buffer used for transmission */
+const uint8_t aTxFW2[] = "1.71;123456;\r\n";//crc ok, add to queue ok, continue
 const uint8_t aTxCRC_OK_OK_Continue[] = "ooc\r\n";//crc ok, add to queue ok, continue
 const uint8_t aTxCRC_OK_Ok_Wait[] = "oow\r\n";//crc ok, add to queue ok, wait
 const uint8_t aTxCRC_OK_Fail_Wait[] = "ofw\r\n";//crc ok, add to queue ok, wait
@@ -245,14 +246,16 @@ void USART_CharReception_Callback(void)
 //	uint8_t *ptemp;
   /* Read Received character. RXNE flag is cleared by reading of DR register */
 	uint8_t symbol = LL_USART_ReceiveData8(USART3);
-	if(symbol == '\n' || symbol == '\r'){
+	if(symbol == '\n'){
     /* Set Buffer swap indication */
 		ubUART3ReceptionComplete = 1;
 		uNbReceivedCharsForUser = uwNbReceivedChars;
-		memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars);
+		memset(&aRXBuffer,0,RX_BUFFER_SIZE);
+		memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars-1);
     uwNbReceivedChars = 0;
 	} else {
-		pBufferReadyForReception[uwNbReceivedChars++] = symbol;
+		if(symbol != 0)
+			pBufferReadyForReception[uwNbReceivedChars++] = symbol;
 	}
 }
 
@@ -266,30 +269,36 @@ void USART_CharReception_Callback(void)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+						
+	char info[14];
+	memcpy(info,"1.71;",5);
+	ui64toa(state_hw.global_Z_pos,&info[5]);
+	info[11] = ';';
 
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 	#define LOOP_COUNT 4 //509//289 //158
-//#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 
 	#ifdef _SIMU
-	int preload = 3;//LOOP_COUNT;
+	int preload = 4;//LOOP_COUNT;
 	#else
 	int preload = 1;
 	#endif
 
 const char * ga1[] = {
-"G94",
-"G0 X0. Z0.",
-"G0 Z-200",
-"G1 Z-200 F100",
-"G0 Z0.",
+	"G94",
+	"G0 X0. Z0.",
+	"G1 Z2 F100",
+	"G1 Z2.1 F100",
+	"G1 Z0 F100",
+	"G0 Z0.",
 
 	
 	"G0 X10. Z0.",
-"G0 X9.498",
-"G33 Z-0.665 K2",
-"X10. Z-1.02 K2",
+	"G0 X9.498",
+	"G33 Z-0.665 K2",
+	"X10. Z-1.02 K2",
 };	
 
 
@@ -319,7 +328,7 @@ const char * ga1[] = {
 //	cb_init_ref(&task_precalc_cb, task_precalc_size, sizeof(G_task_t), &gt_precalc);
 //	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
 	cb_init_ref(&substep_cb, substep_size, sizeof(substep_t),&substep_delay);
-	cb_init_ref(&substep_job_cb, substep_job_size, sizeof(substep_job_t),&substep_delay);
+//	cb_init_ref(&substep_job_cb, substep_job_size, sizeof(substep_job_t),&substep_delay);
 
 	cb_init_ref(&sma_cb,  8, sizeof(substep_sma_ref_t), &smaNumbers);
 	cb_init_ref(&sma_substep_cb,  8, sizeof(uint32_t), &smaSubstepRefs);
@@ -490,22 +499,27 @@ const char * ga1[] = {
 		load_next_task(&state_hw);
 //		LL_IWDG_ReloadCounter(IWDG);
 
-		ubUART3ReceptionComplete = 1;
-		memcpy(aRXBuffer,"!test",4);
-		uint8_t cmd = aRXBuffer[0];
+//		ubUART3ReceptionComplete = 1;
+//		memcpy(aRXBuffer,"!test",4);
 
 		if(ubUART3ReceptionComplete == 1){
+			uint8_t cmd = aRXBuffer[0];
 			ubUART3ReceptionComplete = 0;
 			if(cmd == '!'){
 				switch(aRXBuffer[1]){
 					case '1': //wtf? start record
 						break;
 					case '2': // save last comand
-						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cylce
+						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cycle
 						__disable_irq();
 						memcpy(&record_task, &state_hw.current_task, task_cb.sz);
 						record_task.dz -= (record_task.steps_to_end - 50);
 						record_task.steps_to_end = record_task.dz;
+						if(init_gp.Z > 0){
+							init_gp.Z = fixedpt_fromint2210(record_task.dz);
+						} else {
+							init_gp.Z = -fixedpt_fromint2210(record_task.dz);
+						}
 						state_hw.current_task.steps_to_end = 50;
 
 						substep_cb.count = substep_cb.count2 = 0;
@@ -514,10 +528,15 @@ const char * ga1[] = {
 						__enable_irq();
 						break;
 					case '3': //repeat last command
-						cb_push_back_item(&task_cb,&record_task);
+						if(init_gp.Z != 0){
+							command_parser("G0 Z0. X0.");
+						} else {
+							cb_push_back_item(&task_cb,&record_task);
+							init_gp.Z = record_task.z_direction == zdir_backward ? -fixedpt_fromint2210(record_task.dz) : fixedpt_fromint2210(record_task.dz); 
+						}
 						break;
 					case '4': // fast feed to start position
-						command_parser("G0 Z0 X0");
+						command_parser("G0 Z0. X0.");
 //						cb_push_back_item(&task_cb,&homing_task);
 						break;
 					case '5': // reset record
@@ -527,22 +546,64 @@ const char * ga1[] = {
 						break;
 					case '7': // continue
 						break;
+					case '0': { // reqest info{
+						char info[14];
+						memcpy(info,"1.75;",5);
+						ui64toa(state_hw.global_Z_pos,&info[5]);
+						info[11] = ';';
+						info[12] = '\r';
+						info[13] = '\n';
+						
+						sendResponce((uint32_t)info, 14);
+						break;
+					}
+
+					// JOG1:
+					case 'l': {// left small
+						int from_Z = init_gp.Z;
+					// get current Z position - 0.1mm
+						init_gp.Z -= jog_Z_01_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
+						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+						break;
+					}
+					case 'L': {// left big	
+						
+						int from_Z = init_gp.Z;
+					// get current Z position - 0.1mm
+						init_gp.Z -= jog_Z_10_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
+						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+						break;
+					}					
+					case 'r': {// right small
+						int from_Z = init_gp.Z;
+					// get current Z position - 0.1mm
+						init_gp.Z += jog_Z_01_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
+						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+						break;
+					}
+					case 'R': {// right small
+						int from_Z = init_gp.Z;
+					// get current Z position - 0.1mm
+						init_gp.Z += jog_Z_10_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
+						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+						break;
+					}
 				}
 			} else {
-				int charsCount = uNbReceivedCharsForUser - CRC_BASE64_STRLEN;
+//				int charsCount = uNbReceivedCharsForUser - CRC_BASE64_STRLEN;
 				uNbReceivedCharsForUser = 0;
 
-				if(charsCount>0) {
-					if(is_crc_ok(aRXBuffer,charsCount)){
+//				if(charsCount>0) {
+//					if(is_crc_ok(aRXBuffer,charsCount)){
 						sendResponce((uint32_t)aTxCRC_OK_OK_Continue, 5);
-						*(aRXBuffer+charsCount) = 0;
+//						*(aRXBuffer+charsCount) = 0;
 	//					uint8_t cmd = *(char *)aRXBuffer;
 						command_parser((char *)aRXBuffer);
 						
-					} else {
-						sendResponce((uint32_t)aTxCRC_Fail, 5);
-					}
-				}
+//					} else {
+//						sendResponce((uint32_t)aTxCRC_Fail, 5);
+//					}
+//				}
 			}
 
 
@@ -870,7 +931,7 @@ static void MX_TIM3_Init(void)
   PB0   ------> TIM3_CH3
   PB4   ------> TIM3_CH1 
   */
-  GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin|MOTOR_Z_STEP_Pin;
+  GPIO_InitStruct.Pin = MOTOR_Z_STEP_Pin|MOTOR_X_STEP_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -889,11 +950,7 @@ static void MX_TIM4_Init(void)
 {
 
   /* USER CODE BEGIN TIM4_Init 0 */
-#ifndef _USEENCODER
-// emulate hw encoder 
-	MX_TIM4_InitAsync();
-	return;
-#endif	
+
   /* USER CODE END TIM4_Init 0 */
 
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
@@ -1093,7 +1150,7 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel2_IRQn interrupt configuration */
-  NVIC_SetPriority(DMA1_Channel2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 1));
+  NVIC_SetPriority(DMA1_Channel2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(DMA1_Channel2_IRQn);
 
 }
@@ -1117,10 +1174,10 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin|MOTOR_X_DIR_Pin);
+  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin|MOTOR_Z_DIR_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port, MOTOR_X_ENABLE_Pin);
+  LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
 
   /**/
   GPIO_InitStruct.Pin = LED_Pin;
@@ -1135,7 +1192,7 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin|MOTOR_X_DIR_Pin;
+  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin|MOTOR_Z_DIR_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -1149,11 +1206,11 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin;
+  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  LL_GPIO_Init(MOTOR_X_ENABLE_GPIO_Port, &GPIO_InitStruct);
+  LL_GPIO_Init(MOTOR_Z_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_2|LL_GPIO_PIN_12|LL_GPIO_PIN_13|LL_GPIO_PIN_14 

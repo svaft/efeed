@@ -157,25 +157,25 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>563</LineNumber>
+          <LineNumber>230</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134231378</Address>
+          <Address>134219160</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>../Src/main.c</Filename>
+          <Filename>..\Src\g01.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/main.c\563</Expression>
+          <Expression>\\efeed\../Src/g01.c\230</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>490</LineNumber>
+          <LineNumber>551</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134231142</Address>
+          <Address>134231756</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -184,87 +184,23 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>../Src/main.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\\../Src/main.c\490</Expression>
+          <Expression>\\\../Src/main.c\551</Expression>
         </Bp>
         <Bp>
           <Number>2</Number>
           <Type>0</Type>
-          <LineNumber>307</LineNumber>
+          <LineNumber>275</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134226982</Address>
+          <Address>134230966</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>../Src/stm32f1xx_it.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/stm32f1xx_it.c\307</Expression>
-        </Bp>
-        <Bp>
-          <Number>3</Number>
-          <Type>0</Type>
-          <LineNumber>255</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134226924</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>../Src/stm32f1xx_it.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/stm32f1xx_it.c\255</Expression>
-        </Bp>
-        <Bp>
-          <Number>4</Number>
-          <Type>0</Type>
-          <LineNumber>233</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134226878</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>../Src/stm32f1xx_it.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/stm32f1xx_it.c\233</Expression>
-        </Bp>
-        <Bp>
-          <Number>5</Number>
-          <Type>0</Type>
-          <LineNumber>226</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>startup_stm32f103xb.s</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-        <Bp>
-          <Number>6</Number>
-          <Type>0</Type>
-          <LineNumber>564</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
           <Filename>../Src/main.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression></Expression>
+          <Expression>\\efeed\../Src/main.c\275</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -286,17 +222,17 @@
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>cmd</ItemText>
+          <ItemText>record_task</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>aRXBuffer</ItemText>
+          <ItemText>init_gp,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>1</WinNumber>
-          <ItemText>aRXBuffer[0]</ItemText>
+          <ItemText>aRXBufferA</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
@@ -316,7 +252,7 @@
         <Ww>
           <count>9</count>
           <WinNumber>1</WinNumber>
-          <ItemText>ramp_pos</ItemText>
+          <ItemText>state_hw.global_Z_pos</ItemText>
         </Ww>
         <Ww>
           <count>10</count>
@@ -625,6 +561,10 @@
           <Name>System Viewer\TIM3</Name>
           <WinId>35905</WinId>
         </Entry>
+        <Entry>
+          <Name>System Viewer\USART3</Name>
+          <WinId>35904</WinId>
+        </Entry>
       </SystemViewers>
       <DebugDescription>
         <Enable>1</Enable>
@@ -678,7 +618,7 @@
       <GroupNumber>2</GroupNumber>
       <FileNumber>3</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
+      <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\Src\nuts_bolts.c</PathWithFileName>
@@ -690,7 +630,7 @@
       <GroupNumber>2</GroupNumber>
       <FileNumber>4</FileNumber>
       <FileType>1</FileType>
-      <tvExp>0</tvExp>
+      <tvExp>1</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\Src\g01.c</PathWithFileName>

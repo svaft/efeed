@@ -227,54 +227,46 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 		return;
 	}
 	
+	G01parsed(x0, x0r, z0, gref->F, gref->X, gref->Z,  gref->Xr, G00G01);
+//	gref->code = 1;
+}
+
+void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G01){
+	state_t *s = &state_precalc;
 	int dx,dz, xdir,zdir;
-	if(gref->Z > z0){ // go from left to right
-		dz = gref->Z - z0;
+	if(Z > z0){ // go from left to right
+		dz = Z - z0;
 		zdir = zdir_forward;
 	} else { // go back from right to left
-		dz = z0 - gref->Z;
+		dz = z0 - Z;
 		zdir = zdir_backward;
 	}
-	if(gref->X > x0){ // go forward
-		dx = gref->X - x0;
+	if(X > x0){ // go forward
+		dx = X - x0;
 		xdir = xdir_forward;
 	} else { // go back
-		dx = x0 - gref->X;
+		dx = x0 - X;
 		xdir = xdir_backward;
 	}
 
-	uint64_t il = (int64_t)(gref->Xr-x0r)*(gref->Xr-x0r)+(int64_t)dz*dz;
 	G_task_t *gt_new_task = 0;
-/*
-	if(G00G01 == G01code && s->G94G95_G00tmp == G94code && s->G94G95 == G95code) {
-		// синхронизация по шпинделю, но предыдущий код был G00, нужно переключиться c временной асинхронной синхронизации обратно на синхронизацию по шпинделю
-		gt_new_task = add_empty_task();
-		gt_new_task->init_callback_ref = G95;
-		gt_new_task->precalculate_init_callback_ref = G95init_callback_precalculate;
-		s->G94G95_G00tmp = G95code;
-	}
-	if(s->G94G95 == G95code && G00G01 == G00code){
-		// синхронизация по шпинделю, но нужно временно переключиться на асихронный таймер для быстрого перемещения каретки
-		gt_new_task = add_empty_task();
-		gt_new_task->init_callback_ref = G94;
-		gt_new_task->precalculate_init_callback_ref = G94init_callback_precalculate;
-		s->G94G95_G00tmp = G94code;
-	}
-*/
 	gt_new_task = add_empty_task();
 
 
 //		bool G94G95; // 0 - unit per min, 1 - unit per rev
 	if(s->G94G95 == G95code && G00G01 == G01code){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F); //todo inch support
+		gt_new_task->F = str_f824mm_rev_to_delay824(F); //todo inch support
 	} else { 											// unit(mm) per min
 		if(G00G01 == G00code){
-			gt_new_task->F = 9<<24; //4285pps
+			gt_new_task->F = 7<<24; //4285pps
 		} else {
-			gt_new_task->len = sqrtf(il); // SquareRoot64(il);
-			uint32_t ff = (async_steps_factor * (gt_new_task->len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
+			// вычисляем длину линии как корень квадратный от суммы квадратов катетов. на этом шаге вычисляем сумму квадратов катетов:
+			uint64_t il = (int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;
+			gt_new_task->len_f = sqrtf(il); // SquareRoot64(il);
+			uint32_t len = gt_new_task->len_f;
+			uint32_t ff = (async_steps_factor * (len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
 			float f1 = ff;
-			float f2 = gref->F;
+			float f2 = F;
 			float f3 = f1 / f2;
 			fixedptu f = f3;
 			gt_new_task->F = f << 24; // translate to 8.24 format used for delays
@@ -296,7 +288,4 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 		gt_new_task->init_callback_ref = G01init_callback;
 	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
 	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
-//	gref->code = 1;
 }
-
-

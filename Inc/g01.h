@@ -19,5 +19,6 @@ void dxdz_callback_precalculate(state_t* s);
 void G01init_callback_precalculate(state_t* s);
 
 void G01parse(char *line, bool G00G01);
+void G01parsed(int x0, int x0r, int z0, int X, int Z, int F, int Xr, bool G00G01);
 
 #endif /* G01_H_ */

@@ -557,6 +557,5 @@ void sendResponce(uint32_t SrcAddress, uint32_t NbData){
 	LL_USART_ClearFlag_TC(USART3);
 	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_2);
 	LL_USART_EnableIT_TC(USART3);
-
 }
 

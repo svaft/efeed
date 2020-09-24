@@ -276,8 +276,6 @@ int break1;
 * @retval void.
   */
 void do_fsm_move2(state_t* s){
-	
-	
 	s->current_task.z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
 //	if(move_cnt>460 && move_cnt<470) 
 //		break1 = 1;

@@ -270,10 +270,10 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 						
-	char info[14];
-	memcpy(info,"1.71;",5);
-	ui64toa(state_hw.global_Z_pos,&info[5]);
-	info[11] = ';';
+//	char info[14];
+//	memcpy(info,"1.71;",5);
+//	ui64toa(state_hw.global_Z_pos,&info[5]);
+//	info[11] = ';';
 
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
@@ -281,15 +281,15 @@ int main(void)
 #define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 
 	#ifdef _SIMU
-	int preload = 4;//LOOP_COUNT;
+	int preload = 2;//LOOP_COUNT;
 	#else
 	int preload = 1;
 	#endif
 
 const char * ga1[] = {
-	"G94",
+	"G95",
 	"G0 X0. Z0.",
-	"G1 Z2 F100",
+	"G1 Z-2 F100",
 	"G1 Z2.1 F100",
 	"G1 Z0 F100",
 	"G0 Z0.",
@@ -410,7 +410,7 @@ const char * ga1[] = {
 	// prepare TIM1 for sub-step:	
 	LL_TIM_ClearFlag_UPDATE(TIM1);
 	LL_TIM_CC_DisablePreload(TIM1);
-  LL_TIM_OC_DisablePreload(TIM1, LL_TIM_CHANNEL_CH1);
+	LL_TIM_OC_DisablePreload(TIM1, LL_TIM_CHANNEL_CH1);
 
 	LL_TIM_EnableIT_CC1(TIM1);
 	LL_TIM_SetOnePulseMode(TIM1,LL_TIM_ONEPULSEMODE_SINGLE);
@@ -446,7 +446,7 @@ const char * ga1[] = {
 	G_task_t *precalculating_task = 0;
 	int command = 0;
 	int testcommand = 0;
-
+	LED_OFF();
 	while (1) {
 		// recalc substep delays
 		if(substep_cb.count < substep_cb.capacity && precalculating_task){
@@ -548,7 +548,7 @@ const char * ga1[] = {
 						break;
 					case '0': { // reqest info{
 						char info[14];
-						memcpy(info,"1.75;",5);
+						memcpy(info,"1.76;",5);
 						ui64toa(state_hw.global_Z_pos,&info[5]);
 						info[11] = ';';
 						info[12] = '\r';
@@ -891,11 +891,16 @@ static void MX_TIM3_Init(void)
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
   LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH1);
   LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
   LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH3);
+  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH4);
+  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
+  LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH4, &TIM_OC_InitStruct);
+  LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH4);
   LL_TIM_SetOnePulseMode(TIM3, LL_TIM_ONEPULSEMODE_SINGLE);
   LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
@@ -910,8 +915,8 @@ static void MX_TIM3_Init(void)
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3); // */
 
-	LL_TIM_CC_EnableChannel(TIM3,LL_TIM_CHANNEL_CH1);
-	LL_TIM_CC_EnableChannel(TIM3,LL_TIM_CHANNEL_CH3);	
+	MOTOR_X_AllowPulse();
+	MOTOR_Z_AllowPulse();
 //	LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 
 /*
@@ -929,9 +934,10 @@ static void MX_TIM3_Init(void)
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
   /**TIM3 GPIO Configuration  
   PB0   ------> TIM3_CH3
+  PB1   ------> TIM3_CH4
   PB4   ------> TIM3_CH1 
   */
-  GPIO_InitStruct.Pin = MOTOR_Z_STEP_Pin|MOTOR_X_STEP_Pin;
+  GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin|MOTOR_Z_STEP3_Pin|MOTOR_Z_STEP_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -1174,10 +1180,7 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin|MOTOR_Z_DIR_Pin);
-
-  /**/
-  LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port, MOTOR_Z_ENABLE_Pin);
+  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin|MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin);
 
   /**/
   GPIO_InitStruct.Pin = LED_Pin;
@@ -1192,25 +1195,17 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin|MOTOR_Z_DIR_Pin;
+  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin|MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_4|LL_GPIO_PIN_5|LL_GPIO_PIN_6|LL_GPIO_PIN_8 
-                          |LL_GPIO_PIN_9|LL_GPIO_PIN_10|LL_GPIO_PIN_11|LL_GPIO_PIN_12 
-                          |LL_GPIO_PIN_15;
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_4|LL_GPIO_PIN_5|LL_GPIO_PIN_8|LL_GPIO_PIN_9 
+                          |LL_GPIO_PIN_10|LL_GPIO_PIN_11|LL_GPIO_PIN_12|LL_GPIO_PIN_15;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /**/
-  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  LL_GPIO_Init(MOTOR_Z_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_2|LL_GPIO_PIN_12|LL_GPIO_PIN_13|LL_GPIO_PIN_14 

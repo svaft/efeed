@@ -123,7 +123,7 @@ void G00G01init_callback(state_t* s){
 
 		s->substep_axis = SUBSTEP_AXIS_X;
 		s->err = -s->current_task.dz >> 1;
-		MOTOR_Z_AllowPulse(); 
+		MOTOR_Z_AllowPulse();
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
 		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 	} else{
@@ -138,7 +138,6 @@ void G00G01init_callback(state_t* s){
 		s->substep_pulse_off = 0;
 
 		MOTOR_X_AllowPulse(); 
-//		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 	}

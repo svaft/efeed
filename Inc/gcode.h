@@ -15,7 +15,7 @@
 #define task_precalc_size 20
 #define task_size 70
 #define gp_size 10
-#define substep_size 6000
+#define substep_size 4000
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
 #define substep_job_size task_size*2
 

@@ -226,7 +226,7 @@ void do_fsm_move_start2(state_t* s){
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
 
-	
+
 // reload value in stored in ARR from preload to shadow register without update event 	
 	LL_TIM_DisableARRPreload(s->syncbase);
 	if(s->syncbase->ARR < rampup[0] ){

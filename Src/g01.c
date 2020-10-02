@@ -206,7 +206,7 @@ void G33parse(char *line){
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
 
-	gt_new_task->init_callback_ref = G01init_callback;
+	gt_new_task->init_callback_ref = G33init_callback;
 	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
 	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
 }

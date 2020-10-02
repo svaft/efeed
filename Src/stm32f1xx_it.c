@@ -132,17 +132,17 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles DMA1 channel2 global interrupt.
+  * @brief This function handles DMA1 channel4 global interrupt.
   */
-void DMA1_Channel2_IRQHandler(void)
+void DMA1_Channel4_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
 
-  /* USER CODE END DMA1_Channel2_IRQn 0 */
+  /* USER CODE END DMA1_Channel4_IRQn 0 */
   
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
 
-  /* USER CODE END DMA1_Channel2_IRQn 1 */
+  /* USER CODE END DMA1_Channel4_IRQn 1 */
 }
 
 /**
@@ -287,32 +287,12 @@ void TIM4_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles USART2 global interrupt.
+  * @brief This function handles USART1 global interrupt.
   */
-void USART2_IRQHandler(void)
+void USART1_IRQHandler(void)
 {
-  /* USER CODE BEGIN USART2_IRQn 0 */
-  if(LL_USART_IsActiveFlag_RXNE(USART2) && LL_USART_IsEnabledIT_RXNE(USART2))
-  {
-    /* RXNE flag will be cleared by reading of DR register (done in call) */
-    /* Call function in charge of handling Character reception */
-//    USART_CharReception_Callback();
-  } else {
-		Error_Handler();
-	}
-  /* USER CODE END USART2_IRQn 0 */
-  /* USER CODE BEGIN USART2_IRQn 1 */
-
-  /* USER CODE END USART2_IRQn 1 */
-}
-
-/**
-  * @brief This function handles USART3 global interrupt.
-  */
-void USART3_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART3_IRQn 0 */
-	if(LL_USART_IsActiveFlag_RXNE(USART3) && LL_USART_IsEnabledIT_RXNE(USART3))
+  /* USER CODE BEGIN USART1_IRQn 0 */
+	if(LL_USART_IsActiveFlag_RXNE(USART1) && LL_USART_IsEnabledIT_RXNE(USART1))
   {
     /* RXNE flag will be cleared by reading of DR register (done in call) */
     /* Call function in charge of handling Character reception */
@@ -322,17 +302,17 @@ void USART3_IRQHandler(void)
 //		while(1);
 //		Error_Handler();
 	}
-	if(LL_USART_IsActiveFlag_TC(USART3) && LL_USART_IsEnabledIT_TC(USART3)){
-		LL_USART_ClearFlag_TC(USART3);
-		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_2);
+	if(LL_USART_IsActiveFlag_TC(USART1) && LL_USART_IsEnabledIT_TC(USART1)){
+		LL_USART_ClearFlag_TC(USART1);
+		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
 		
 //		while(1);
 	}
 
-  /* USER CODE END USART3_IRQn 0 */
-  /* USER CODE BEGIN USART3_IRQn 1 */
+  /* USER CODE END USART1_IRQn 0 */
+  /* USER CODE BEGIN USART1_IRQn 1 */
 
-  /* USER CODE END USART3_IRQn 1 */
+  /* USER CODE END USART1_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

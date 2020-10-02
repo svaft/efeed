@@ -252,19 +252,17 @@ void Error_Handler(void);
 #define min_pulse 145*5
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_0
-#define MOTOR_X_ENABLE_GPIO_Port GPIOA
-#define MOTOR_X_DIR_Pin LL_GPIO_PIN_1
-#define MOTOR_X_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_6
-#define MOTOR_Z_ENABLE_GPIO_Port GPIOA
-#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
-#define MOTOR_Z_DIR_GPIO_Port GPIOA
 #define MOTOR_X_STEP_Pin LL_GPIO_PIN_0
 #define MOTOR_X_STEP_GPIO_Port GPIOB
-#define MOTOR_Z_STEP3_Pin LL_GPIO_PIN_1
-#define MOTOR_Z_STEP3_GPIO_Port GPIOB
-#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_4
+#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_12
+#define MOTOR_X_ENABLE_GPIO_Port GPIOA
+#define MOTOR_X_DIR_Pin LL_GPIO_PIN_15
+#define MOTOR_X_DIR_GPIO_Port GPIOA
+#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_3
+#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_4
+#define MOTOR_Z_DIR_GPIO_Port GPIOB
+#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_5
 #define MOTOR_Z_STEP_GPIO_Port GPIOB
 #define ENC_A_Pin LL_GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
@@ -464,15 +462,15 @@ void Error_Handler(void);
 #define LED_OFF()		LL_GPIO_SetOutputPin(  LED_GPIO_Port, LED_Pin)
 #define LED_ON()		LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin)
 
-#define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH1
-#define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH4
+#define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH3
+#define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH2
 //#define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
 #define MOTOR_Z_AllowPulse()         LL_TIM_CC_EnableChannel(TIM3,MOTOR_Z_CHANNEL) //t3ccer[TIM_CCER_CC1E_Pos] = 1
 #define MOTOR_Z_BlockPulse()         LL_TIM_CC_DisableChannel(TIM3,MOTOR_Z_CHANNEL) //t3ccer[TIM_CCER_CC1E_Pos] = 0
 
 //#define MOTOR_X_OnlyPulse()         TIM3->CCER = MOTOR_X_CHANNEL
 #define MOTOR_X_AllowPulse()         LL_TIM_CC_EnableChannel(TIM3,MOTOR_X_CHANNEL) //t3ccer[TIM_CCER_CC3E_Pos] = 1
-#define MOTOR_X_BlockPulse()         LL_TIM_CC_EnableChannel(TIM3,MOTOR_X_CHANNEL) //t3ccer[TIM_CCER_CC3E_Pos] = 0
+#define MOTOR_X_BlockPulse()         LL_TIM_CC_DisableChannel(TIM3,MOTOR_X_CHANNEL) //t3ccer[TIM_CCER_CC3E_Pos] = 0
 
 
 

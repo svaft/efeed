@@ -546,6 +546,14 @@ const char * ga1[] = {
 						command_parser("G0 Z0. X0.");
 //						cb_push_back_item(&task_cb,&homing_task);
 						break;
+					case 'S': // stop current move
+						__disable_irq();
+						state_hw.current_task.steps_to_end = 50;
+						substep_cb.count = substep_cb.count2 = 0;
+						((substep_t *)substep_cb.tail)->skip = 50;
+						substep->skip = 50; //some steps to slow down and stop
+						__enable_irq();
+						break;
 					case '5': // reset record
 						break;
 
@@ -565,6 +573,54 @@ const char * ga1[] = {
 						break;
 					}
 
+					
+					case 'B': {// left correction small(Back)
+						//switch to manual pulse generation
+						uint32_t pin_dir = LL_GPIO_IsOutputPinSet(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
+						if(pin_dir != zdir_backward){ // change DIR
+							LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
+							LL_mDelay(1);
+						}
+						LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+						for(int a = 0;a<20;a++){
+							LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+							LL_mDelay(2);
+							LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+							LL_mDelay(5);
+						}
+
+
+						if(pin_dir != zdir_backward){ // change DIR back
+							LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
+						}
+						
+						LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
+						break;
+					}
+					case 'F': {// right correction small(Front)
+						//switch to manual pulse generation
+						uint32_t pin_dir = LL_GPIO_IsOutputPinSet(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
+						if(pin_dir != zdir_forward){ // change DIR
+							LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
+							LL_mDelay(1);
+						}
+						LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+						for(int a = 0; a<20; a++){
+							LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+							LL_mDelay(2);
+							LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+							LL_mDelay(5);
+						}
+
+
+						if(pin_dir != zdir_backward){ // change DIR back
+							LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
+						}
+						
+						LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
+						break;
+					}
+					
 					// JOG1:
 					case 'l': {// left small
 						int from_Z = init_gp.Z;

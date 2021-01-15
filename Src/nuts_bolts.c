@@ -345,7 +345,7 @@ int str_f_to_steps2210(char *line, uint8_t *char_counter){
 				t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
 				number = 0;
 				fract = true;
-		} else if (c == ' '){ //skip blanks
+		} else if (c == ' ' || c =='+'){ //skip blanks
 		} else break;
 		str++;
 	}

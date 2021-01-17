@@ -4,19 +4,19 @@
 #include "math.h"
 
 
-// called from load_task
+
 void G01init_callback_precalculate(state_t* s){
-	if(s->current_task.dz > s->current_task.dx){
-		s->current_task.steps_to_end = s->current_task.dz;
+	if(s->current_task_ref->dz > s->current_task_ref->dx){
+		s->current_task_ref->steps_to_end = s->current_task_ref->dz;
 		s->substep_axis = SUBSTEP_AXIS_X;
-		s->err = -s->current_task.dz >> 1;
+		s->err = -s->current_task_ref->dz >> 1;
 	} else{
-		s->current_task.steps_to_end = s->current_task.dx;
-		s->err = s->current_task.dx >> 1;
+		s->current_task_ref->steps_to_end = s->current_task_ref->dx;
+		s->err = s->current_task_ref->dx >> 1;
 		s->substep_axis = SUBSTEP_AXIS_Z;
 	}
 	dxdz_callback_precalculate(s);
-//	s->current_task.steps_to_end = 1; 
+//	s->current_task_ref->steps_to_end = 1; 
 }
 
 //int pcc = 0;
@@ -28,18 +28,18 @@ void dxdz_callback_precalculate(state_t* s){
 	substep_t *sb = substep_cb.top;
 	int e2 = s->err;
 	int32_t delay = -1;
-	if(substep_cb.count2 == 5972)
+	if(substep_cb.count2 == 5972) //some bug is here
 		break5972 = 1;
-	if (e2 >= -s->current_task.dx)	{ // step X axis
-		s->err -= s->current_task.dz;
+	if (e2 >= -s->current_task_ref->dx)	{ // step X axis
+		s->err -= s->current_task_ref->dz;
 		if(s->substep_axis == SUBSTEP_AXIS_X){
-			delay = ((1<<subdelay_precision)-1)*(abs(e2))/s->current_task.dx;
+			delay = ((1<<subdelay_precision)-1)*(abs(e2))/s->current_task_ref->dx;
 		}
 	}
-	if (e2 <= s->current_task.dz)	{ // step Z axis
-		s->err += s->current_task.dx;
+	if (e2 <= s->current_task_ref->dz)	{ // step Z axis
+		s->err += s->current_task_ref->dx;
 		if(s->substep_axis == SUBSTEP_AXIS_Z){
-			delay = ((1<<subdelay_precision)-1)*(abs(e2))/s->current_task.dz;
+			delay = ((1<<subdelay_precision)-1)*(abs(e2))/s->current_task_ref->dz;
 		}
 	}
 
@@ -56,9 +56,9 @@ void dxdz_callback_precalculate(state_t* s){
 		sb = substep_cb.top;
 		sb->skip++;
 	}
-	s->current_task.steps_to_end--;
-	if(s->current_task.steps_to_end == 0){
-		s->precalculating_task_ref->unlocked = true;
+	s->current_task_ref->steps_to_end--;
+	if(s->current_task_ref->steps_to_end == 0){
+		s->current_task_ref->unlocked = true;
 
 //		s->precalculate_end = true; // todo remove?
 	}
@@ -67,7 +67,7 @@ void dxdz_callback_precalculate(state_t* s){
 
 
 void G00init_callback(state_t* s){
-	if(s->G94G95 == G95code){
+	if(s->G94G95 == G95code && s->G94G00tmp == false){
 		s->G94G00tmp = true;
 		switch_to_async(s);
 	}
@@ -101,18 +101,18 @@ void G00G01init_callback(state_t* s){
 //	2. set ARR
 //	3. set channels
 	s->function = do_fsm_move2;
-	s->syncbase->ARR = fixedpt_toint(s->current_task.F) - 1;
-	if(s->syncbase->ARR < 75 ) // todo костыль, нулевое значение в таблице ускорения
-		s->syncbase->ARR = 75;
+	s->syncbase->ARR = fixedpt_toint(s->current_task_ref->F) - 1;
+//	if(s->syncbase->ARR < 75 ) // todo костыль, нулевое значение в таблице ускорения
+//		s->syncbase->ARR = 75;
 
-	s->Q824set = s->current_task.F;
+	s->Q824set = s->current_task_ref->F;
 
 	s->prescaler = s->syncbase->PSC;
 //	TIM3->CCER = 0;
-	XDIR = s->current_task.x_direction;
-	ZDIR = s->current_task.z_direction;
-	if(s->current_task.dz > s->current_task.dx){
-		s->current_task.steps_to_end = s->current_task.dz;
+	XDIR = s->current_task_ref->x_direction;
+	ZDIR = s->current_task_ref->z_direction;
+	if(s->current_task_ref->dz > s->current_task_ref->dx){
+		s->current_task_ref->steps_to_end = s->current_task_ref->dz;
 //#define XSTP	*((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 ))))
 //#define BITBAND_PERI2(a,b) ((PERIPH_BB_BASE + (a-PERIPH_BASE)*32 + (b*4)))		
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
@@ -122,13 +122,13 @@ void G00G01init_callback(state_t* s){
 		s->substep_pulse_off = 0;
 
 		s->substep_axis = SUBSTEP_AXIS_X;
-		s->err = -s->current_task.dz >> 1;
+		s->err = -s->current_task_ref->dz >> 1;
 		MOTOR_Z_AllowPulse();
 		LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
 		LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 	} else{
-		s->current_task.steps_to_end = s->current_task.dx;
-		s->err = s->current_task.dx >> 1;
+		s->current_task_ref->steps_to_end = s->current_task_ref->dx;
+		s->err = s->current_task_ref->dx >> 1;
 		s->substep_axis = SUBSTEP_AXIS_Z;
 
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
@@ -150,7 +150,7 @@ void G00G01init_callback(state_t* s){
 //int lx=0, ly=0;
 //uint32_t st = 0, st1 = 0;
 void dxdz_callback(state_t* s){
-	s->current_task.steps_to_end--;
+	s->current_task_ref->steps_to_end--;
 }
 
 
@@ -248,16 +248,17 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 		xdir = xdir_backward;
 	}
 
+	G_task_t *prev_task = get_last_task();
 	G_task_t *gt_new_task = 0;
 	gt_new_task = add_empty_task();
 
 
 //		bool G94G95; // 0 - unit per min, 1 - unit per rev
-	if(s->G94G95 == G95code && G00G01 == G01code){ 	// unit(mm) per rev
+ 	if(s->G94G95 == G95code && G00G01 == G01code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(F); //todo inch support
 	} else { 											// unit(mm) per min
 		if(G00G01 == G00code){
-			gt_new_task->F = 7<<24; //4285pps
+			gt_new_task->F = 8<<16; //4285pps
 		} else {
 			// вычисляем длину линии как корень квадратный от суммы квадратов катетов. на этом шаге вычисляем сумму квадратов катетов:
 			uint64_t il = (int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;
@@ -268,7 +269,7 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 			float f2 = F;
 			float f3 = f1 / f2;
 			fixedptu f = f3;
-			gt_new_task->F = f << 24; // translate to 8.24 format used for delays
+			gt_new_task->F = f << 16; // translate to 16.16 format used for delays
 		}
 	}
 
@@ -281,6 +282,9 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
 
+	if(prev_task->stepper == true && prev_task->z_direction == zdir){
+		prev_task->skiprampdown = true;
+	}
 	if(G00G01 == G00code)	
 		gt_new_task->init_callback_ref = G00init_callback;
 	else

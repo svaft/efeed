@@ -81,7 +81,7 @@ substep_t* cb_push_back_empty_ref(void){
 	return substep_cb.top;
 }
 
-int current_step = 0;
+uint32_t current_step = 0;
 int break1 = 0;
 
 /**
@@ -91,23 +91,28 @@ int break1 = 0;
 void load_next_task(state_t* s){
 	if(s->task_lock == false && task_cb.count > 0) {
 		G_task_t *next_task = cb_get_front_ref(&task_cb);
-		if(next_task){// && next_task->unlocked == true) {
+		if(next_task && next_task->unlocked == true) {
 			current_step++;
-			if(current_step == 46)
-				break1 = 1;
+//			if(current_step == 46)
+//				break1 = 1;
 //		if(next_task && next_task->unlocked == true) {
 //	debug();
 			s->task_lock = true;
-			cb_pop_front(&task_cb, &s->current_task);
-			if(s->current_task.init_callback_ref){
-				s->current_task.init_callback_ref(s); // task specific init
+//			cb_pop_front(&task_cb, s->current_task_ref);
+			s->current_task_ref = cb_get_front_ref(&task_cb);
+			cb_pop_front_ref(&task_cb);
+			if(s->current_task_ref->init_callback_ref){
+				s->current_task_ref->init_callback_ref(s); // task specific init
+//				if(s->task_lock == false)
+//					cb_pop_front_ref(&task_cb);
 			}
-			ramp_pos = 0; //todo костыль. надо смотреть по вектору движения, скорости и относительно этого корректировать ускорение,
-			//например при смене направления нужно остановиться и снуля ускориться, при движении в том же направлении можно продолжить на той же скорости			
-//			s->Q824set = s->current_task.F; // load feed value
-			if(s->current_task.stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
+//			ramp_pos = 0; //todo костыль. надо смотреть по вектору движения, скорости и относительно этого корректировать ускорение,
+			//например при смене направления нужно остановиться и с нуля ускориться, при движении в том же направлении можно продолжить на той же скорости			
+//			s->Q824set = s->current_task_ref->F; // load feed value
+			if(s->current_task_ref->stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
 				do_fsm_move_start2(s);
 			}
+		} else{ // no next task
 		}
 	}
 }
@@ -115,9 +120,10 @@ void load_next_task(state_t* s){
 
 void G94init_callback_precalculate(state_t* s){
 	s->G94G95 = G94code;
-	s->precalculating_task_ref->unlocked = true;
+	s->current_task_ref->unlocked = true;
 }
 
+int sta = 0;
 void switch_to_async(state_t* s){
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR0);
@@ -127,7 +133,7 @@ void switch_to_async(state_t* s){
   LL_TIM_DisableMasterSlaveMode(TIM4);
   LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_RESET);
 	LL_TIM_DisableCounter(TIM4); // pause sync timer
-	
+	sta++;
 	LL_TIM_DisableCounter(TIM2); // pause async timer
 	// connect sync timer:
 	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
@@ -206,13 +212,13 @@ void G95(state_t* s){
 
 void G95init_callback_precalculate(state_t* s){
 	s->G94G95 = G95code;
-	s->precalculating_task_ref->unlocked = true;
+	s->current_task_ref->unlocked = true;
 }
 
 
 
 #define leddbg 100
-
+int ms =0;
 void do_fsm_move_start2(state_t* s){
 //	load_next_task(s); // load first task from queue
 //	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
@@ -221,8 +227,9 @@ void do_fsm_move_start2(state_t* s){
 	// disclamer: why not to generate	update event by setting in EGR UG bit? with hardware logic analyzer all works fine,
 	// but in simulator this first pulse not generater propertly by UG
 //	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+	ms++;
 	ramp_pos = 0;
-	steps2end_equator = s->current_task.steps_to_end>>1;
+	steps2end_equator = s->current_task_ref->steps_to_end>>1;
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
 
@@ -276,7 +283,7 @@ int break1;
 * @retval void.
   */
 void do_fsm_move2(state_t* s){
-	s->current_task.z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
+	s->current_task_ref->z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
 //	if(move_cnt>460 && move_cnt<470) 
 //		break1 = 1;
 	substep_t *sb = substep_cb.tail; //get ref to current substep
@@ -301,7 +308,7 @@ void do_fsm_move2(state_t* s){
 
 	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
 	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
-	if(ramp_pos >= s->current_task.steps_to_end){
+	if(s->current_task_ref->skiprampdown!=true && ramp_pos >= s->current_task_ref->steps_to_end){
 		s->syncbase->ARR = rampup[--ramp_pos];
 	} else {
 		if(s->syncbase->ARR < rampup[ramp_pos]){
@@ -310,12 +317,11 @@ void do_fsm_move2(state_t* s){
 			s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
 		}
 	}
-		
-//	s->current_task.steps_to_end--; // migrated to callback
+//	s->current_task_ref->steps_to_end--; // migrated to callback
 }
 
 void do_fsm_move33(state_t* s){
-	s->current_task.z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
+	s->current_task_ref->z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
 	move_cnt++;
 //	if(move_cnt>460 && move_cnt<470) 
 //		break1 = 1;
@@ -344,7 +350,7 @@ void do_fsm_move33(state_t* s){
 
 	s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
 
-	if(ramp_pos >= s->current_task.steps_to_end){
+	if(ramp_pos >= s->current_task_ref->steps_to_end){
 	//	s->syncbase->ARR = rampup[--ramp_pos];
 	} else {
 //		if(s->syncbase->ARR < rampup[ramp_pos]){
@@ -354,7 +360,7 @@ void do_fsm_move33(state_t* s){
 //		}
 	}
 		
-//	s->current_task.steps_to_end--; // migrated to callback
+//	s->current_task_ref->steps_to_end--; // migrated to callback
 }
 
 
@@ -367,6 +373,7 @@ void do_fsm_move33(state_t* s){
 void do_fsm_move_end2(state_t* s){
 //	debug();
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
+	ramp_pos = 0; // reset ramp map 
 
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now

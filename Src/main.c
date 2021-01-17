@@ -37,7 +37,6 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
@@ -257,7 +256,7 @@ void USART_CharReception_Callback(void)
 			pBufferReadyForReception[uwNbReceivedChars++] = symbol;
 	}
 }
-
+int aa;
 //#define _USEENCODER
 /* USER CODE END 0 */
 
@@ -273,22 +272,34 @@ int main(void)
 //	memcpy(info,"1.71;",5);
 //	ui64toa(state_hw.global_Z_pos,&info[5]);
 //	info[11] = ';';
-
+ aa = sizeof(G_task_t);
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 	#define LOOP_COUNT 4 //509//289 //158
-#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
-
-	#ifdef _SIMU
+	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+	
+	#ifdef _USEENCODER
 	int preload = 2;//LOOP_COUNT;
 	#else
-	int preload = 1;
-	#endif
+	int preload = 7;//LOOP_COUNT;
+	#endif	
 
 const char * ga1[] = {
+	#ifdef _USEENCODER
 	"G95",
 	"G0 X0. Z0.",
-	"G1 Z-2 F100",
+	"G0 Z200",
+	
+//	"G1 Z-2 F0.05",
+	#else
+	"G94",
+	"G0 X0. Z0.",
+	"G1 Z-1 F900",
+	"G1 Z-3",
+	"G1 Z-4",
+	"G1 Z-5",	
+	"G1 Z0",
+	#endif	
 	"G1 Z2.1 F100",
 	"G1 Z0 F100",
 	"G0 Z0.",
@@ -306,7 +317,6 @@ const char * ga1[] = {
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  
 
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_AFIO);
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
@@ -315,7 +325,7 @@ const char * ga1[] = {
 
   /* System interrupt init*/
 
-  /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled 
+  /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled
   */
   LL_GPIO_AF_Remap_SWJ_NOJTAG();
 
@@ -386,12 +396,12 @@ const char * ga1[] = {
   /* Enable DMA Channel Tx */
 //  LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_2);
   /* Clear Overrun flag, in case characters have already been sent to USART */
-  LL_USART_ClearFlag_ORE(USART3);
+//  LL_USART_ClearFlag_ORE(USART3);
 
 /* Enable RXNE and Error interrupts */
-  LL_USART_EnableIT_RXNE(USART3);
-  LL_USART_EnableIT_ERROR(USART3);
-	LL_USART_ClearFlag_TC(USART3);
+//  LL_USART_EnableIT_RXNE(USART3);
+//  LL_USART_EnableIT_ERROR(USART3);
+//	LL_USART_ClearFlag_TC(USART3);
 
 //  LL_TIM_EnableIT_CC3(TIM4);													// enable interrupts for TACHO events from encoder
 //  LL_TIM_EnableCounter(TIM4); 												//Enable timer 4
@@ -448,51 +458,32 @@ const char * ga1[] = {
 */
 
 // todo need refactor this code how to g-code parsing, precalculation and execution going to start and work together
-	G_task_t record_task, homing_task;
+	G_task_t record_task, homing_task, precalculating_task_copy;
 
-	G_task_t *precalculating_task = 0;
+//	G_task_t *precalculating_task = 0;
 	int command = 0;
 	int testcommand = 0;
 	LED_OFF();
 	while (1) {
 		// recalc substep delays
-		if(substep_cb.count < substep_cb.capacity && precalculating_task){
+		if(substep_cb.count < substep_cb.capacity && state_precalc.current_task_ref){
 			// get pointer to last processed task
-			if(precalculating_task->precalculate_callback_ref) {
-				precalculating_task->precalculate_callback_ref(&state_precalc);
-				if(state_precalc.precalculating_task_ref->unlocked  == true){ // precalc finished, load next task to precalc
-					precalculating_task = cb_pop_front_ref2(&task_cb);
-					state_precalc.precalculating_task_ref = precalculating_task;
-					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
-
-					if(precalculating_task && precalculating_task->precalculate_init_callback_ref)
-						precalculating_task->precalculate_init_callback_ref(&state_precalc);
-				// load next task
+			if(state_precalc.current_task_ref->precalculate_callback_ref) {
+				state_precalc.current_task_ref->precalculate_callback_ref(&state_precalc);
+				if(state_precalc.current_task_ref->unlocked  == true) // precalc finished, load next task to precalc
+					state_precalc.current_task_ref = 0;
 				}
-			} else {
-				precalculating_task = cb_pop_front_ref2(&task_cb);
-				if(precalculating_task) {
-					state_precalc.precalculating_task_ref = precalculating_task;
-					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
-					if(precalculating_task->precalculate_init_callback_ref)
-						precalculating_task->precalculate_init_callback_ref(&state_precalc);
-				}
-			}
-			// call task recalculate callback until task is fully precalculated
-			// get next task and repeat unitl all task recalculated or precalculater buffer is full
 		} else {
-			if(precalculating_task == 0 && task_cb.count2 > 0){
-				precalculating_task = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
-				if(precalculating_task) {
-					memcpy(&state_precalc.current_task, precalculating_task, task_cb.sz);
-					state_precalc.precalculating_task_ref = precalculating_task;
+			if(state_precalc.current_task_ref == 0 && task_cb.count2 > 0){
+				state_precalc.current_task_ref = cb_pop_front_ref2(&task_cb); // get ref to task to start precalculating process
+				if(state_precalc.current_task_ref) {
 					// init precalc:
-					if(precalculating_task->precalculate_init_callback_ref){
-						precalculating_task->precalculate_init_callback_ref(&state_precalc);
-						if(precalculating_task->precalculate_callback_ref) {
-							for(int a = 0; a<3;a++)
-								precalculating_task->precalculate_callback_ref(&state_precalc);
-						}
+					if(state_precalc.current_task_ref->precalculate_init_callback_ref){
+						state_precalc.current_task_ref->precalculate_init_callback_ref(&state_precalc);
+						if(state_precalc.current_task_ref->precalculate_callback_ref)
+								state_precalc.current_task_ref->precalculate_callback_ref(&state_precalc);
+						if(state_precalc.current_task_ref->unlocked  == true) // precalc finished, load next task to precalc
+							state_precalc.current_task_ref = 0;
 					}
 				}
 			}
@@ -519,7 +510,7 @@ const char * ga1[] = {
 					case '2': // save last comand
 						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cycle
 						__disable_irq();
-						memcpy(&record_task, &state_hw.current_task, task_cb.sz);
+						memcpy(&record_task, state_hw.current_task_ref, task_cb.sz);
 						record_task.dz -= (record_task.steps_to_end - 50);
 						record_task.steps_to_end = record_task.dz;
 						if(init_gp.Z > 0){
@@ -527,7 +518,7 @@ const char * ga1[] = {
 						} else {
 							init_gp.Z = -fixedpt_fromint2210(record_task.dz);
 						}
-						state_hw.current_task.steps_to_end = 50;
+						state_hw.current_task_ref->steps_to_end = 50;
 
 						substep_cb.count = substep_cb.count2 = 0;
 						substep_t *substep = (substep_t *)substep_cb.tail;
@@ -548,10 +539,16 @@ const char * ga1[] = {
 						break;
 					case 'S': // stop current move
 						__disable_irq();
-						state_hw.current_task.steps_to_end = 50;
+						init_gp.Z = state_hw.global_Z_pos;
+						if(init_gp.Z > 0){
+							init_gp.Z += 50;
+						} else {
+							init_gp.Z -= 50;
+						}					
+						state_hw.current_task_ref->steps_to_end = 50;
 						substep_cb.count = substep_cb.count2 = 0;
-						((substep_t *)substep_cb.tail)->skip = 50;
-						substep->skip = 50; //some steps to slow down and stop
+						((substep_t *)substep_cb.tail)->skip = 50;//some steps to slow down and stop
+//						substep->skip = 50; //some steps to slow down and stop
 						__enable_irq();
 						break;
 					case '5': // reset record
@@ -644,7 +641,7 @@ const char * ga1[] = {
 						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
 						break;
 					}
-					case 'R': {// right small
+					case 'R': {// right big
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
 						init_gp.Z += jog_Z_10_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
@@ -658,7 +655,7 @@ const char * ga1[] = {
 
 //				if(charsCount>0) {
 //					if(is_crc_ok(aRXBuffer,charsCount)){
-						sendResponce((uint32_t)aTxCRC_OK_OK_Continue, 5);
+//						sendResponce((uint32_t)aTxCRC_OK_OK_Continue, 5);
 //						*(aRXBuffer+charsCount) = 0;
 	//					uint8_t cmd = *(char *)aRXBuffer;
 						command_parser((char *)aRXBuffer);
@@ -703,24 +700,22 @@ const char * ga1[] = {
 void SystemClock_Config(void)
 {
   LL_FLASH_SetLatency(LL_FLASH_LATENCY_2);
-
-   if(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_2)
+  while(LL_FLASH_GetLatency()!= LL_FLASH_LATENCY_2)
   {
-    Error_Handler();  
   }
   LL_RCC_HSE_Enable();
 
    /* Wait till HSE is ready */
   while(LL_RCC_HSE_IsReady() != 1)
   {
-    
+
   }
   LL_RCC_LSI_Enable();
 
    /* Wait till LSI is ready */
   while(LL_RCC_LSI_IsReady() != 1)
   {
-    
+
   }
   LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE_DIV_1, LL_RCC_PLL_MUL_9);
   LL_RCC_PLL_Enable();
@@ -728,7 +723,7 @@ void SystemClock_Config(void)
    /* Wait till PLL is ready */
   while(LL_RCC_PLL_IsReady() != 1)
   {
-    
+
   }
   LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
   LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_2);
@@ -738,7 +733,7 @@ void SystemClock_Config(void)
    /* Wait till System clock is ready */
   while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL)
   {
-  
+
   }
   LL_Init1msTick(72000000);
   LL_SetSystemCoreClock(72000000);
@@ -828,7 +823,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE END TIM1_Init 1 */
   TIM_InitStruct.Prescaler = 15;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 0;
+  TIM_InitStruct.Autoreload = 65535;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   TIM_InitStruct.RepetitionCounter = 0;
   LL_TIM_Init(TIM1, &TIM_InitStruct);
@@ -989,9 +984,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 2 */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
-  /**TIM3 GPIO Configuration  
+  /**TIM3 GPIO Configuration
   PB0   ------> TIM3_CH3
-  PB5   ------> TIM3_CH2 
+  PB5   ------> TIM3_CH2
   */
   GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin|MOTOR_Z_STEP_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
@@ -1021,12 +1016,12 @@ static void MX_TIM4_Init(void)
 
   /* Peripheral clock enable */
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
-  
+
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
-  /**TIM4 GPIO Configuration  
+  /**TIM4 GPIO Configuration
   PB6   ------> TIM4_CH1
   PB7   ------> TIM4_CH2
-  PB8   ------> TIM4_CH3 
+  PB8   ------> TIM4_CH3
   */
   GPIO_InitStruct.Pin = ENC_A_Pin|ENC_B_Pin|ENC_ZERO_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
@@ -1084,11 +1079,11 @@ static void MX_USART1_UART_Init(void)
 
   /* Peripheral clock enable */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
-  
+
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
-  /**USART1 GPIO Configuration  
+  /**USART1 GPIO Configuration
   PA9   ------> USART1_TX
-  PA10   ------> USART1_RX 
+  PA10   ------> USART1_RX
   */
   GPIO_InitStruct.Pin = LL_GPIO_PIN_9;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
@@ -1101,7 +1096,7 @@ static void MX_USART1_UART_Init(void)
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USART1 DMA Init */
-  
+
   /* USART1_TX Init */
   LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_4, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
 
@@ -1140,10 +1135,10 @@ static void MX_USART1_UART_Init(void)
 
 }
 
-/** 
+/**
   * Enable DMA controller clock
   */
-static void MX_DMA_Init(void) 
+static void MX_DMA_Init(void)
 {
 
   /* Init with LL driver */
@@ -1176,10 +1171,10 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin);
+  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_Z_DIR_Pin|MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin);
+  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_RETURN_ME_Pin);
 
   /**/
   GPIO_InitStruct.Pin = LED_Pin;
@@ -1194,28 +1189,28 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_1|LL_GPIO_PIN_2|LL_GPIO_PIN_3 
-                          |LL_GPIO_PIN_4|LL_GPIO_PIN_5|LL_GPIO_PIN_6|LL_GPIO_PIN_7 
-                          |LL_GPIO_PIN_8|LL_GPIO_PIN_11;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /**/
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_1|LL_GPIO_PIN_2|LL_GPIO_PIN_10|LL_GPIO_PIN_11 
-                          |LL_GPIO_PIN_12|LL_GPIO_PIN_13|LL_GPIO_PIN_14|LL_GPIO_PIN_15 
-                          |LL_GPIO_PIN_9;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /**/
-  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin;
+  GPIO_InitStruct.Pin = MOTOR_Z_DIR_Pin|MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin;
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_1|LL_GPIO_PIN_2|LL_GPIO_PIN_3|LL_GPIO_PIN_4
+                          |LL_GPIO_PIN_5|LL_GPIO_PIN_6|LL_GPIO_PIN_7|LL_GPIO_PIN_8
+                          |LL_GPIO_PIN_11;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_1|LL_GPIO_PIN_2|LL_GPIO_PIN_10|LL_GPIO_PIN_11
+                          |LL_GPIO_PIN_12|LL_GPIO_PIN_13|LL_GPIO_PIN_14|LL_GPIO_PIN_15
+                          |LL_GPIO_PIN_9;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_RETURN_ME_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -1260,7 +1255,7 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
 	/* User can add his own implementation to report the file name and line number,
 	 ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */

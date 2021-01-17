@@ -80,7 +80,7 @@
 /* USER CODE END EV */
 
 /******************************************************************************/
-/*           Cortex-M3 Processor Interruption and Exception Handlers          */ 
+/*           Cortex-M3 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
   * @brief This function handles System service call via SWI instruction.
@@ -116,7 +116,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
   /* USER CODE END SysTick_IRQn 0 */
-  
+
   /* USER CODE BEGIN SysTick_IRQn 1 */
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
@@ -139,7 +139,7 @@ void DMA1_Channel4_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
 
   /* USER CODE END DMA1_Channel4_IRQn 0 */
-  
+
   /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
 
   /* USER CODE END DMA1_Channel4_IRQn 1 */
@@ -155,7 +155,7 @@ void TIM1_UP_IRQHandler(void)
 	TIM1->SR = 0;
 	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_off;
 	
-	if(state_hw.current_task.steps_to_end == 0){
+	if(state_hw.current_task_ref->steps_to_end == 0){
 		state_hw.task_lock = false; // unlock task processor to load next task
 		if(task_cb.count == 0){
 			do_fsm_move_end2(&state_hw);
@@ -214,10 +214,10 @@ void TIM3_IRQHandler(void)
   /* USER CODE BEGIN TIM3_IRQn 0 */
 	TIM3->SR = 0;
 
-	if(state_hw.current_task.callback_ref){
-		state_hw.current_task.callback_ref(&state_hw);
+	if(state_hw.current_task_ref->callback_ref){
+		state_hw.current_task_ref->callback_ref(&state_hw);
 	}
-	if(state_hw.current_task.steps_to_end == 0 && !LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
+	if(state_hw.current_task_ref->steps_to_end == 0 && !LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
 		state_hw.task_lock = false; // unlock task processor to load next task
 		if(task_cb.count == 0){
 			do_fsm_move_end2(&state_hw);

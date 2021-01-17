@@ -24,8 +24,8 @@ void do_fsm_dwell(state_t *s){
 
 void dwell_callback(state_t* s){
 // callback from TIM3
-	s->current_task.steps_to_end--;
-	if(s->current_task.steps_to_end == 0){
+	s->current_task_ref->steps_to_end--;
+	if(s->current_task_ref->steps_to_end == 0){
 		//restore connection here?
 			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 	}

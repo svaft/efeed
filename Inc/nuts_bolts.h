@@ -164,7 +164,9 @@ __STATIC_INLINE void cb_init_by_top(circular_buffer *cb, void *item){
     }
     memcpy(item, cb->top, cb->sz);
 }
-
+/**
+  * @brief pop item from tail of buffer and free slot
+*/
 __STATIC_INLINE void cb_pop_front(circular_buffer *cb, void *item){
     if(cb->count == 0){
         return;
@@ -180,28 +182,9 @@ __STATIC_INLINE void cb_pop_front(circular_buffer *cb, void *item){
     cb->count--;
 }
 
-__STATIC_INLINE void* cb_get_front_ref(circular_buffer *cb){
-    if(cb->count == 0){
-        return 0;
-        // handle error
-    }
-    return cb->tail; // get ref to stored value to return at the end and step to next
-}
-
-__STATIC_INLINE void* cb_step_back(circular_buffer *cb){
-    if(cb->count == 0){
-        return 0;
-        // handle error
-    }
-		cb->head = cb->top;
-    cb->top = (uint8_t *)cb->top - cb->sz;
-    if(cb->head == cb->buffer_end)
-        cb->head = cb->buffer;
-    cb->count--;
-    return cb->head;
-}
-
-
+/**
+  * @brief pop item by ref from tail of buffer and free slot
+*/
 __STATIC_INLINE void* cb_pop_front_ref(circular_buffer *cb){
     if(cb->count == 0){
         return 0;
@@ -230,6 +213,34 @@ __STATIC_INLINE void* cb_pop_front_ref2(circular_buffer *cb){
     cb->count2--;
     return ref;
 }
+
+
+
+/**
+  * @brief get item ref from tail of buffer, slot is locked untill cb_pop_front_ref 
+*/
+__STATIC_INLINE void* cb_get_front_ref(circular_buffer *cb){
+    if(cb->count == 0){
+        return 0;
+        // handle error
+    }
+    return cb->tail; // get ref to stored value to return at the end and step to next
+}
+
+__STATIC_INLINE void* cb_step_back(circular_buffer *cb){
+    if(cb->count == 0){
+        return 0;
+        // handle error
+    }
+		cb->head = cb->top;
+    cb->top = (uint8_t *)cb->top - cb->sz;
+    if(cb->head == cb->buffer_end)
+        cb->head = cb->buffer;
+    cb->count--;
+    return cb->head;
+}
+
+
 
 
 #endif

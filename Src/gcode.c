@@ -155,9 +155,12 @@ void G94(state_t* s){
 		return;
 	}
 	
-	if(s->G94G00tmp != true)
-		s->G94G95 = G94code;
-	switch_to_async(s);
+	s->G94G95 = G94code;
+	if(s->G94G00tmp == true){
+		s->G94G00tmp = false;
+	} else{
+		switch_to_async(s);
+	}
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
@@ -247,7 +250,8 @@ void do_fsm_move_start2(state_t* s){
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	LL_TIM_EnableCounter(s->syncbase);
-
+	
+	#ifdef _USEENCODER // wait tacho only when HW encoder is used, in software emu mode this is not necessary, we start immediately
 	if(s->syncbase == TIM4){ // if sync wait for tacho event and continue. While waiting disable stepper motors to correct position manually if needed
 		LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 		LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
@@ -262,6 +266,8 @@ void do_fsm_move_start2(state_t* s){
 		LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 		LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
 	}
+	#endif
+	
 	
 //	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
@@ -283,10 +289,17 @@ int break1;
 * @retval void.
   */
 void do_fsm_move2(state_t* s){
-	s->current_task_ref->z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
-//	if(move_cnt>460 && move_cnt<470) 
-//		break1 = 1;
+	//todo нужен рефакторинг метода
+		
 	substep_t *sb = substep_cb.tail; //get ref to current substep
+
+	if(s->substep_axis == SUBSTEP_AXIS_X){
+		s->current_task_ref->z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;//учесть изменения по X, и менять местами при смене substep
+		if(sb->skip ==0) s->current_task_ref->x_direction == 0 ? s->global_X_pos++ : s->global_X_pos--;
+	}	else {
+		s->current_task_ref->x_direction == 0 ? s->global_X_pos++ : s->global_X_pos--;//учесть изменения по X, и менять местами при смене substep
+		if(sb->skip ==0) s->current_task_ref->z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
+	}
 	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 		delay >>=4;
@@ -384,6 +397,7 @@ void do_fsm_move_end2(state_t* s){
 	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
 	LL_TIM_DisableUpdateEvent(s->syncbase);
+	sendResponce((uint32_t)"end\r\n",5);
 }
 
 

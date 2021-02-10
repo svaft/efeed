@@ -154,14 +154,17 @@ void TIM1_UP_IRQHandler(void)
 	// enable corresponding channel for sub-step:
 	TIM1->SR = 0;
 	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_off;
-	
-	if(state_hw.current_task_ref->steps_to_end == 0){
-		state_hw.task_lock = false; // unlock task processor to load next task
-		if(task_cb.count == 0){
-			do_fsm_move_end2(&state_hw);
-//			return;
+	if(!state_hw.jog_pulse){
+		if(state_hw.current_task_ref->steps_to_end == 0){
+			state_hw.task_lock = false; // unlock task processor to load next task
+			if(task_cb.count == 0){
+				do_fsm_move_end2(&state_hw);
+	//			return;
+			}
+	//		load_next_task(&state_hw);
 		}
-//		load_next_task(&state_hw);
+	} else {
+		state_hw.jog_pulse = false;
 	}
 
   /* USER CODE END TIM1_UP_IRQn 0 */

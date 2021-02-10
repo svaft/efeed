@@ -74,6 +74,8 @@
 state_t state_hw;
 state_t state_precalc;
 
+	int debug_cmd = 0, debugnext = 0;
+
 __IO uint8_t ubI2C_slave_addr = 0;
 __IO uint8_t ubMasterRequestDirection  = 0;
 
@@ -131,6 +133,8 @@ static void MX_TIM4_Init(void);
 static void MX_CRC_Init(void);
 static void MX_IWDG_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void USART_CharReception_Callback(void);
 void SystemClock_Config(void);
@@ -272,32 +276,44 @@ int main(void)
 //	memcpy(info,"1.71;",5);
 //	ui64toa(state_hw.global_Z_pos,&info[5]);
 //	info[11] = ';';
- aa = sizeof(G_task_t);
+	aa = sizeof(G_task_t);
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
-	#define LOOP_COUNT 4 //509//289 //158
+//	#define LOOP_COUNT 4 //509//289 //158
 	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 	
 	#ifdef _USEENCODER
 	int preload = 2;//LOOP_COUNT;
 	#else
-	int preload = 7;//LOOP_COUNT;
+	int preload = 9;//LOOP_COUNT;
 	#endif	
 
 const char * ga1[] = {
 	#ifdef _USEENCODER
 	"G95",
 	"G0 X0. Z0.",
+	"G0 Z1",
+	"G94",
+	"G1 Z-10 F600", //F900",
 	"G0 Z200",
 	
 //	"G1 Z-2 F0.05",
 	#else
 	"G94",
 	"G0 X0. Z0.",
-	"G1 Z-1 F900",
-	"G1 Z-3",
+//	"G0 X10. Z0.",
+	"G1 Z-10 F600",
+//	"G1 Z-200 F0.5",
+	"G0 X0. Z0.",
+	"G1 Z-10 F600",
+	"G0 X0. Z0.",
+	"G1 Z-10 F600",
+	"G0 X0. Z0.",
+	"G1 Z-10 F600",
+
+	"G1 Z3",
 	"G1 Z-4",
-	"G1 Z-5",	
+	"G1 Z5",	
 	"G1 Z0",
 	#endif	
 	"G1 Z2.1 F100",
@@ -366,6 +382,8 @@ const char * ga1[] = {
   MX_CRC_Init();
   MX_IWDG_Init();
   MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 //	LL_TIM_OC_SetPolarity(TIM3,LL_TIM_CHANNEL_CH1,LL_TIM_OCPOLARITY_LOW);
 //	LL_TIM_CC_EnableChannel(TIM3,LL_TIM_CHANNEL_CH1);
@@ -460,11 +478,37 @@ const char * ga1[] = {
 // todo need refactor this code how to g-code parsing, precalculation and execution going to start and work together
 	G_task_t record_task, homing_task, precalculating_task_copy;
 
+				
+				
 //	G_task_t *precalculating_task = 0;
 	int command = 0;
 	int testcommand = 0;
 	LED_OFF();
 	while (1) {
+	if(debugnext == 1){
+		debugnext = 0;
+		if(debug_cmd == 0){
+			aRXBuffer[0] = 'G';
+			aRXBuffer[1] = '9';
+			aRXBuffer[2] = '4';
+			debug_cmd++;
+		} else {
+			aRXBuffer[0] = 'G';
+			aRXBuffer[1] = '0';
+			aRXBuffer[2] = '1';
+			aRXBuffer[3] = ' ';
+			aRXBuffer[4] = 'Z';
+			aRXBuffer[5] = '1';
+			aRXBuffer[6] = '1';
+			aRXBuffer[7] = ' ';
+			aRXBuffer[8] = 'F';
+			aRXBuffer[9] = '6';
+			aRXBuffer[10] = '0';
+			aRXBuffer[11] = '0';
+		}
+		ubUART3ReceptionComplete = 1;
+	}
+
 		// recalc substep delays
 		if(substep_cb.count < substep_cb.capacity && state_precalc.current_task_ref){
 			// get pointer to last processed task
@@ -508,6 +552,7 @@ const char * ga1[] = {
 					case '1': //wtf? start record
 						break;
 					case '2': // save last comand
+						LED_ON();
 						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cycle
 						__disable_irq();
 						memcpy(&record_task, state_hw.current_task_ref, task_cb.sz);
@@ -524,6 +569,7 @@ const char * ga1[] = {
 						substep_t *substep = (substep_t *)substep_cb.tail;
 						substep->skip = 50; //need some steps to slow down and stop
 						__enable_irq();
+						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '3': //repeat last command
 						if(init_gp.Z != 0){
@@ -550,6 +596,7 @@ const char * ga1[] = {
 						((substep_t *)substep_cb.tail)->skip = 50;//some steps to slow down and stop
 //						substep->skip = 50; //some steps to slow down and stop
 						__enable_irq();
+						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '5': // reset record
 						break;
@@ -560,7 +607,7 @@ const char * ga1[] = {
 						break;
 					case '0': { // reqest info{ 
 						char info[14];
-						memcpy(info,"1.77;",5); //version
+						memcpy(info,"1.80;",5); //version
 						ui64toa(state_hw.global_Z_pos,&info[5]);
 						info[11] = ';';
 						info[12] = '\r';
@@ -608,17 +655,42 @@ const char * ga1[] = {
 							LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 							LL_mDelay(5);
 						}
-
-
 						if(pin_dir != zdir_backward){ // change DIR back
 							LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
 						}
-						
 						LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 						break;
 					}
-					
 					// JOG1:
+					//X axis
+					// X jog is allowed only when no active job on this axis is performed
+					case 'x': {// go forward by 1 step
+						if(state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1)){
+//							if(state_hw.current_task_ref->x_direction == xdir_backward){
+							XDIR = xdir_forward;						
+//							}
+							
+							state_hw.global_X_pos++;
+							state_hw.jog_pulse = true;
+							TIM1->CCR1	= 1;
+							TIM1->ARR 	= 46;//min_pulse + 1;
+							TIM1->SR = 0;
+							LL_TIM_EnableCounter(TIM1);
+						}
+						break;
+					}
+					case 'X': {// go backward by 1 step
+						if(state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1)){
+							XDIR = xdir_backward;						
+							state_hw.global_X_pos--;
+							state_hw.jog_pulse = true;
+							TIM1->CCR1	= 1;
+							TIM1->ARR 	= 46;//min_pulse + 1;
+							TIM1->SR = 0;
+							LL_TIM_EnableCounter(TIM1);
+						}
+						break;
+					}
 					case 'l': {// left small
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
@@ -626,8 +698,7 @@ const char * ga1[] = {
 						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
 						break;
 					}
-					case 'L': {// left big	
-						
+					case 'L': {// left big
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
 						init_gp.Z -= jog_Z_10_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
@@ -998,6 +1069,42 @@ static void MX_TIM3_Init(void)
 
 }
 
+
+#ifndef _USEENCODER
+void spindle_emulator(void){
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
+
+  /* TIM4 interrupt Init */
+  NVIC_SetPriority(TIM4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(TIM4_IRQn);
+
+	
+  TIM_InitStruct.Prescaler = 2399;
+  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+  TIM_InitStruct.Autoreload = 50;
+  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
+  LL_TIM_Init(TIM4, &TIM_InitStruct);
+  LL_TIM_EnableARRPreload(TIM4);
+  LL_TIM_SetClockSource(TIM4, LL_TIM_CLOCKSOURCE_INTERNAL);
+  LL_TIM_OC_EnablePreload(TIM4, LL_TIM_CHANNEL_CH1);
+  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
+  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.CompareValue = 48;
+  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_LOW;
+  LL_TIM_OC_Init(TIM4, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
+  LL_TIM_OC_DisableFast(TIM4, LL_TIM_CHANNEL_CH1);
+  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
+  LL_TIM_EnableMasterSlaveMode(TIM4);
+}
+#endif
+
 /**
   * @brief TIM4 Initialization Function
   * @param None
@@ -1008,6 +1115,12 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE BEGIN TIM4_Init 0 */
 
+#ifndef _USEENCODER
+	spindle_emulator();
+	return;
+#endif	
+	
+	
   /* USER CODE END TIM4_Init 0 */
 
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
@@ -1136,6 +1249,112 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  LL_USART_InitTypeDef USART_InitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
+
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+  /**USART2 GPIO Configuration
+  PA2   ------> USART2_TX
+  PA3   ------> USART2_RX
+  */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_2;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_3;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  USART_InitStruct.BaudRate = 115200;
+  USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+  USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
+  USART_InitStruct.Parity = LL_USART_PARITY_NONE;
+  USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+  USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+  USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+  LL_USART_Init(USART2, &USART_InitStruct);
+  LL_USART_ConfigAsyncMode(USART2);
+  LL_USART_Enable(USART2);
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  LL_USART_InitTypeDef USART_InitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
+
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
+  /**USART3 GPIO Configuration
+  PB10   ------> USART3_TX
+  PB11   ------> USART3_RX
+  */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_10;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_11;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  USART_InitStruct.BaudRate = 115200;
+  USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+  USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
+  USART_InitStruct.Parity = LL_USART_PARITY_NONE;
+  USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+  USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+  USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+  LL_USART_Init(USART3, &USART_InitStruct);
+  LL_USART_ConfigAsyncMode(USART3);
+  LL_USART_Enable(USART3);
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -1171,10 +1390,10 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_Z_DIR_Pin|MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin);
+  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_RETURN_ME_Pin);
+  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin);
 
   /**/
   GPIO_InitStruct.Pin = LED_Pin;
@@ -1189,28 +1408,26 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = MOTOR_Z_DIR_Pin|MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin;
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_1|LL_GPIO_PIN_4|LL_GPIO_PIN_5
+                          |LL_GPIO_PIN_6|LL_GPIO_PIN_7|LL_GPIO_PIN_8|LL_GPIO_PIN_11;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_1|LL_GPIO_PIN_2|LL_GPIO_PIN_12|LL_GPIO_PIN_13
+                          |LL_GPIO_PIN_14|LL_GPIO_PIN_15|LL_GPIO_PIN_9;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_1|LL_GPIO_PIN_2|LL_GPIO_PIN_3|LL_GPIO_PIN_4
-                          |LL_GPIO_PIN_5|LL_GPIO_PIN_6|LL_GPIO_PIN_7|LL_GPIO_PIN_8
-                          |LL_GPIO_PIN_11;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /**/
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_1|LL_GPIO_PIN_2|LL_GPIO_PIN_10|LL_GPIO_PIN_11
-                          |LL_GPIO_PIN_12|LL_GPIO_PIN_13|LL_GPIO_PIN_14|LL_GPIO_PIN_15
-                          |LL_GPIO_PIN_9;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /**/
-  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_RETURN_ME_Pin;
+  GPIO_InitStruct.Pin = MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;

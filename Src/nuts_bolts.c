@@ -90,8 +90,9 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
 //z_steps_unit*z_steps_unit/z_screw_pitch
 //	return fixedptu_div(18<<24,feed);
 	
-	float f2 = feed<<6;
-	float f3 = (rev_to_delay_f / f2)*65536; //float divide is faster then long?
+	float f2 = feed<<6; // convert input value from 10.24 to 16.16
+//	float f3 = (rev_to_delay_f / f2)*65536; //float divide is faster then long?
+	float f3 = rev_to_delay_f / f2; //float divide is faster then long?
 	return (fixedptu) f3;
 //	return fixedptu_div(rev_to_delay,feed<<14); // feed<<14 - convert feed value in 22.10 to 8.24 format
 }

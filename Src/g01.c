@@ -28,8 +28,8 @@ void dxdz_callback_precalculate(state_t* s){
 	substep_t *sb = substep_cb.top;
 	int e2 = s->err;
 	int32_t delay = -1;
-	if(substep_cb.count2 == 5972) //some bug is here
-		break5972 = 1;
+//	if(substep_cb.count2 == 5972) //some bug is here
+//		break5972 = 1;
 	if (e2 >= -s->current_task_ref->dx)	{ // step X axis
 		s->err -= s->current_task_ref->dz;
 		if(s->substep_axis == SUBSTEP_AXIS_X){
@@ -59,8 +59,6 @@ void dxdz_callback_precalculate(state_t* s){
 	s->current_task_ref->steps_to_end--;
 	if(s->current_task_ref->steps_to_end == 0){
 		s->current_task_ref->unlocked = true;
-
-//		s->precalculate_end = true; // todo remove?
 	}
 }
 
@@ -92,8 +90,6 @@ void G33init_callback(state_t* s){
 	G00G01init_callback(s);
 	s->function = do_fsm_move33;
 }
-
-
 
 // called from load_task
 void G00G01init_callback(state_t* s){
@@ -212,9 +208,9 @@ void G33parse(char *line){
 }
 
 void G01parse(char *line, bool G00G01){ //~60-70us
-	int x0 = init_gp.X & ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
-	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
-	int z0 = init_gp.Z & ~1uL<<(FIXEDPT_FBITS2210-1);
+	int x0 = init_gp.X 		& ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
+	int x0r = init_gp.Xr 	& ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
+	int z0 = init_gp.Z 		& ~1uL<<(FIXEDPT_FBITS2210-1);
 	state_t *s = &state_precalc;
 
 	G_pipeline_t *gref = G_parse(line);
@@ -256,14 +252,20 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 //		bool G94G95; // 0 - unit per min, 1 - unit per rev
  	if(s->G94G95 == G95code && G00G01 == G01code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(F); //todo inch support
+		// пересчет подачи по длине линии как в коде ниже для G94
 	} else { 											// unit(mm) per min
 		if(G00G01 == G00code){
 			gt_new_task->F = 8<<16; //4285pps
 		} else {
 			// вычисляем длину линии как корень квадратный от суммы квадратов катетов. на этом шаге вычисляем сумму квадратов катетов:
 			uint64_t il = (int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;
-			gt_new_task->len_f = sqrtf(il); // SquareRoot64(il);
-			uint32_t len = gt_new_task->len_f;
+			gt_new_task->len_f = sqrtf(il); // получили длину отрезка в услонвых единицах
+			uint32_t len = gt_new_task->len_f; //
+			/* далее производим пересчет скорости подачи в проекции на основную ось, 
+			по которой идет отсчет шагов по алгоритму Брезенхэма. 
+			Так, для прямой длина линччии её проекция будет равна длине линии, а для 
+			линии по углом 45 градусов ее проекция будет в 1.41меньше, соответственно для сохранения постоянной
+			скорости подачи исходная величина F должна быть скорректирована	*/
 			uint32_t ff = (async_steps_factor * (len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
 			float f1 = ff;
 			float f2 = F;

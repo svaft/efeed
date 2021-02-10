@@ -173,7 +173,7 @@ typedef struct state_s
 {
 	bool init;
 //	uint32_t steps_to_end;
-	int32_t global_Z_pos;
+	int32_t global_Z_pos, global_X_pos;
 //	uint32_t end_pos;
 //	uint8_t ramp_step;
 	uint32_t Q824set; // feed rate
@@ -193,6 +193,7 @@ typedef struct state_s
 	uint8_t substep_pulse_on;
 	uint8_t substep_pulse_off;
 	
+	bool jog_pulse; // флаг для отключения логики, не нужной для пульса в ручном режиме
 //	G_task_t current_task;
 	G_task_t *current_task_ref;
 //	G_task_t *precalculating_task_ref;
@@ -255,8 +256,6 @@ void Error_Handler(void);
 #define min_pulse 145*5
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_0
-#define MOTOR_Z_DIR_GPIO_Port GPIOA
 #define MOTOR_X_STEP_Pin LL_GPIO_PIN_0
 #define MOTOR_X_STEP_GPIO_Port GPIOB
 #define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_12
@@ -265,8 +264,8 @@ void Error_Handler(void);
 #define MOTOR_X_DIR_GPIO_Port GPIOA
 #define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_3
 #define MOTOR_Z_ENABLE_GPIO_Port GPIOB
-#define MOTOR_Z_DIR_RETURN_ME_Pin LL_GPIO_PIN_4
-#define MOTOR_Z_DIR_RETURN_ME_GPIO_Port GPIOB
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_4
+#define MOTOR_Z_DIR_GPIO_Port GPIOB
 #define MOTOR_Z_STEP_Pin LL_GPIO_PIN_5
 #define MOTOR_Z_STEP_GPIO_Port GPIOB
 #define ENC_A_Pin LL_GPIO_PIN_6
@@ -482,10 +481,10 @@ void Error_Handler(void);
 //#define steps_per_unit_Z_2210   400<<10
 
 #define x_steps_unit	400
-#define x_screw_pitch	1.27
+#define x_screw_pitch	2.0f
 
-#define x_screw_pulley 61 // used to transfer torque from stepper motor to screw with reduction
-#define x_motor_pulley 16 // used to transfer torque from stepper motor to screw with reduction
+#define x_screw_pulley 1//61 // used to transfer torque from stepper motor to screw with reduction
+#define x_motor_pulley 1//16 // used to transfer torque from stepper motor to screw with reduction
 
 #define encoder_resolution 1800*2
 #define async_spindle_resolution 30000 // timer is set to 30000hz
@@ -499,7 +498,9 @@ void Error_Handler(void);
 //#define hzminps_x  (uint32_t)((async_spindle_resolution*60*x_screw_pitch/x_steps_unit)*1024) // 11430<<10 //async_spindle_resolution*60sec*x_screw_pitch/x_steps_unit 
 
 #define rev_to_delay (uint32_t)(encoder_resolution/(z_steps_unit/z_screw_pitch)*(FIXEDPT_FMASK+1)) //(encoder_resolution/(z_steps_unit/z_screw_pitch))<<24
-#define rev_to_delay_f 1474560.0f //301989888.0f
+#define rev_to_delay_f 96636764160.0f // 1474560.0f //301989888.0f
+
+
 // minimum processed value is 0.001mm
 //#define steps_per_unit_Z_2210   273066 //z_steps_unit<<10/z_screw_pitch (1,5mm screw)
 #define steps_per_unit_Z_2210   (uint32_t)(z_steps_unit*1024/z_screw_pitch) //204800
@@ -526,13 +527,13 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 //#define z_to_x_factor2210	3074 //1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch) //1024*200*61/16/1,27/(400/2)
 #define z_to_x_factor2210	(uint32_t)((FIXEDPT_FMASK2210+1)*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch)) //1024*200*61/16/1,27/(400/2)
 
-#define len_to_arc_factor2210 1137
-#define len_to_feed824	167713215111.444f
+//#define len_to_arc_factor2210 1137
+//#define len_to_feed824	167713215111.444f
 
 #define async_steps_factor (uint32_t)(async_spindle_resolution*60*z_screw_pitch/z_steps_unit) // 30000hz for 60 sec 400 steps for 2mm screw
 
-#define z_to_x_factor824	100729348
-#define z_to_x_factor_f 6.003937008f
+//#define z_to_x_factor824	100729348
+//#define z_to_x_factor_f 1.25f
 
 #define t3ccer			((uint32_t *)((0x42000000  + ((0x40000420)-0x40000000)*32)))
 

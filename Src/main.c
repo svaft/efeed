@@ -137,62 +137,18 @@ static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void USART_CharReception_Callback(void);
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
-static void MX_TIM1_Init(void);
-static void MX_TIM2_Init(void);
-static void MX_TIM3_Init(void);
-static void MX_TIM4_Init(void);
-static void MX_USART2_UART_Init(void);
+
+#ifndef _USEENCODER
+void spindle_emulator(void);
+#endif
+
+
+
+void jog_pulse(int);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-
-static void MX_TIM4_InitAsync(void)
-{
-
-  /* USER CODE BEGIN TIM4_Init 0 */
-
-  /* USER CODE END TIM4_Init 0 */
-
-  LL_TIM_InitTypeDef TIM_InitStruct = {0};
-  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
-
-  /* Peripheral clock enable */
-  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
-
-  /* TIM4 interrupt Init */
-  NVIC_SetPriority(TIM4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(TIM4_IRQn);
-
-  /* USER CODE BEGIN TIM4_Init 1 */
-
-  /* USER CODE END TIM4_Init 1 */
-  TIM_InitStruct.Prescaler = 4000;
-  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 0xFFF;
-  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
-  LL_TIM_Init(TIM4, &TIM_InitStruct);
-  LL_TIM_EnableARRPreload(TIM4);
-  LL_TIM_SetClockSource(TIM4, LL_TIM_CLOCKSOURCE_INTERNAL);
-  LL_TIM_OC_EnablePreload(TIM4, LL_TIM_CHANNEL_CH3);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
-  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.CompareValue = 48;
-  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_LOW;
-  LL_TIM_OC_Init(TIM4, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
-  LL_TIM_OC_DisableFast(TIM4, LL_TIM_CHANNEL_CH3);
-  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
-  LL_TIM_EnableMasterSlaveMode(TIM4);
-  /* USER CODE BEGIN TIM4_Init 2 */
-
-  /* USER CODE END TIM4_Init 2 */
-
-}
 
 
 
@@ -251,16 +207,23 @@ void USART_CharReception_Callback(void)
 	if(symbol == '\n'){
     /* Set Buffer swap indication */
 		ubUART3ReceptionComplete = 1;
+		if(uwNbReceivedChars == 1)
+			Error_Handler2(2);
 		uNbReceivedCharsForUser = uwNbReceivedChars;
-		memset(&aRXBuffer,0,RX_BUFFER_SIZE);
+		memset(&aRXBuffer,0,uwNbReceivedChars);
 		memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars-1);
+		memset(&aRXBufferA,0,uwNbReceivedChars);
     uwNbReceivedChars = 0;
 	} else {
 		if(symbol != 0)
 			pBufferReadyForReception[uwNbReceivedChars++] = symbol;
+		if(uwNbReceivedChars == RX_BUFFER_SIZE-1){
+			Error_Handler2(1);
+		}
 	}
 }
 int aa;
+	char str1[64];
 //#define _USEENCODER
 /* USER CODE END 0 */
 
@@ -271,7 +234,9 @@ int aa;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-						
+
+//	strcat(str1, "test");
+
 //	char info[14];
 //	memcpy(info,"1.71;",5);
 //	ui64toa(state_hw.global_Z_pos,&info[5]);
@@ -280,27 +245,29 @@ int main(void)
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
-	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+//	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 	
 	#ifdef _USEENCODER
-	int preload = 2;//LOOP_COUNT;
+	int preload = 3;//LOOP_COUNT;
 	#else
-	int preload = 9;//LOOP_COUNT;
+	int preload = 4;//LOOP_COUNT;
 	#endif	
 
 const char * ga1[] = {
 	#ifdef _USEENCODER
 	"G95",
 	"G0 X0. Z0.",
-	"G0 Z1",
+	"G0 X1",
 	"G94",
 	"G1 Z-10 F600", //F900",
 	"G0 Z200",
 	
 //	"G1 Z-2 F0.05",
 	#else
+	"G91",
 	"G94",
 	"G0 X0. Z0.",
+	"G0 Z10 X10",
 //	"G0 X10. Z0.",
 	"G1 Z-10 F600",
 //	"G1 Z-200 F0.5",
@@ -476,13 +443,18 @@ const char * ga1[] = {
 */
 
 // todo need refactor this code how to g-code parsing, precalculation and execution going to start and work together
-	G_task_t record_task, homing_task, precalculating_task_copy;
-
-				
-				
+	G_task_t record_task;
+	int32_t record_X, record_Z;
 //	G_task_t *precalculating_task = 0;
 	int command = 0;
-	int testcommand = 0;
+		bool move_to_saved_pos = false;
+
+// some init hardware state
+	state_hw.substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
+	state_hw.substep_pulse_on = 1;
+	state_hw.substep_pulse_off = 0;
+	state_hw.substep_axis = SUBSTEP_AXIS_X;
+
 	LED_OFF();
 	while (1) {
 	if(debugnext == 1){
@@ -510,11 +482,11 @@ const char * ga1[] = {
 	}
 
 		// recalc substep delays
-		if(substep_cb.count < substep_cb.capacity && state_precalc.current_task_ref){
+		if(substep_cb.count < substep_cb.capacity  && state_precalc.current_task_ref){
 			// get pointer to last processed task
 			if(state_precalc.current_task_ref->precalculate_callback_ref) {
 				state_precalc.current_task_ref->precalculate_callback_ref(&state_precalc);
-				if(state_precalc.current_task_ref->unlocked  == true) // precalc finished, load next task to precalc
+				if(state_precalc.current_task_ref->unlocked  == true && steps_to_end_shadow == 0) // precalc finished, load next task to precalc
 					state_precalc.current_task_ref = 0;
 				}
 		} else {
@@ -530,7 +502,12 @@ const char * ga1[] = {
 							state_precalc.current_task_ref = 0;
 					}
 				}
-			}
+			} else if (substep_cb.count2 == substep_cb.capacity && state_precalc.current_task_ref ){ // buffer overflow, unlock task to process precalculated data
+					state_precalc.current_task_ref->unlocked = true;
+//				if(substep_cb.count2 < substep_cb.capacity && state_precalc.current_task_ref->precalculate_callback_ref)
+//					state_precalc.current_task_ref->precalculate_callback_ref(&state_precalc);
+
+			} 
 			// if buffer is full go to sleep
 //			__WFI();
 		}
@@ -548,67 +525,113 @@ const char * ga1[] = {
 			uint8_t cmd = aRXBuffer[0];
 			ubUART3ReceptionComplete = 0;
 			if(cmd == '!'){
+				uint32_t skip = 50;
 				switch(aRXBuffer[1]){
-					case '1': //wtf? start record
-						break;
-					case '2': // save last comand
+					case '2': // save last comand  '!2'
 						LED_ON();
+						move_to_saved_pos = false;
 						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cycle
 						__disable_irq();
 						memcpy(&record_task, state_hw.current_task_ref, task_cb.sz);
-						record_task.dz -= (record_task.steps_to_end - 50);
-						record_task.steps_to_end = record_task.dz;
-						if(init_gp.Z > 0){
-							init_gp.Z = fixedpt_fromint2210(record_task.dz);
+						record_task.unlocked = false; // lock task to recalculate it again
+						// add X
+						if(record_task.steps_to_end > 50 ) {
+							record_task.dz -= (record_task.steps_to_end - 50);
+							record_task.steps_to_end = record_task.dz;
+							if(init_gp.Z > 0){
+								init_gp.Z = fixedpt_fromint2210(record_task.dz);
+							} else {
+								init_gp.Z = -fixedpt_fromint2210(record_task.dz);
+							}
+							state_hw.current_task_ref->steps_to_end = skip;
 						} else {
-							init_gp.Z = -fixedpt_fromint2210(record_task.dz);
+							skip = record_task.steps_to_end;
 						}
-						state_hw.current_task_ref->steps_to_end = 50;
-
-						substep_cb.count = substep_cb.count2 = 0;
 						substep_t *substep = (substep_t *)substep_cb.tail;
-						substep->skip = 50; //need some steps to slow down and stop
+						substep->skip = skip; //need some steps to slow down and stop
 						__enable_irq();
+						record_X = state_hw.initial_task_X_pos;
+						record_Z = state_hw.initial_task_Z_pos;
+						//reset substep_cb buffer:
+						substep_cb.count = substep_cb.count2 = 0;
+						substep_cb.top = substep_cb.head = substep_cb.tail2 = substep_cb.tail;
 						sendResponce((uint32_t)"ok\r\n",4);
 						break;
-					case '3': //repeat last command
-						if(init_gp.Z != 0){
-							command_parser("G0 Z0. X0.");
+					case '3': //repeat last command '!3'
+						// команда 
+						if( abs(state_hw.global_X_pos - record_X) > 400 || abs(state_hw.global_Z_pos - record_Z) > 400 ){
+							init_gp.Z = state_hw.initial_task_Z_pos;
+							if(state_hw.G90G91 == G90mode){
+								G01parsed(
+								fixedpt_fromint2210(state_hw.global_X_pos), 
+								fixedpt_fromint2210(state_hw.global_X_pos), 
+								fixedpt_fromint2210(state_hw.global_Z_pos), 
+								0, //feed
+								fixedpt_fromint2210(state_hw.initial_task_X_pos), 
+								fixedpt_fromint2210(state_hw.initial_task_Z_pos),
+								fixedpt_fromint2210(state_hw.initial_task_X_pos),
+								0);
+							} else {
+								int32_t abs_X = fixedpt_fromint2210( record_X - state_hw.global_X_pos );
+								G01parsed(0,0,0,0,
+								abs_X, 
+								fixedpt_fromint2210( record_Z - state_hw.global_Z_pos ),
+								abs_X,
+								0);
+							
+							}
+							move_to_saved_pos = true;
+//							command_parser("G0 Z0. X0.");
 						} else {
+							move_to_saved_pos = false;
 							cb_push_back_item(&task_cb,&record_task);
+							
 							init_gp.Z = record_task.z_direction == zdir_backward ? -fixedpt_fromint2210(record_task.dz) : fixedpt_fromint2210(record_task.dz); 
 						}
 						break;
-					case '4': // fast feed to start position
+					case '4': // fast feed to start position '!4'
 						command_parser("G0 Z0. X0.");
 //						cb_push_back_item(&task_cb,&homing_task);
 						break;
-					case 'S': // stop current move
+					case 'X': // stop current move '!X'
+					case 'S': // stop current move  '!S'
 						__disable_irq();
-						init_gp.Z = state_hw.global_Z_pos;
-						if(init_gp.Z > 0){
-							init_gp.Z += 50;
+						
+						if(state_hw.current_task_ref->steps_to_end > 50){
+							state_hw.current_task_ref->steps_to_end = 50;
+							((substep_t *)substep_cb.tail)->skip = 50;//some steps to slow down and stop
 						} else {
-							init_gp.Z -= 50;
-						}					
-						state_hw.current_task_ref->steps_to_end = 50;
-						substep_cb.count = substep_cb.count2 = 0;
-						((substep_t *)substep_cb.tail)->skip = 50;//some steps to slow down and stop
-//						substep->skip = 50; //some steps to slow down and stop
+							((substep_t *)substep_cb.tail)->skip = state_hw.current_task_ref->steps_to_end;//some steps to slow down and stop
+							skip = state_hw.current_task_ref->steps_to_end;
+						}
 						__enable_irq();
+
+						init_gp.Z = fixedpt_fromint2210(state_hw.global_Z_pos);
+						init_gp.X = fixedpt_fromint2210(state_hw.global_X_pos);
+						
+						skip *= 1024;
+						if(state_hw.substep_axis == SUBSTEP_AXIS_X){
+							if(init_gp.Z > 0){
+								init_gp.Z += skip;
+							} else if(init_gp.Z < 0)  {
+								init_gp.Z -= skip;
+							}
+						} else {
+							if(init_gp.X > 0){
+								init_gp.X += skip;
+							} else if(init_gp.X < 0)  {
+								init_gp.X -= skip;
+							}
+						}
+
+						substep_cb.count = substep_cb.count2 = 0;
+						substep_cb.top = substep_cb.head = substep_cb.tail2 = substep_cb.tail;
 						sendResponce((uint32_t)"ok\r\n",4);
 						break;
-					case '5': // reset record
-						break;
-
-					case '6': // pause
-						break;
-					case '7': // continue
-						break;
-					case '0': { // reqest info{ 
+					case '0': { // reqest info{  '!0'
 						char info[14];
 						memcpy(info,"1.80;",5); //version
-						ui64toa(state_hw.global_Z_pos,&info[5]);
+						ui64toa(state_hw.global_Z_pos,(uint8_t *)&info[5]);
 						info[11] = ';';
 						info[12] = '\r';
 						info[13] = '\n';
@@ -618,7 +641,7 @@ const char * ga1[] = {
 					}
 
 					
-					case 'B': {// left correction small(Back)
+					case 'B': {// left correction small(Back) '!B' todo refactor
 						//switch to manual pulse generation
 						uint32_t pin_dir = LL_GPIO_IsOutputPinSet(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
 						if(pin_dir != zdir_backward){ // change DIR
@@ -641,7 +664,7 @@ const char * ga1[] = {
 						LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 						break;
 					}
-					case 'F': {// right correction small(Front)
+					case 'F': {// right correction small '!F' todo refactor
 						//switch to manual pulse generation
 						uint32_t pin_dir = LL_GPIO_IsOutputPinSet(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
 						if(pin_dir != zdir_forward){ // change DIR
@@ -664,59 +687,46 @@ const char * ga1[] = {
 					// JOG1:
 					//X axis
 					// X jog is allowed only when no active job on this axis is performed
-					case 'x': {// go forward by 1 step
+					case 'w': {// go forward by 1 step '!w'
 						if(state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1)){
-//							if(state_hw.current_task_ref->x_direction == xdir_backward){
-							XDIR = xdir_forward;						
-//							}
-							
-							state_hw.global_X_pos++;
-							state_hw.jog_pulse = true;
-							TIM1->CCR1	= 1;
-							TIM1->ARR 	= 46;//min_pulse + 1;
-							TIM1->SR = 0;
-							LL_TIM_EnableCounter(TIM1);
-						}
-						break;
-					}
-					case 'X': {// go backward by 1 step
-						if(state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1)){
-							XDIR = xdir_backward;						
+							XDIR = xdir_forward;
 							state_hw.global_X_pos--;
-							state_hw.jog_pulse = true;
-							TIM1->CCR1	= 1;
-							TIM1->ARR 	= 46;//min_pulse + 1;
-							TIM1->SR = 0;
-							LL_TIM_EnableCounter(TIM1);
+							record_X--;
+							jog_pulse(0);
 						}
 						break;
 					}
-					case 'l': {// left small
-						int from_Z = init_gp.Z;
-					// get current Z position - 0.1mm
-						init_gp.Z -= jog_Z_01_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
-						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+					case 's': {// go backward by 1 step '!s'
+						if(state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1)){
+							XDIR = xdir_backward;
+							state_hw.global_X_pos++;
+							record_X++;
+							jog_pulse(0);
+						}
 						break;
 					}
-					case 'L': {// left big
+					case 'a': {// left small '!a'
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
-						init_gp.Z -= jog_Z_10_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
-						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
-						break;
-					}					
-					case 'r': {// right small
-						int from_Z = init_gp.Z;
-					// get current Z position - 0.1mm
-						init_gp.Z += jog_Z_01_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
-						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+						if(state_hw.G90G91 == G90mode) {
+							init_gp.Z -= jog_Z_01_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
+							G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+						} else {
+							G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, 0, -jog_Z_01_2210,  0, G00code);
+							record_Z -= jog_Z_01_2210 / 1024;
+						}
 						break;
 					}
-					case 'R': {// right big
+					case 'd': {// right small '!d'
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
-						init_gp.Z += jog_Z_10_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
-						G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+						if(state_hw.G90G91 == G90mode) {
+							init_gp.Z += jog_Z_01_2210; // 0,1mm*z_steps_unit/z_screw_pitch and convert to 2210=0,1*400/2*1024=20480 todo need some functions to convert units
+							G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, init_gp.X, init_gp.Z,  init_gp.Xr, G00code);
+						} else {
+							G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, 0, jog_Z_01_2210,  0, G00code);
+							record_Z += jog_Z_01_2210 / 1024;
+						}
 						break;
 					}
 				}
@@ -1019,11 +1029,11 @@ static void MX_TIM3_Init(void)
   TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH2, &TIM_OC_InitStruct);
   LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH2);
-  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH3);
+  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH4);
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
-  LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH3);
+  LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH4, &TIM_OC_InitStruct);
+  LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH4);
   LL_TIM_SetOnePulseMode(TIM3, LL_TIM_ONEPULSEMODE_SINGLE);
   LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
@@ -1056,54 +1066,25 @@ static void MX_TIM3_Init(void)
   /* USER CODE END TIM3_Init 2 */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
   /**TIM3 GPIO Configuration
-  PB0   ------> TIM3_CH3
+  PB1   ------> TIM3_CH4
   PB5   ------> TIM3_CH2
   */
-  GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin|MOTOR_Z_STEP_Pin;
+  GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  LL_GPIO_Init(MOTOR_X_STEP_GPIO_Port, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = MOTOR_Z_STEP_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  LL_GPIO_Init(MOTOR_Z_STEP_GPIO_Port, &GPIO_InitStruct);
 
   LL_GPIO_AF_RemapPartial_TIM3();
 
 }
 
-
-#ifndef _USEENCODER
-void spindle_emulator(void){
-  LL_TIM_InitTypeDef TIM_InitStruct = {0};
-  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
-  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
-
-  /* Peripheral clock enable */
-  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
-  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
-
-  /* TIM4 interrupt Init */
-  NVIC_SetPriority(TIM4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(TIM4_IRQn);
-
-	
-  TIM_InitStruct.Prescaler = 2399;
-  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 50;
-  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
-  LL_TIM_Init(TIM4, &TIM_InitStruct);
-  LL_TIM_EnableARRPreload(TIM4);
-  LL_TIM_SetClockSource(TIM4, LL_TIM_CLOCKSOURCE_INTERNAL);
-  LL_TIM_OC_EnablePreload(TIM4, LL_TIM_CHANNEL_CH1);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
-  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.CompareValue = 48;
-  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_LOW;
-  LL_TIM_OC_Init(TIM4, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
-  LL_TIM_OC_DisableFast(TIM4, LL_TIM_CHANNEL_CH1);
-  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
-  LL_TIM_EnableMasterSlaveMode(TIM4);
-}
-#endif
 
 /**
   * @brief TIM4 Initialization Function
@@ -1115,12 +1096,12 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE BEGIN TIM4_Init 0 */
 
-#ifndef _USEENCODER
+	#ifndef _USEENCODER
 	spindle_emulator();
 	return;
 #endif	
-	
-	
+
+
   /* USER CODE END TIM4_Init 0 */
 
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
@@ -1226,7 +1207,7 @@ static void MX_USART1_UART_Init(void)
   LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_4, LL_DMA_MDATAALIGN_BYTE);
 
   /* USART1 interrupt Init */
-  NVIC_SetPriority(USART1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 1));
+  NVIC_SetPriority(USART1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(USART1_IRQn);
 
   /* USER CODE BEGIN USART1_Init 1 */
@@ -1414,7 +1395,7 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_1|LL_GPIO_PIN_2|LL_GPIO_PIN_12|LL_GPIO_PIN_13
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_2|LL_GPIO_PIN_12|LL_GPIO_PIN_13
                           |LL_GPIO_PIN_14|LL_GPIO_PIN_15|LL_GPIO_PIN_9;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -1436,7 +1417,9 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
 /*
+
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*timIC)
 {
 	if (timIC->Channel == HAL_TIM_ACTIVE_CHANNEL_3) {
@@ -1447,7 +1430,56 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*timIC)
 //HAL_TIM_ReadCapturedValue(timIC,TIM_CHANNEL_3);
 }
 */
+
+#ifndef _USEENCODER
+void spindle_emulator(void){
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
+
+  /* TIM4 interrupt Init */
+  NVIC_SetPriority(TIM4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(TIM4_IRQn);
+
+	
+  TIM_InitStruct.Prescaler = 2399;
+  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+  TIM_InitStruct.Autoreload = 50;
+  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
+  LL_TIM_Init(TIM4, &TIM_InitStruct);
+  LL_TIM_EnableARRPreload(TIM4);
+  LL_TIM_SetClockSource(TIM4, LL_TIM_CLOCKSOURCE_INTERNAL);
+  LL_TIM_OC_EnablePreload(TIM4, LL_TIM_CHANNEL_CH1);
+  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
+  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.CompareValue = 48;
+  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_LOW;
+  LL_TIM_OC_Init(TIM4, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
+  LL_TIM_OC_DisableFast(TIM4, LL_TIM_CHANNEL_CH1);
+  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
+  LL_TIM_EnableMasterSlaveMode(TIM4);
+}
+#endif
+
+volatile int codeg = 0;
+void Error_Handler2(int code)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+	codeg = code;
+	/* User can add his own implementation to report the HAL error return state */
+	TIM1->CR1 = TIM2->CR1 = TIM3->CR1 = TIM4->CR1 = 0;
+	while (1) {
+	}
+  /* USER CODE END Error_Handler_ Debug */
+}
+
 /* USER CODE END 4 */
+
 
 /**
   * @brief  This function is executed in case of error occurrence.

@@ -191,7 +191,8 @@ __STATIC_INLINE void* cb_pop_front_ref(circular_buffer *cb){
         // handle error
     }
     void *ref = cb->tail; // get ref to stored value to return at the end and step to next
-    if(cb->tail == cb->tail2)
+//    if(cb->tail == cb->tail2)
+		if(cb->count2 >= cb->count)
 			cb->count2--;
     cb->tail = (char*)cb->tail + cb->sz;
     if(cb->tail == cb->buffer_end) // if reach the end go to head of buffer

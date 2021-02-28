@@ -174,6 +174,8 @@ typedef struct state_s
 	bool init;
 //	uint32_t steps_to_end;
 	int32_t global_Z_pos, global_X_pos;
+	int32_t initial_task_Z_pos, initial_task_X_pos;
+
 //	uint32_t end_pos;
 //	uint8_t ramp_step;
 	uint32_t Q824set; // feed rate
@@ -200,6 +202,7 @@ typedef struct state_s
 	bool task_lock;
 //	bool precalculate_end; // moved to task structure
 	int8_t gcode;
+	int8_t G90G91; // 0 - absolute distance mode, 1 - incremental distance mode
 	int8_t G94G95; // 0 - unit per min, 1 - unit per rev
 	int8_t G94G00tmp; // 0 - unit per min, 1 - unit per rev
 //	uint32_t substep_mask;
@@ -249,14 +252,14 @@ extern const THREAD_INFO Thread_Info[];
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void Error_Handler2(int);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
 #define min_pulse 145*5
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_X_STEP_Pin LL_GPIO_PIN_0
+#define MOTOR_X_STEP_Pin LL_GPIO_PIN_1
 #define MOTOR_X_STEP_GPIO_Port GPIOB
 #define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_12
 #define MOTOR_X_ENABLE_GPIO_Port GPIOA
@@ -466,7 +469,7 @@ void Error_Handler(void);
 #define LED_OFF()		LL_GPIO_SetOutputPin(  LED_GPIO_Port, LED_Pin)
 #define LED_ON()		LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin)
 
-#define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH3
+#define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH4
 #define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH2
 //#define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
 #define MOTOR_Z_AllowPulse()         LL_TIM_CC_EnableChannel(TIM3,MOTOR_Z_CHANNEL) //t3ccer[TIM_CCER_CC1E_Pos] = 1
@@ -481,7 +484,7 @@ void Error_Handler(void);
 //#define steps_per_unit_Z_2210   400<<10
 
 #define x_steps_unit	400
-#define x_screw_pitch	2.0f
+#define x_screw_pitch	4.0f
 
 #define x_screw_pulley 1//61 // used to transfer torque from stepper motor to screw with reduction
 #define x_motor_pulley 1//16 // used to transfer torque from stepper motor to screw with reduction
@@ -541,10 +544,10 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 ellipse_total_steps2210: total steps to finish full ellipse quadrant arc, 
 for a=1 and b=a*z_to_x_factor2210 total_steps = sqrt(1 + z_to_x_factor2210*z_to_x_factor2210)
 */
-#define ellipse_total_steps2210 6233
+#define ellipse_total_steps2210 1208
 
 
-#define z_to_x_ellipse_equator2210	6064 //a*a/b*b*sqrt(а*а+b*b)/(1+a*a/b*b), for a=1 and b=a*z_to_x_factor, equator = z_to_x_factor*z_to_x_factor*sqrt(1+z_to_x_factor*z_to_x_factor)/(1+z_to_x_factor*z_to_x_factor)
+#define z_to_x_ellipse_equator2210	339 //a*a/b*b*sqrt(а*а+b*b)/(1+a*a/b*b), for a=1 and b=a*z_to_x_factor, equator = z_to_x_factor*z_to_x_factor*sqrt(1+z_to_x_factor*z_to_x_factor)/(1+z_to_x_factor*z_to_x_factor)
 /*
 z_to_x_ellipse_equator2210: под экватором подразумевается точка, в которой дуга квадранта эллипса меняет основную ось, 
 по которой идет основной шаг. что имеется ввиду: 
@@ -599,6 +602,9 @@ r*3,14/2/(Пп()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
 #define feed_direction_left         0 // from right to left
 #define feed_direction_right        1 // from left to right
 
+
+#define G90mode 0
+#define G91mode 1
 
 
 #define G94code 94

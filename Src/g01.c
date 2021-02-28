@@ -4,7 +4,7 @@
 #include "math.h"
 
 
-
+uint32_t steps_to_end_shadow =0;
 void G01init_callback_precalculate(state_t* s){
 	if(s->current_task_ref->dz > s->current_task_ref->dx){
 		s->current_task_ref->steps_to_end = s->current_task_ref->dz;
@@ -15,6 +15,10 @@ void G01init_callback_precalculate(state_t* s){
 		s->err = s->current_task_ref->dx >> 1;
 		s->substep_axis = SUBSTEP_AXIS_Z;
 	}
+	steps_to_end_shadow = s->current_task_ref->steps_to_end;
+
+	if(s->current_task_ref->steps_to_end > 100000)
+		Error_Handler2(3);
 	dxdz_callback_precalculate(s);
 //	s->current_task_ref->steps_to_end = 1; 
 }
@@ -24,6 +28,11 @@ int break5972 = 0;
 void dxdz_callback_precalculate(state_t* s){
 //	pcc++;
 //	s->precalculate_end = false;
+	if(s->current_task_ref->steps_to_end == 0)
+		Error_Handler2(5);
+
+	if(s->current_task_ref->steps_to_end > 100000)
+		Error_Handler2(4);
 
 	substep_t *sb = substep_cb.top;
 	int e2 = s->err;
@@ -56,8 +65,9 @@ void dxdz_callback_precalculate(state_t* s){
 		sb = substep_cb.top;
 		sb->skip++;
 	}
-	s->current_task_ref->steps_to_end--;
-	if(s->current_task_ref->steps_to_end == 0){
+//	s->current_task_ref->steps_to_end--;
+	steps_to_end_shadow--;
+	if(steps_to_end_shadow == 0){
 		s->current_task_ref->unlocked = true;
 	}
 }
@@ -105,6 +115,9 @@ void G00G01init_callback(state_t* s){
 
 	s->prescaler = s->syncbase->PSC;
 //	TIM3->CCER = 0;
+	s->initial_task_X_pos = s->global_X_pos; // save current position to return here if we decide to repeat last move
+	s->initial_task_Z_pos = s->global_Z_pos;
+
 	XDIR = s->current_task_ref->x_direction;
 	ZDIR = s->current_task_ref->z_direction;
 	if(s->current_task_ref->dz > s->current_task_ref->dx){
@@ -166,19 +179,37 @@ void G33parse(char *line){
 	}
 
 	int dx,dz, xdir,zdir;
-	if(gref->Z > z0){ // go from left to right
-		dz = gref->Z - z0;
-		zdir = zdir_forward;
-	} else { // go back from right to left
-		dz = z0 - gref->Z;
-		zdir = zdir_backward;
-	}
-	if(gref->X > x0){ // go forward
-		dx = gref->X - x0;
-		xdir = xdir_forward;
-	} else { // go back
-		dx = x0 - gref->X;
-		xdir = xdir_backward;
+/*	if(s->G90G91 == G91mode){ // incremental mode
+		if(gref->Z >= 0){ // go from left to right
+			dz = gref->Z;
+			zdir = zdir_forward;
+		} else { // go back from right to left
+			dz = - gref->Z;
+			zdir = zdir_backward;
+		}
+		if(gref->X >= 0){ // go backward
+			dx = gref->X;
+			xdir = xdir_backward;
+		} else { // go forward
+			dx = - gref->X;
+			xdir = xdir_forward;
+		}
+	}else 
+*/	{
+		if(gref->Z >= z0){ // go from left to right
+			dz = gref->Z - z0;
+			zdir = zdir_forward;
+		} else { // go back from right to left
+			dz = z0 - gref->Z;
+			zdir = zdir_backward;
+		}
+		if(gref->X >= x0){ // go backward
+			dx = gref->X - x0;
+			xdir = xdir_backward;
+		} else { // go forward
+			dx = x0 - gref->X;
+			xdir = xdir_forward;
+		}
 	}
 
 //	uint64_t il = (int64_t)(gref->Xr-x0r)*(gref->Xr-x0r)+(int64_t)dz*dz;
@@ -208,20 +239,23 @@ void G33parse(char *line){
 }
 
 void G01parse(char *line, bool G00G01){ //~60-70us
-	int x0 = init_gp.X 		& ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
+	int x0  = init_gp.X 	& ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
 	int x0r = init_gp.Xr 	& ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
-	int z0 = init_gp.Z 		& ~1uL<<(FIXEDPT_FBITS2210-1);
+	int z0  = init_gp.Z 	& ~1uL<<(FIXEDPT_FBITS2210-1);
 	state_t *s = &state_precalc;
 
 	G_pipeline_t *gref = G_parse(line);
 	if(s->init == false){
-		init_gp.X = gref->X;
-		init_gp.Z = gref->Z;
+		init_gp.X  = gref->X;
+		init_gp.Z  = gref->Z;
 		init_gp.Xr = gref->Xr;
 		s->init = true;
 		return;
 	}
-	
+	if(s->G90G91 == G91mode){
+		gref->X = gref->X - x0;
+		gref->Z = gref->Z - z0;
+	}
 	G01parsed(x0, x0r, z0, gref->F, gref->X, gref->Z,  gref->Xr, G00G01);
 //	gref->code = 1;
 }
@@ -229,21 +263,37 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G01){
 	state_t *s = &state_precalc;
 	int dx,dz, xdir,zdir;
-	if(Z > z0){ // go from left to right
-		dz = Z - z0;
-		zdir = zdir_forward;
-	} else { // go back from right to left
-		dz = z0 - Z;
-		zdir = zdir_backward;
+	if(s->G90G91 == G91mode){
+		if(Z >= 0){ // go from left to right
+			dz = Z;
+			zdir = zdir_forward;
+		} else { // go back from right to left
+			dz = -Z;
+			zdir = zdir_backward;
+		}
+		if(X >= 0){ // go backward(away from stock)
+			dx = X;
+			xdir = xdir_backward;
+		} else { // go forward(to center of stock)
+			dx = - X;
+			xdir = xdir_forward;
+		}
+	} else {
+		if(Z > z0){ // go from left to right
+			dz = Z - z0;
+			zdir = zdir_forward;
+		} else { // go back from right to left
+			dz = z0 - Z;
+			zdir = zdir_backward;
+		}
+		if(X > x0){ // go backward(away from stock)
+			dx = X - x0;
+			xdir = xdir_backward;
+		} else { // go forward(to center of stock)
+			dx = x0 - X;
+			xdir = xdir_forward;
+		}
 	}
-	if(X > x0){ // go forward
-		dx = X - x0;
-		xdir = xdir_forward;
-	} else { // go back
-		dx = x0 - X;
-		xdir = xdir_backward;
-	}
-
 	G_task_t *prev_task = get_last_task();
 	G_task_t *gt_new_task = 0;
 	gt_new_task = add_empty_task();
@@ -255,7 +305,10 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 		// пересчет подачи по длине линии как в коде ниже для G94
 	} else { 											// unit(mm) per min
 		if(G00G01 == G00code){
-			gt_new_task->F = 8<<16; //4285pps
+			if(dx == 0)
+				gt_new_task->F = 10<<16; //4285pps
+			else
+				gt_new_task->F = 20<<16;
 		} else {
 			// вычисляем длину линии как корень квадратный от суммы квадратов катетов. на этом шаге вычисляем сумму квадратов катетов:
 			uint64_t il = (int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;

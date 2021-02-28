@@ -66,6 +66,7 @@ void do_fsm_move_end2(state_t* );
 void load_next_task(state_t* s);
 
 
+extern uint32_t steps_to_end_shadow; // костыль
 extern substep_t substep_delay[];
 substep_t* cb_push_back_empty_ref(void);
 

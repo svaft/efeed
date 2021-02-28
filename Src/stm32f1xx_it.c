@@ -144,7 +144,7 @@ void DMA1_Channel4_IRQHandler(void)
 
   /* USER CODE END DMA1_Channel4_IRQn 1 */
 }
-
+int breakbig =0;
 /**
   * @brief This function handles TIM1 update interrupt.
   */
@@ -155,14 +155,17 @@ void TIM1_UP_IRQHandler(void)
 	TIM1->SR = 0;
 	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_off;
 	if(!state_hw.jog_pulse){
-		if(state_hw.current_task_ref->steps_to_end == 0){
+		if(state_hw.current_task_ref->steps_to_end == 0 ){
 			state_hw.task_lock = false; // unlock task processor to load next task
 			if(task_cb.count == 0){
 				do_fsm_move_end2(&state_hw);
 	//			return;
 			}
 	//		load_next_task(&state_hw);
-		}
+		} 
+//		else if (state_hw.current_task_ref->steps_to_end > 4294964598) {
+//			breakbig = 1;
+//		}
 	} else {
 		state_hw.jog_pulse = false;
 	}
@@ -208,7 +211,7 @@ void TIM2_IRQHandler(void)
 //  }
   /* USER CODE END TIM2_IRQn 1 */
 }
-
+int break11 = 0 ;
 /**
   * @brief This function handles TIM3 global interrupt.
   */
@@ -220,13 +223,18 @@ void TIM3_IRQHandler(void)
 	if(state_hw.current_task_ref->callback_ref){
 		state_hw.current_task_ref->callback_ref(&state_hw);
 	}
-	if(state_hw.current_task_ref->steps_to_end == 0 && !LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
-		state_hw.task_lock = false; // unlock task processor to load next task
-		if(task_cb.count == 0){
-			do_fsm_move_end2(&state_hw);
-//			return;
+	if(state_hw.current_task_ref->steps_to_end == 0){
+		break11 = 1;
+		if(!LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
+			state_hw.task_lock = false; // unlock task processor to load next task
+			if(task_cb.count == 0){
+				do_fsm_move_end2(&state_hw);
+	//			return;
+			}
+	//		load_next_task(&state_hw);
+		} else {
+			break11 = 2;
 		}
-//		load_next_task(&state_hw);
 	}
 
   /* USER CODE END TIM3_IRQn 0 */

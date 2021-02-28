@@ -84,6 +84,16 @@ substep_t* cb_push_back_empty_ref(void){
 uint32_t current_step = 0;
 int break1 = 0;
 
+
+void jog_pulse(int delay){
+	state_hw.jog_pulse = true;
+	TIM1->CCR1	= delay + 1;
+	TIM1->ARR 	= delay + 46;//min_pulse + 1;
+	TIM1->SR = 0;
+	if(LL_TIM_IsEnabledCounter(TIM1))
+		Error_Handler2(10); // some error?
+	LL_TIM_EnableCounter(TIM1);
+}
 /**
 * @brief  Extract new task from queue and start to process it
 * @retval void.
@@ -118,6 +128,25 @@ void load_next_task(state_t* s){
 }
 
 
+void G90init_callback_precalculate(state_t* s){
+	s->G90G91 = G90mode;
+	s->current_task_ref->unlocked = true;
+}
+void G90(state_t* s){
+	s->G90G91 = G90mode;
+	s->task_lock = false; // all processing is done here so unlock task to next
+}
+void G91init_callback_precalculate(state_t* s){
+	s->G90G91 = G91mode;
+	s->current_task_ref->unlocked = true;
+}
+void G91(state_t* s){
+	s->G90G91 = G91mode;
+	s->task_lock = false; // all processing is done here so unlock task to next
+}
+
+
+
 void G94init_callback_precalculate(state_t* s){
 	s->G94G95 = G94code;
 	s->current_task_ref->unlocked = true;
@@ -127,7 +156,6 @@ int sta = 0;
 void switch_to_async(state_t* s){
   LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR0);
-
 
 // unattach sync master TIM4 from slave	
   LL_TIM_DisableMasterSlaveMode(TIM4);
@@ -140,7 +168,6 @@ void switch_to_async(state_t* s){
 
   LL_TIM_EnableMasterSlaveMode(TIM2);
   LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_UPDATE);
-
 
 // calibrate timer delay
 //	LL_TIM_DisableUpdateEvent(TIM2);
@@ -294,23 +321,24 @@ void do_fsm_move2(state_t* s){
 	substep_t *sb = substep_cb.tail; //get ref to current substep
 
 	if(s->substep_axis == SUBSTEP_AXIS_X){
-		s->current_task_ref->z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;//учесть изменения по X, и менять местами при смене substep
-		if(sb->skip ==0) s->current_task_ref->x_direction == 0 ? s->global_X_pos++ : s->global_X_pos--;
+		s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;//учесть изменения по X, и менять местами при смене substep
+		if(sb->skip ==0) s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
 	}	else {
-		s->current_task_ref->x_direction == 0 ? s->global_X_pos++ : s->global_X_pos--;//учесть изменения по X, и менять местами при смене substep
-		if(sb->skip ==0) s->current_task_ref->z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
+		s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;//учесть изменения по X, и менять местами при смене substep
+		if(sb->skip ==0) s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
 	}
 	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 		delay >>=4;
 		if(delay>65500)
 			Error_Handler(); // owerflow error, enlarge tim1 prescaler, timer1 is too fast
-			
+
+		//jog_pulse(delay);	
 		TIM1->CCR1	= delay + 1;
 		TIM1->ARR 	= delay + 46;//min_pulse + 1;
 		TIM1->SR = 0;
-		if(LL_TIM_IsEnabledCounter(TIM1))
-			Error_Handler(); // some error?
+//		if(LL_TIM_IsEnabledCounter(TIM1))
+	//		Error_Handler(); // some error?
 		LL_TIM_EnableCounter(TIM1);
 		cb_pop_front_ref(&substep_cb); 		// timer to substep pulse started, move substep ref to next value in circular buffer to get in on next iteration
 	} else { 														// substep contain packed value of skipped steps, continue to skip steps until skip = 0
@@ -334,7 +362,7 @@ void do_fsm_move2(state_t* s){
 }
 
 void do_fsm_move33(state_t* s){
-	s->current_task_ref->z_direction == 0 ? s->global_Z_pos++ : s->global_Z_pos--;
+	s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
 	move_cnt++;
 //	if(move_cnt>460 && move_cnt<470) 
 //		break1 = 1;
@@ -344,12 +372,13 @@ void do_fsm_move33(state_t* s){
 		delay >>=4;
 		if(delay>65500)
 			Error_Handler(); // owerflow error, enlarge tim1 prescaler, timer1 is too fast
-			
+		
+		//jog_pulse(delay);		
 		TIM1->CCR1	= delay + 1;
 		TIM1->ARR 	= delay + 46;//min_pulse + 1;
 		TIM1->SR = 0;
-		if(LL_TIM_IsEnabledCounter(TIM1))
-			Error_Handler(); // some error?
+//		if(LL_TIM_IsEnabledCounter(TIM1))
+		//	Error_Handler(); // some error?
 		LL_TIM_EnableCounter(TIM1);
 		cb_pop_front_ref(&substep_cb); 		// timer to substep pulse started, move substep ref to next value in circular buffer to get in on next iteration
 	} else { 														// substep contain packed value of skipped steps, continue to skip steps until skip = 0
@@ -431,6 +460,14 @@ void command_parser(char *line){
 						G04parse(line+char_counter);
 						break;
 					case 90*steps_per_unit_Z_2210: //G90  absolute distance mode
+						g_task = add_empty_task();
+						g_task->init_callback_ref = G90;
+						g_task->precalculate_init_callback_ref = G90init_callback_precalculate;
+						break;
+					case 91*steps_per_unit_Z_2210: //G91  incremental distance mode
+						g_task = add_empty_task();
+						g_task->init_callback_ref = G91;
+						g_task->precalculate_init_callback_ref = G91init_callback_precalculate;
 						break;
 					case 94*steps_per_unit_Z_2210: //G94 Units per Minute Mode
 //						s->G94G95 = 0;

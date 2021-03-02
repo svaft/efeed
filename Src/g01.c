@@ -166,7 +166,7 @@ void dxdz_callback(state_t* s){
 
 void G33parse(char *line){
 	int x0 =  init_gp.X  & ~1uL<<(FIXEDPT_FBITS2210-1); //округляем предыдущее значение до целого числа шагов
-	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
+//	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
 	int z0 =  init_gp.Z  & ~1uL<<(FIXEDPT_FBITS2210-1);
 	state_t *s = &state_precalc;
 
@@ -259,6 +259,101 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	G01parsed(x0, x0r, z0, gref->F, gref->X, gref->Z,  gref->Xr, G00G01);
 //	gref->code = 1;
 }
+
+void scheduleG00G01move(int X, int Z, int F, bool G00G01){
+/* make G00 or G01 move from current pos to X,Z position with provided feed F. If feed = -1 move with G00, 
+	if zero - move with previous feed speed
+*/
+//	if(feed == 0);
+	state_t *s = &state_precalc;
+	int dx,dz, xdir,zdir;
+	int z0 = s->task_destination_Z_pos, x0 = s->task_destination_X_pos;
+	if(s->G90G91 == G91mode){
+		if(Z >= 0){ // go from left to right
+			dz = Z;
+			zdir = zdir_forward;
+		} else { // go back from right to left
+			dz = -Z;
+			zdir = zdir_backward;
+		}
+		if(X >= 0){ // go backward(away from stock)
+			dx = X;
+			xdir = xdir_backward;
+		} else { // go forward(to center of stock)
+			dx = - X;
+			xdir = xdir_forward;
+		}
+	} else {
+		if(Z > s->task_destination_Z_pos){ // go from left to right
+			dz = Z - z0;
+			zdir = zdir_forward;
+		} else { // go back from right to left
+			dz = z0 - Z;
+			zdir = zdir_backward;
+		}
+		if(X > x0){ // go backward(away from stock)
+			dx = X - x0;
+			xdir = xdir_backward;
+		} else { // go forward(to center of stock)
+			dx = x0 - X;
+			xdir = xdir_forward;
+		}
+	}
+	G_task_t *prev_task = get_last_task();
+	G_task_t *gt_new_task = 0;
+	gt_new_task = add_empty_task();
+
+
+//	bool G00G01
+//		bool G94G95; // 0 - unit per min, 1 - unit per rev
+ 	if(s->G94G95 == G95code && G00G01 == G01code){ 	// unit(mm) per rev
+		gt_new_task->F = str_f824mm_rev_to_delay824(F); //todo inch support
+		// пересчет подачи по длине линии как в коде ниже для G94
+	} else { 											// unit(mm) per min
+		if(G00G01 == G00code){
+			if(dx == 0)
+				gt_new_task->F = 10<<16; //4285pps
+			else
+				gt_new_task->F = 20<<16;
+		} else {
+			// вычисляем длину линии как корень квадратный от суммы квадратов катетов. на этом шаге вычисляем сумму квадратов катетов:
+			uint64_t il = 0; //(int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;
+			gt_new_task->len_f = sqrtf(il); // получили длину отрезка в условных единицах
+			uint32_t len = gt_new_task->len_f; //
+			/* далее производим пересчет скорости подачи в проекции на основную ось, 
+			по которой идет отсчет шагов по алгоритму Брезенхэма. 
+			Так, для прямой длина линччии её проекция будет равна длине линии, а для 
+			линии по углом 45 градусов ее проекция будет в 1.41меньше, соответственно для сохранения постоянной
+			скорости подачи исходная величина F должна быть скорректирована	*/
+			uint32_t ff = (async_steps_factor * (len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
+			float f1 = ff;
+			float f2 = F;
+			float f3 = f1 / f2;
+			fixedptu f = f3;
+			gt_new_task->F = f << 16; // translate to 16.16 format used for delays
+		}
+	}
+
+	gt_new_task->stepper = true;
+	gt_new_task->callback_ref = dxdz_callback;
+	gt_new_task->dx =  fixedpt_toint2210(dx);
+	gt_new_task->dz =  fixedpt_toint2210(dz);
+
+//	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
+	gt_new_task->x_direction = xdir;
+	gt_new_task->z_direction = zdir;
+
+	if(prev_task->stepper == true && prev_task->z_direction == zdir){
+		prev_task->skiprampdown = true;
+	}
+	if(G00G01 == G00code)	
+		gt_new_task->init_callback_ref = G00init_callback;
+	else
+		gt_new_task->init_callback_ref = G01init_callback;
+	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
+	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
+}
+
 
 void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G01){
 	state_t *s = &state_precalc;

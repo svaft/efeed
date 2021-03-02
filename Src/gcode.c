@@ -274,25 +274,34 @@ void do_fsm_move_start2(state_t* s){
 	LL_TIM_EnableARRPreload(s->syncbase);
 
 
-	LL_TIM_ClearFlag_UPDATE(s->syncbase);
-	LL_TIM_EnableUpdateEvent(s->syncbase);
-	LL_TIM_EnableCounter(s->syncbase);
-	
+	#define _USEENCODER
 	#ifdef _USEENCODER // wait tacho only when HW encoder is used, in software emu mode this is not necessary, we start immediately
 	if(s->syncbase == TIM4){ // if sync wait for tacho event and continue. While waiting disable stepper motors to correct position manually if needed
-		LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
-		LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
+//		LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+//		LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
+		LL_TIM_ClearFlag_UPDATE(s->syncbase);
+//		LL_TIM_EnableUpdateEvent(s->syncbase);
+		LL_TIM_EnableCounter(s->syncbase);
 
 		LL_TIM_DisableUpdateEvent(s->syncbase);
 		LL_TIM_ClearFlag_CC3(s->syncbase);
 		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
-		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase)) //wait tacho to sync move 
-			LL_mDelay(1);
+		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase)); //wait tacho to sync move 
+//			LL_mDelay(1);
 		LL_TIM_EnableUpdateEvent(s->syncbase);
 		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
-		LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
-		LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
+//		LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+//		LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
+	} else {
+		LL_TIM_ClearFlag_UPDATE(s->syncbase);
+		LL_TIM_EnableUpdateEvent(s->syncbase);
+		LL_TIM_EnableCounter(s->syncbase);
 	}
+	#else 
+	LL_TIM_ClearFlag_UPDATE(s->syncbase);
+	LL_TIM_EnableUpdateEvent(s->syncbase);
+	LL_TIM_EnableCounter(s->syncbase);
+	
 	#endif
 	
 	

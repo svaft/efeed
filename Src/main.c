@@ -245,7 +245,7 @@ int main(void)
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
-//	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 	
 	#ifdef _USEENCODER
 	int preload = 3;//LOOP_COUNT;
@@ -255,6 +255,7 @@ int main(void)
 
 const char * ga1[] = {
 	#ifdef _USEENCODER
+	"G91",
 	"G95",
 	"G0 X0. Z0.",
 	"G0 X1",

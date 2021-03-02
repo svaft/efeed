@@ -175,6 +175,7 @@ typedef struct state_s
 //	uint32_t steps_to_end;
 	int32_t global_Z_pos, global_X_pos;
 	int32_t initial_task_Z_pos, initial_task_X_pos;
+	int32_t task_destination_Z_pos, task_destination_X_pos;
 
 //	uint32_t end_pos;
 //	uint8_t ramp_step;

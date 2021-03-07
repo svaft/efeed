@@ -218,7 +218,7 @@
         <Ww>
           <count>12</count>
           <WinNumber>1</WinNumber>
-          <ItemText>state_hw.initial_task_Z_pos,0x0A</ItemText>
+          <ItemText>((substep_t *)substep_cb.tail)</ItemText>
         </Ww>
         <Ww>
           <count>13</count>
@@ -228,7 +228,7 @@
         <Ww>
           <count>14</count>
           <WinNumber>1</WinNumber>
-          <ItemText>abs_X,0x0A</ItemText>
+          <ItemText>init_gp.X,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>15</count>
@@ -243,155 +243,130 @@
         <Ww>
           <count>17</count>
           <WinNumber>1</WinNumber>
-          <ItemText>state_precalc</ItemText>
+          <ItemText>state_hw.current_task_ref-&gt;steps_to_end,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>18</count>
           <WinNumber>1</WinNumber>
-          <ItemText>state_precalc.current_task_ref</ItemText>
+          <ItemText>d_cnt,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>19</count>
           <WinNumber>1</WinNumber>
-          <ItemText>s</ItemText>
+          <ItemText>ss,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>20</count>
           <WinNumber>1</WinNumber>
-          <ItemText>directSum,0x0A</ItemText>
+          <ItemText>record_task</ItemText>
         </Ww>
         <Ww>
           <count>21</count>
           <WinNumber>1</WinNumber>
-          <ItemText>avgSum,0x0A</ItemText>
+          <ItemText>(substep_t *)substep_cb.tail</ItemText>
         </Ww>
         <Ww>
           <count>22</count>
           <WinNumber>1</WinNumber>
-          <ItemText>subdelay_x,0x0A</ItemText>
+          <ItemText>substep_delay</ItemText>
         </Ww>
         <Ww>
           <count>23</count>
           <WinNumber>1</WinNumber>
-          <ItemText>substep_delay</ItemText>
+          <ItemText>substep_cb,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>24</count>
           <WinNumber>1</WinNumber>
-          <ItemText>substep_cb,0x0A</ItemText>
+          <ItemText>rised2</ItemText>
         </Ww>
         <Ww>
           <count>25</count>
           <WinNumber>1</WinNumber>
-          <ItemText>jog_Z_01_2210</ItemText>
+          <ItemText>sb</ItemText>
         </Ww>
         <Ww>
           <count>26</count>
           <WinNumber>1</WinNumber>
-          <ItemText>sb</ItemText>
+          <ItemText>smaNumbers</ItemText>
         </Ww>
         <Ww>
           <count>27</count>
           <WinNumber>1</WinNumber>
-          <ItemText>smaNumbers</ItemText>
+          <ItemText>&amp;sma_cb.top</ItemText>
         </Ww>
         <Ww>
           <count>28</count>
           <WinNumber>1</WinNumber>
-          <ItemText>&amp;sma_cb.top</ItemText>
+          <ItemText>init_gp</ItemText>
         </Ww>
         <Ww>
           <count>29</count>
           <WinNumber>1</WinNumber>
-          <ItemText>init_gp</ItemText>
+          <ItemText>gt_new_task,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>30</count>
           <WinNumber>1</WinNumber>
-          <ItemText>gt_new_task,0x0A</ItemText>
+          <ItemText>current_step,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>31</count>
           <WinNumber>1</WinNumber>
-          <ItemText>sma_substep_cb</ItemText>
+          <ItemText>\\efeed\../Src/nuts_bolts.c\substep_cb.sz</ItemText>
         </Ww>
         <Ww>
           <count>32</count>
           <WinNumber>1</WinNumber>
-          <ItemText>smaSubstepRefs</ItemText>
+          <ItemText>pBufferReadyForReception</ItemText>
         </Ww>
         <Ww>
           <count>33</count>
           <WinNumber>1</WinNumber>
-          <ItemText>sma_substep_cb.head</ItemText>
+          <ItemText>\\efeed\../Src/nuts_bolts.c\task_cb</ItemText>
         </Ww>
         <Ww>
           <count>34</count>
           <WinNumber>1</WinNumber>
-          <ItemText>sb</ItemText>
+          <ItemText>aRXBuffer[1]</ItemText>
         </Ww>
         <Ww>
           <count>35</count>
           <WinNumber>1</WinNumber>
-          <ItemText>current_step,0x0A</ItemText>
+          <ItemText>aRXBuffer</ItemText>
         </Ww>
         <Ww>
           <count>36</count>
           <WinNumber>1</WinNumber>
-          <ItemText>\\efeed\../Src/nuts_bolts.c\substep_cb.sz</ItemText>
+          <ItemText>ramp_pos,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>37</count>
           <WinNumber>1</WinNumber>
-          <ItemText>pBufferReadyForReception</ItemText>
+          <ItemText>aRXBuffer</ItemText>
         </Ww>
         <Ww>
           <count>38</count>
           <WinNumber>1</WinNumber>
-          <ItemText>\\efeed\../Src/nuts_bolts.c\task_cb</ItemText>
+          <ItemText>\\efeed\../Src/gcode.c\init_gp,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>39</count>
           <WinNumber>1</WinNumber>
-          <ItemText>aRXBuffer[1]</ItemText>
+          <ItemText>debugnext,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>40</count>
           <WinNumber>1</WinNumber>
-          <ItemText>aRXBuffer</ItemText>
+          <ItemText>\\efeed\../Src/gcode.c\smaNumbers</ItemText>
         </Ww>
         <Ww>
           <count>41</count>
           <WinNumber>1</WinNumber>
-          <ItemText>ramp_pos,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>42</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>aRXBuffer</ItemText>
-        </Ww>
-        <Ww>
-          <count>43</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>\\efeed\../Src/gcode.c\init_gp,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>44</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>debugnext,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>45</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>\\efeed\../Src/gcode.c\smaNumbers</ItemText>
-        </Ww>
-        <Ww>
-          <count>46</count>
-          <WinNumber>1</WinNumber>
           <ItemText>state_hw.global_Z_pos</ItemText>
         </Ww>
         <Ww>
-          <count>47</count>
+          <count>42</count>
           <WinNumber>1</WinNumber>
           <ItemText>state_hw.global_Z_pos</ItemText>
         </Ww>

@@ -193,6 +193,64 @@ void PrintInfo(uint8_t *String, uint32_t Size)
 }
 
 
+
+
+
+void trim_substep(){
+	uint32_t skip = 50;
+	if(state_hw.current_task_ref->steps_to_end > 50){
+		state_hw.current_task_ref->steps_to_end = 50;
+	} else {
+		skip = state_hw.current_task_ref->steps_to_end;
+	}
+	int local_Z = state_hw.global_Z_pos;
+	int local_X = state_hw.global_X_pos;
+//	init_gp.Z = state_hw.global_Z_pos;
+//	init_gp.X = state_hw.global_X_pos;
+	
+	substep_t *tmp_head = (substep_t *)substep_cb.tail;
+	int32_t ss_cnt = 0, ss_count = 0, substep_cnt = 0;
+
+	while(ss_cnt < skip){
+	//	ss[d_cnt++]=tmp_head->skip;
+		ss_cnt += tmp_head->skip;
+		if(tmp_head->delay > 0){
+			substep_cnt++;
+			ss_cnt++;
+		}
+		if(ss_cnt < skip){
+			ss_count++;
+			if(++tmp_head == substep_cb.buffer_end)
+				tmp_head = substep_cb.buffer;
+		}
+	}
+	if(ss_cnt > skip ){
+		tmp_head->skip = skip - (ss_cnt - tmp_head->skip);
+	}
+
+	substep_cb.count = substep_cb.count2 = ss_count;
+	substep_cb.head = tmp_head;
+
+	if(state_hw.substep_axis == SUBSTEP_AXIS_X){
+		if(local_Z > 0){
+			local_Z += skip;
+		} else if(local_Z < 0)  {
+			local_Z -= skip;
+		}
+		local_X += state_hw.current_task_ref->x_direction == xdir_backward ? substep_cnt : -substep_cnt;
+
+	} else {
+		if(local_X > 0){
+			local_X += skip;
+		} else if(local_X < 0)  {
+			local_X -= skip;
+		}
+		local_Z += state_hw.current_task_ref->z_direction == xdir_forward ? substep_cnt : -substep_cnt;
+	}
+	init_gp.Z = fixedpt_fromint2210(local_Z);
+	init_gp.X = fixedpt_fromint2210(local_X);
+}
+
 /**
   * @brief  Function called from USART IRQ Handler when RXNE flag is set
   *         Function is in charge of reading character received on USART RX line.
@@ -223,7 +281,11 @@ void USART_CharReception_Callback(void)
 	}
 }
 int aa;
-	char str1[64];
+substep_t *tmp_headg;
+uint8_t ss[100];
+						int d_cnt = 0;
+bool rised2;
+char str1[64];
 //#define _USEENCODER
 /* USER CODE END 0 */
 
@@ -245,12 +307,12 @@ int main(void)
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
-	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+//	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 	
 	#ifdef _USEENCODER
 	int preload = 3;//LOOP_COUNT;
 	#else
-	int preload = 4;//LOOP_COUNT;
+	int preload = 3;//LOOP_COUNT;
 	#endif	
 
 const char * ga1[] = {
@@ -258,7 +320,7 @@ const char * ga1[] = {
 	"G91",
 	"G95",
 	"G0 X0. Z0.",
-	"G0 X1",
+	"G0 Z10",
 	"G94",
 	"G1 Z-10 F600", //F900",
 	"G0 Z200",
@@ -267,8 +329,11 @@ const char * ga1[] = {
 	#else
 	"G91",
 	"G94",
-	"G0 X0. Z0.",
-	"G0 Z10 X10",
+//	"G76 P0.05 Z-1 I-.075 J0.008 K0.045 Q29.5 L2 E0.045",
+//	"G76 P2. Z-50. I-8.209 J0.25 K2. R2. Q29.5 H0. E1. L0",
+
+//	"G0 X0. Z0.",
+	"G0 X1",
 //	"G0 X10. Z0.",
 	"G1 Z-10 F600",
 //	"G1 Z-200 F0.5",
@@ -458,30 +523,6 @@ const char * ga1[] = {
 
 	LED_OFF();
 	while (1) {
-	if(debugnext == 1){
-		debugnext = 0;
-		if(debug_cmd == 0){
-			aRXBuffer[0] = 'G';
-			aRXBuffer[1] = '9';
-			aRXBuffer[2] = '4';
-			debug_cmd++;
-		} else {
-			aRXBuffer[0] = 'G';
-			aRXBuffer[1] = '0';
-			aRXBuffer[2] = '1';
-			aRXBuffer[3] = ' ';
-			aRXBuffer[4] = 'Z';
-			aRXBuffer[5] = '1';
-			aRXBuffer[6] = '1';
-			aRXBuffer[7] = ' ';
-			aRXBuffer[8] = 'F';
-			aRXBuffer[9] = '6';
-			aRXBuffer[10] = '0';
-			aRXBuffer[11] = '0';
-		}
-		ubUART3ReceptionComplete = 1;
-	}
-
 		// recalc substep delays
 		if(substep_cb.count < substep_cb.capacity  && state_precalc.current_task_ref){
 			// get pointer to last processed task
@@ -529,40 +570,69 @@ const char * ga1[] = {
 				uint32_t skip = 50;
 				switch(aRXBuffer[1]){
 					case '2': // save last comand  '!2'
+						while(state_hw.rised!=0);
 						LED_ON();
 						move_to_saved_pos = false;
 						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cycle
-						__disable_irq();
+//						__disable_irq();
 						memcpy(&record_task, state_hw.current_task_ref, task_cb.sz);
+						trim_substep();
+						
+					
+//						__enable_irq();
+
 						record_task.unlocked = false; // lock task to recalculate it again
 						// add X
+/*
 						if(record_task.steps_to_end > 50 ) {
 							record_task.dz -= (record_task.steps_to_end - 50);
 							record_task.steps_to_end = record_task.dz;
-							if(init_gp.Z > 0){
-								init_gp.Z = fixedpt_fromint2210(record_task.dz);
-							} else {
-								init_gp.Z = -fixedpt_fromint2210(record_task.dz);
-							}
 							state_hw.current_task_ref->steps_to_end = skip;
 						} else {
 							skip = record_task.steps_to_end;
 						}
-						substep_t *substep = (substep_t *)substep_cb.tail;
-						substep->skip = skip; //need some steps to slow down and stop
-						__enable_irq();
+*/
 						record_X = state_hw.initial_task_X_pos;
 						record_Z = state_hw.initial_task_Z_pos;
-						//reset substep_cb buffer:
-						substep_cb.count = substep_cb.count2 = 0;
-						substep_cb.top = substep_cb.head = substep_cb.tail2 = substep_cb.tail;
+
+						int local_Z = fixedpt_toint2210(init_gp.Z);
+						int local_X = fixedpt_toint2210(init_gp.X);
+
+
+						int back_dz = -(local_Z - record_Z);//record_task.z_direction ==zdir_forward ? -record_task.dz : record_task.dz;
+						int back_dx = -(local_X - record_X);//record_task.x_direction ==xdir_forward ? record_task.dx : -record_task.dx;
+						record_task.dz = abs(back_dz);
+						record_task.dx = abs(back_dx);
+						
+
+//						init_gp.Z = fixedpt_fromint2210( state_hw.initial_task_Z_pos - back_dz);
+//						init_gp.X = fixedpt_fromint2210( state_hw.initial_task_X_pos - back_dx);
+
+
+//						if (state_hw.current_task_ref->init_callback_ref == G33init_callback){
+						scheduleG00G01move(fixedpt_fromint2210(400), 0, 0, G00code);
+						scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
+						scheduleG00G01move(-400*1024, 0, 0, G00code);
+
+//								G01parsed(0,0,0,0,fixedpt_fromint2210(400),0,0,0);
+//								init_gp.X += fixedpt_fromint2210(400);
+//								G01parsed(0,0,0,0,0,fixedpt_fromint2210(record_task.dz),0,0);
+//								init_gp.Z += fixedpt_fromint2210(record_task.dz);
+//								G01parsed(0,0,0,0,-400*1024,0,0,0); // todo
+//								init_gp.X +=-400*1024;
+//						}
+							
 						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '3': //repeat last command '!3'
 						// команда 
 						if( abs(state_hw.global_X_pos - record_X) > 400 || abs(state_hw.global_Z_pos - record_Z) > 400 ){
-							init_gp.Z = state_hw.initial_task_Z_pos;
+//							init_gp.Z = state_hw.initial_task_Z_pos;
 							if(state_hw.G90G91 == G90mode){
+								scheduleG00G01move(
+									fixedpt_fromint2210(state_hw.initial_task_X_pos), 
+									fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
+/*
 								G01parsed(
 								fixedpt_fromint2210(state_hw.global_X_pos), 
 								fixedpt_fromint2210(state_hw.global_X_pos), 
@@ -572,66 +642,65 @@ const char * ga1[] = {
 								fixedpt_fromint2210(state_hw.initial_task_Z_pos),
 								fixedpt_fromint2210(state_hw.initial_task_X_pos),
 								0);
+								init_gp.X = fixedpt_fromint2210(state_hw.initial_task_X_pos);
+								init_gp.Z = fixedpt_fromint2210(state_hw.initial_task_Z_pos);*/
+								
 							} else {
+								scheduleG00G01move(
+									fixedptu_fromint2210(record_X) - init_gp.X, 
+									fixedptu_fromint2210(record_Z) - init_gp.Z, 0, G00code);
+								
+//								G01parsed(0,0,0,0,fixedpt_fromint2210(400),0,0,0);
+//								G01parsed(0,0,0,0,0,fixedpt_fromint2210(record_task.dz),0,0);
+//								G01parsed(0,0,0,0,-400*1024,0,0,0); // todo
+/*
 								int32_t abs_X = fixedpt_fromint2210( record_X - state_hw.global_X_pos );
 								G01parsed(0,0,0,0,
 								abs_X, 
 								fixedpt_fromint2210( record_Z - state_hw.global_Z_pos ),
 								abs_X,
 								0);
-							
+	*/						
 							}
+
+
 							move_to_saved_pos = true;
 //							command_parser("G0 Z0. X0.");
 						} else {
 							move_to_saved_pos = false;
 							cb_push_back_item(&task_cb,&record_task);
-							
-							init_gp.Z = record_task.z_direction == zdir_backward ? -fixedpt_fromint2210(record_task.dz) : fixedpt_fromint2210(record_task.dz); 
+							init_gp.Z += record_task.z_direction == zdir_backward ? -fixedpt_fromint2210(record_task.dz) : fixedpt_fromint2210(record_task.dz);
+							init_gp.X += record_task.x_direction == zdir_backward ? fixedpt_fromint2210(record_task.dx) : -fixedpt_fromint2210(record_task.dx);
+
+							int back_dz = record_task.z_direction ==zdir_forward ? -record_task.dz : record_task.dz;
+							int back_dx = record_task.x_direction ==xdir_forward ? record_task.dx : -record_task.dx;
+
+							scheduleG00G01move(fixedpt_fromint2210(400), 0, 0, G00code);
+							scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
+							scheduleG00G01move(-400*1024, 0, 0, G00code);
+
+							/*
+							G01parsed(0,0,0,0,fixedpt_fromint2210(400),0,0,0);
+							init_gp.X += fixedpt_fromint2210(400);
+							G01parsed(0,0,0,0,0,fixedpt_fromint2210(record_task.dz),0,0);
+							init_gp.Z += fixedpt_fromint2210(record_task.dz);
+							G01parsed(0,0,0,0,-400*1024,0,0,0); // todo
+							init_gp.X +=-400*1024;*/
 						}
 						break;
 					case '4': // fast feed to start position '!4'
-						command_parser("G0 Z0. X0.");
+//						command_parser("G0 Z0. X0.");
 //						cb_push_back_item(&task_cb,&homing_task);
 						break;
 					case 'X': // stop current move '!X'
 					case 'S': // stop current move  '!S'
-						__disable_irq();
-						
-						if(state_hw.current_task_ref->steps_to_end > 50){
-							state_hw.current_task_ref->steps_to_end = 50;
-							((substep_t *)substep_cb.tail)->skip = 50;//some steps to slow down and stop
-						} else {
-							((substep_t *)substep_cb.tail)->skip = state_hw.current_task_ref->steps_to_end;//some steps to slow down and stop
-							skip = state_hw.current_task_ref->steps_to_end;
-						}
-						__enable_irq();
-
-						init_gp.Z = fixedpt_fromint2210(state_hw.global_Z_pos);
-						init_gp.X = fixedpt_fromint2210(state_hw.global_X_pos);
-						
-						skip *= 1024;
-						if(state_hw.substep_axis == SUBSTEP_AXIS_X){
-							if(init_gp.Z > 0){
-								init_gp.Z += skip;
-							} else if(init_gp.Z < 0)  {
-								init_gp.Z -= skip;
-							}
-						} else {
-							if(init_gp.X > 0){
-								init_gp.X += skip;
-							} else if(init_gp.X < 0)  {
-								init_gp.X -= skip;
-							}
-						}
-
-						substep_cb.count = substep_cb.count2 = 0;
-						substep_cb.top = substep_cb.head = substep_cb.tail2 = substep_cb.tail;
+						while(state_hw.rised!=0);
+						trim_substep();
 						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '0': { // reqest info{  '!0'
 						char info[14];
-						memcpy(info,"1.80;",5); //version
+						memcpy(info,"2.10;",5); //version
 						ui64toa(state_hw.global_Z_pos,(uint8_t *)&info[5]);
 						info[11] = ';';
 						info[12] = '\r';
@@ -689,7 +758,9 @@ const char * ga1[] = {
 					//X axis
 					// X jog is allowed only when no active job on this axis is performed
 					case 'w': {// go forward by 1 step '!w'
-						if(state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1)){
+//						state_hw.substep_axis = SUBSTEP_AXIS_X;
+//						state_hw.current_task_ref->dx = 0;
+						if(state_hw.task_lock == false || ( state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
 							XDIR = xdir_forward;
 							state_hw.global_X_pos--;
 							record_X--;
@@ -698,7 +769,9 @@ const char * ga1[] = {
 						break;
 					}
 					case 's': {// go backward by 1 step '!s'
-						if(state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1)){
+//						state_hw.substep_axis = SUBSTEP_AXIS_X;
+//						state_hw.current_task_ref->dx = 0;
+						if(state_hw.task_lock == false || (state_hw.current_task_ref && state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
 							XDIR = xdir_backward;
 							state_hw.global_X_pos++;
 							record_X++;

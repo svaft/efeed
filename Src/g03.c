@@ -542,35 +542,36 @@ chuck|  |     *            |            *
 	int x0  = init_gp.X  & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
 	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
 	int z0  = init_gp.Z  & ~1uL<<(FIXEDPT_FBITS2210-1);
-	G_pipeline_t *gref = G_parse(line);
+	G_pipeline_t gref;
+	G_parse(line,&gref);
 
-	uint64_t iklong = (int64_t)gref->I*gref->I + (int64_t)gref->K*gref->K;
+	uint64_t iklong = (int64_t)gref.I*gref.I + (int64_t)gref.K*gref.K;
 	uint32_t ik = sqrtf((float)iklong);// ik - radius of circle in 2210 format.
 //	ik  = SquareRoot64(ik); // ik - radius of circle in 2210 format.
 
 
-	int x0z = -gref->I; //x0+xdelta;
-	int z0z = -gref->K; //z0+zdelta;
-	int x1z = gref->X - x0 - gref->I;
-	int z1z = gref->Z - z0 - gref->K;
-	int x1zr = gref->Xr - x0r - gref->I;
+	int x0z = -gref.I; //x0+xdelta;
+	int z0z = -gref.K; //z0+zdelta;
+	int x1z = gref.X - x0 - gref.I;
+	int z1z = gref.Z - z0 - gref.K;
+	int x1zr = gref.Xr - x0r - gref.I;
 
 
 /*
-	int x1zr = gref->Xr - (init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1)) - gref->I;
+	int x1zr = gref.Xr - (init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1)) - gref.I;
 
-	int ikz0 = (ik + gref->K)/1024;
-	int ikx0 = -gref->I/1024;
+	int ikz0 = (ik + gref.K)/1024;
+	int ikx0 = -gref.I/1024;
 	
 
-	int x1 = gref->Xr - x0r - gref->I;
+	int x1 = gref.Xr - x0r - gref.I;
 
-	int ikx1 = (gref->Xr - x0r + ikx0)/1024;
-	int ikz1 = (gref->Z -  z0  - ikz0)/1024;
+	int ikx1 = (gref.Xr - x0r + ikx0)/1024;
+	int ikz1 = (gref.Z -  z0  - ikz0)/1024;
 
 	int lenint = SquareRoot((ikx1 - ikx0)*(ikx1 - ikx0) + (ikz1 - ikz0)*(ikz1 - ikz0));
 */
-//	int ii 	= gref->I >> 10, kk = gref->K >> 10; //back from 2210 to steps
+//	int ii 	= gref.I >> 10, kk = gref.K >> 10; //back from 2210 to steps
 //	uint32_t rr = SquareRoot(ii*ii + kk*kk); // find arc radius
 
 /*
@@ -608,9 +609,9 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 
 //feed:
 	if(s->G94G95 == G95code){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+		gt_new_task->F = str_f824mm_rev_to_delay824(gref.F);
 	} else { 											// unit(mm) per min
-		gt_new_task->F = gref->F;//str_f824mm_min_to_delay824(gref->F);
+		gt_new_task->F = gref.F;//str_f824mm_min_to_delay824(gref.F);
 	}
 
 
@@ -656,9 +657,9 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 			gt_new_task->stepper = true;
 		//feed:
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
-				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+				gt_new_task->F = str_f824mm_rev_to_delay824(gref.F);
 			} else { 											// unit(mm) per min
-				gt_new_task->F = gref->F; //str_f824mm_min_to_delay824(gref->F);
+				gt_new_task->F = gref.F; //str_f824mm_min_to_delay824(gref.F);
 			}
 			
 			gt_new_task->init_callback_ref = G03init_callback;
@@ -707,9 +708,9 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 			gt_new_task->stepper = true;
 		//feed:
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
-				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+				gt_new_task->F = str_f824mm_rev_to_delay824(gref.F);
 			} else { 											// unit(mm) per min
-				gt_new_task->F = gref->F; //str_f824mm_min_to_delay824(gref->F);
+				gt_new_task->F = gref.F; //str_f824mm_min_to_delay824(gref.F);
 			}
 			
 			gt_new_task->init_callback_ref = G03init_callback;
@@ -1080,18 +1081,18 @@ void G03parse_old(char *line, int8_t cwccw){ //~130-150us
 	int z0 = init_gp.Z & ~1uL<<10;
 //	int pos_count; // 1st octant count by X
 	G_pipeline *gref = G_parse(line);
-	gref->code = 3;
+	gref.code = 3;
 //#define SQ64
 	#ifndef SQ64
-	int ii 	= gref->I >> 10, kk = gref->K >> 10; //back from 2210 to steps
+	int ii 	= gref.I >> 10, kk = gref.K >> 10; //back from 2210 to steps
 	uint32_t rr = SquareRoot(ii*ii + kk*kk); // find arc radius
 	rr *= rr;
 	int octant = SquareRoot(rr >>1) << 10; // find octant value
 	#else
 	// more preceise 64bit evaluation of R and octant, 13% slower then 32bit
-	uint64_t ik0 = abs(gref->I);
+	uint64_t ik0 = abs(gref.I);
 	uint64_t ik = ik0*ik0;
-	ik0 = abs(gref->K);
+	ik0 = abs(gref.K);
 	ik += ik0*ik0;
 	ik  = SquareRoot64(ik);
 	ik *= ik;
@@ -1099,13 +1100,13 @@ void G03parse_old(char *line, int8_t cwccw){ //~130-150us
 	uint32_t rr = ik >> 20;
 	#endif
 
-//	int zdelta = -(z0+gref->K); // center delta to shift it to zero 
-//	int xdelta = -(x0+gref->I);
+//	int zdelta = -(z0+gref.K); // center delta to shift it to zero 
+//	int xdelta = -(x0+gref.I);
 
-	int x0z = -gref->I; //x0+xdelta;
-	int z0z = -gref->K; //z0+zdelta;
-	int x1z = gref->X - x0 - gref->I;
-	int z1z = gref->Z - z0 - gref->K;
+	int x0z = -gref.I; //x0+xdelta;
+	int z0z = -gref.K; //z0+zdelta;
+	int x1z = gref.X - x0 - gref.I;
+	int z1z = gref.Z - z0 - gref.K;
 
 	int oct0 = get_octant(x0z, z0z, octant);
 	int oct1 = get_octant(x1z, z1z, octant);
@@ -1164,9 +1165,9 @@ void G03parse_old(char *line, int8_t cwccw){ //~130-150us
 		
 		//feed:
 		if(s->G94G95 == 1){ 	// unit(mm) per rev
-			gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+			gt_new_task->F = str_f824mm_rev_to_delay824(gref.F);
 		} else { 											// unit(mm) per min
-			gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+			gt_new_task->F = str_f824mm_min_to_delay824(gref.F);
 		}
 	} else {
 		uint8_t current_oct = oct0;
@@ -1271,9 +1272,9 @@ void G03parse_old(char *line, int8_t cwccw){ //~130-150us
 			}
 			//feed:
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
-				gt_new_task->F = str_f824mm_rev_to_delay824(gref->F);
+				gt_new_task->F = str_f824mm_rev_to_delay824(gref.F);
 			} else { 											// unit(mm) per min
-				gt_new_task->F = str_f824mm_min_to_delay824(gref->F);
+				gt_new_task->F = str_f824mm_min_to_delay824(gref.F);
 			}
 			gt_new_task->dz = fixedpt_toint2210(gt_new_task->dz);
 			gt_new_task->dx = fixedpt_toint2210(gt_new_task->dx);

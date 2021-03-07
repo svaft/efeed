@@ -19,62 +19,6 @@ substep_t* smaSubstepRefs[smaNumbers_len] = {0};
 //профиль ускорения при 300000pps/ps расчитан в файле rapmup.xls
 uint8_t ramp_pos = 0;
 uint32_t steps2end_equator = 0;
-const uint8_t rampup[] = {
-	75,
-	65,
-	50,
-	33,
-	28,
-	24,
-	20,
-	18,
-	16,
-	15,
-	14,
-	13,
-	13,
-	12,
-	11,
-	11,
-	11,
-	10,
-	10,
-	10,
-	9,
-	9,
-	9,
-	9,
-	8,
-	8,
-	8,
-	8,
-	8,
-	8,
-	7,
-	7,
-	7,
-	7,
-	7,
-	7,
-	7,
-	7,
-	7,
-	6,
-	6,
-	6,
-	6,
-	6,
-	5,
-	5,
-	5,
-	5,
-	4,
-	4,
-	4,
-	3,
-	2,
-	1,
-};
 
 substep_t* cb_push_back_empty_ref(void){
 	cb_push_back_empty(&substep_cb);
@@ -87,6 +31,9 @@ int break1 = 0;
 
 void jog_pulse(int delay){
 	state_hw.jog_pulse = true;
+	state_hw.substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
+	LL_GPIO_SetPinMode(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+
 	TIM1->CCR1	= delay + 1;
 	TIM1->ARR 	= delay + 46;//min_pulse + 1;
 	TIM1->SR = 0;
@@ -124,7 +71,10 @@ void load_next_task(state_t* s){
 			}
 		} else{ // no next task
 		}
-	}
+	} 
+//	else if (task_cb.count == 0 && s->task_lock == false){
+//		s->current_task_ref = 0;
+//	}
 }
 
 
@@ -274,7 +224,7 @@ void do_fsm_move_start2(state_t* s){
 	LL_TIM_EnableARRPreload(s->syncbase);
 
 
-	#define _USEENCODER
+//	#define _USEENCODER
 	#ifdef _USEENCODER // wait tacho only when HW encoder is used, in software emu mode this is not necessary, we start immediately
 	if(s->syncbase == TIM4){ // if sync wait for tacho event and continue. While waiting disable stepper motors to correct position manually if needed
 //		LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
@@ -286,11 +236,21 @@ void do_fsm_move_start2(state_t* s){
 		LL_TIM_DisableUpdateEvent(s->syncbase);
 		LL_TIM_ClearFlag_CC3(s->syncbase);
 		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
-		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase)); //wait tacho to sync move 
-//			LL_mDelay(1);
+		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase)); //wait tacho to sync move
 		LL_TIM_EnableUpdateEvent(s->syncbase);
 		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
-//		LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
+/*
+		if(s->syncbase->ARR > 0) {
+			s->syncbase->CNT = 0;
+			s->syncbase->SR = 0;
+			LL_TIM_EnableUpdateEvent(s->syncbase);
+			while(!LL_TIM_IsActiveFlag_UPDATE(s->syncbase)); //wait spindle to rotate specific angle
+		} else{
+			LL_TIM_EnableUpdateEvent(s->syncbase);
+		}
+		*/
+			LL_TIM_EnableUpdateEvent(s->syncbase);
+ //		LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 //		LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
 	} else {
 		LL_TIM_ClearFlag_UPDATE(s->syncbase);
@@ -298,6 +258,15 @@ void do_fsm_move_start2(state_t* s){
 		LL_TIM_EnableCounter(s->syncbase);
 	}
 	#else 
+
+	LL_TIM_DisableARRPreload(s->syncbase);
+	if(s->syncbase->ARR < rampup[0] ){
+		s->syncbase->ARR = rampup[ramp_pos++];
+	} else{
+		s->syncbase->ARR = s->syncbase->ARR;
+	}
+	LL_TIM_EnableARRPreload(s->syncbase);
+
 	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	LL_TIM_EnableCounter(s->syncbase);
@@ -326,14 +295,14 @@ int break1;
   */
 void do_fsm_move2(state_t* s){
 	//todo нужен рефакторинг метода
-		
+	s->rised = true;
 	substep_t *sb = substep_cb.tail; //get ref to current substep
 
 	if(s->substep_axis == SUBSTEP_AXIS_X){
-		s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;//учесть изменения по X, и менять местами при смене substep
+		s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
 		if(sb->skip ==0) s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
 	}	else {
-		s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;//учесть изменения по X, и менять местами при смене substep
+		s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
 		if(sb->skip ==0) s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
 	}
 	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
@@ -425,6 +394,8 @@ void do_fsm_move_end2(state_t* s){
 //	debug();
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 	ramp_pos = 0; // reset ramp map 
+	substep_cb.count = substep_cb.count2 = 0;
+	substep_cb.top = substep_cb.head = substep_cb.tail2 = substep_cb.tail;
 
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
@@ -465,15 +436,26 @@ void command_parser(char *line){
 				switch(command){
 					//todo now its only one G command per line supported
 //#define G4_2210	4*steps_per_unit_Z_2210*1024
+					case 7*steps_per_unit_Z_2210: //G7 Lathe Diameter Mode
+						break;
+					case 8*steps_per_unit_Z_2210: //G8 Lathe Radius Mode
+						break;
+					case 20*steps_per_unit_Z_2210: //G20 - to use inches for length units
+						break;
+					case 21*steps_per_unit_Z_2210: //G21 - to use millimeters for length units
+						break;
+					
 					case 4*steps_per_unit_Z_2210: //G4 dwell, pause P seconds
 						G04parse(line+char_counter);
 						break;
 					case 90*steps_per_unit_Z_2210: //G90  absolute distance mode
+						state_precalc.G90G91 = G90mode;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G90;
 						g_task->precalculate_init_callback_ref = G90init_callback_precalculate;
 						break;
 					case 91*steps_per_unit_Z_2210: //G91  incremental distance mode
+						state_precalc.G90G91 = G91mode;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G91;
 						g_task->precalculate_init_callback_ref = G91init_callback_precalculate;
@@ -508,6 +490,9 @@ void command_parser(char *line){
 					case 33*steps_per_unit_Z_2210: //G33
 						G33parse(line+char_counter - 1);
 						return;	
+					case 76*steps_per_unit_Z_2210: //G76 threading cycle
+						G33parse(line+char_counter - 1);
+						return;	
 				}
 				break;
 			case 'X':
@@ -528,9 +513,9 @@ void command_parser(char *line){
 				}
 				break;
 			case 'F':
-				init_gp.F = str_f_to_2210(line, &char_counter);
-//				if (init_gp.F < 36000) //
-//					init_gp.F = 36000; // the slowest feed that cat fit into limit of 8.24 format
+//				gpos->F = str_f_to_2210(line, &char_counter);
+//				if (gpos->F < 36000) //
+//					gpos->F = 36000; // the slowest feed that cat fit into limit of 8.24 format
 				break;
 // repeat same command				
 						
@@ -539,11 +524,11 @@ void command_parser(char *line){
 
 }
 
-G_pipeline_t* G_parse(char *line){
+G_pipeline_t* G_parse(char *line, G_pipeline_t *gpos){
   uint8_t char_counter = 0;  
 //	cb_init_by_top(&gp_cb,&init_gp);
 
-//	int x_old = init_gp.X, z_old = init_gp.Z;
+//	int x_old = gpos->X, z_old = gpos->Z;
 	char letter;
 //	char *end;
 
@@ -552,26 +537,44 @@ G_pipeline_t* G_parse(char *line){
     letter = line[char_counter++];
 		switch(letter){
 			case 'X':
-				init_gp.Xr = str_f_to_steps2210(line, &char_counter) >> 1;
-				init_gp.X = fixedpt_xmul2210(init_gp.Xr,z_to_x_factor2210);
-//				init_gp.X >>= 1; //Fusion360 generate X in diameter mode, so divide by 2
+				gpos->Xr = str_f_to_steps2210(line, &char_counter) >> 1;
+				gpos->X = fixedpt_xmul2210(gpos->Xr,z_to_x_factor2210);
+//				gpos->X >>= 1; //Fusion360 generate X in diameter mode, so divide by 2
 				break;
 			case 'Z':
-				init_gp.Z = str_f_to_steps2210(line, &char_counter);
+				gpos->Z = str_f_to_steps2210(line, &char_counter);
 				break;
 			case 'I':
-				init_gp.I = str_f_to_steps2210(line, &char_counter);
+				gpos->I = str_f_to_steps2210(line, &char_counter);
 				break;
 			case 'K':
-				init_gp.K = str_f_to_2210(line, &char_counter); //str_f_to_steps2210(line, &char_counter);
+				gpos->K = str_f_to_2210(line, &char_counter); //str_f_to_steps2210(line, &char_counter);
 				break;
 			case 'F':
-				init_gp.F = str_f_to_2210(line, &char_counter);
-//				if (init_gp.F < 36000) //
-//					init_gp.F = 36000; // the slowest feed that cat fit into limit of 8.24 format			
+				gpos->F = str_f_to_2210(line, &char_counter);
+//				if (gpos->F < 36000) //
+//					gpos->F = 36000; // the slowest feed that cat fit into limit of 8.24 format			
+				break;
+			case 'J':
+				gpos->J = str_f_to_2210(line, &char_counter);
+				break;
+			case 'R':
+				gpos->R = str_f_to_2210(line, &char_counter);
+				break;
+			case 'Q':
+				gpos->Q = str_f_to_2210(line, &char_counter);
+				break;
+			case 'H':
+				gpos->H = str_f_to_2210(line, &char_counter);
+				break;
+			case 'E':
+				gpos->E = str_f_to_2210(line, &char_counter);
+				break;
+			case 'L':	
+				gpos->L = str_f_to_2210(line, &char_counter);
 				break;
 			case 'P':
-				init_gp.P = str_f_to_2210(line, &char_counter);
+				gpos->P = str_f_to_2210(line, &char_counter);
 				break;
 		}
 	}
@@ -611,3 +614,63 @@ void calibrate_callback(state_t *s){
 		LL_TIM_EnableARRPreload(s->syncbase);
 	}
 }
+
+
+
+
+const uint8_t rampup[] = {
+	75,
+	65,
+	50,
+	33,
+	28,
+	24,
+	20,
+	18,
+	16,
+	15,
+	14,
+	13,
+	13,
+	12,
+	11,
+	11,
+	11,
+	10,
+	10,
+	10,
+	9,
+	9,
+	9,
+	9,
+	8,
+	8,
+	8,
+	8,
+	8,
+	8,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	6,
+	6,
+	6,
+	6,
+	6,
+	5,
+	5,
+	5,
+	5,
+	4,
+	4,
+	4,
+	3,
+	2,
+	1,
+};

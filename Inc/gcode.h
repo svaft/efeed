@@ -52,7 +52,7 @@ extern substep_job_t substep_job[];
 extern substep_sma_ref_t smaNumbers[];
 extern substep_t* smaSubstepRefs[];
 
-
+void jog_pulse(int delay);
 
 void calibrate_callback(state_t *);
 void calibrate_init_callback(state_t* s);
@@ -66,6 +66,7 @@ void do_fsm_move_end2(state_t* );
 void load_next_task(state_t* s);
 
 
+extern const uint8_t rampup[];
 extern uint32_t steps_to_end_shadow; // костыль
 extern substep_t substep_delay[];
 substep_t* cb_push_back_empty_ref(void);
@@ -73,7 +74,7 @@ substep_t* cb_push_back_empty_ref(void);
 
 
 void process_G_pipeline(void);
-G_pipeline_t* G_parse(char *line);
+G_pipeline_t* G_parse(char *line, G_pipeline_t* );
 __STATIC_INLINE 
 G_task_t * add_empty_task(){
 	cb_push_back_empty(&task_cb);

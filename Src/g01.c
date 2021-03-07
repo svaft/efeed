@@ -160,66 +160,65 @@ void G00G01init_callback(state_t* s){
 //uint32_t st = 0, st1 = 0;
 void dxdz_callback(state_t* s){
 	s->current_task_ref->steps_to_end--;
+	s->rised = false;
 }
 
 
 
 void G33parse(char *line){
+	state_t *s = &state_precalc;
+	G_pipeline_t gref = {0};
+	s->init = true;
+	if(s->G90G91 == G90mode){
+		G_parse(line, &init_gp);
+		scheduleG00G01move(init_gp.X, init_gp.Z, init_gp.K, 33);
+	} else {
+		G_parse(line, &gref);
+		scheduleG00G01move(gref.X, gref.Z, gref.K, 33);
+	}
+	return;	
+	
+/*	
 	int x0 =  init_gp.X  & ~1uL<<(FIXEDPT_FBITS2210-1); //округляем предыдущее значение до целого числа шагов
 //	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
 	int z0 =  init_gp.Z  & ~1uL<<(FIXEDPT_FBITS2210-1);
 	state_t *s = &state_precalc;
 
-	G_pipeline_t *gref = G_parse(line);
+	G_pipeline_t gref;
+	G_parse(line,&gref);
 	if(s->init == false){
-		init_gp.X = gref->X;
-		init_gp.Z = gref->Z;
+		init_gp.X = gref.X;
+		init_gp.Z = gref.Z;
 		s->init = true;
 		return;
 	}
 
 	int dx,dz, xdir,zdir;
-/*	if(s->G90G91 == G91mode){ // incremental mode
-		if(gref->Z >= 0){ // go from left to right
-			dz = gref->Z;
+	{
+		if(gref.Z >= z0){ // go from left to right
+			dz = gref.Z - z0;
 			zdir = zdir_forward;
 		} else { // go back from right to left
-			dz = - gref->Z;
+			dz = z0 - gref.Z;
 			zdir = zdir_backward;
 		}
-		if(gref->X >= 0){ // go backward
-			dx = gref->X;
+		if(gref.X >= x0){ // go backward
+			dx = gref.X - x0;
 			xdir = xdir_backward;
 		} else { // go forward
-			dx = - gref->X;
-			xdir = xdir_forward;
-		}
-	}else 
-*/	{
-		if(gref->Z >= z0){ // go from left to right
-			dz = gref->Z - z0;
-			zdir = zdir_forward;
-		} else { // go back from right to left
-			dz = z0 - gref->Z;
-			zdir = zdir_backward;
-		}
-		if(gref->X >= x0){ // go backward
-			dx = gref->X - x0;
-			xdir = xdir_backward;
-		} else { // go forward
-			dx = x0 - gref->X;
+			dx = x0 - gref.X;
 			xdir = xdir_forward;
 		}
 	}
 
-//	uint64_t il = (int64_t)(gref->Xr-x0r)*(gref->Xr-x0r)+(int64_t)dz*dz;
+//	uint64_t il = (int64_t)(gref.Xr-x0r)*(gref.Xr-x0r)+(int64_t)dz*dz;
 	G_task_t *gt_new_task = 0;
 
 	gt_new_task = add_empty_task();
 
-	gt_new_task->F = str_f824mm_rev_to_delay824(gref->K); //todo inch support
+	gt_new_task->F = str_f824mm_rev_to_delay824(gref.K); //todo inch support
 	if(dx > dz){
-//		float f2 = gref->K<<14;
+//		float f2 = gref.K<<14;
 //		float f3 = (rev_to_delay_f / f2)*2794369.09f; //float divide is faster then long?
 
 //		gt_new_task->F = f3;
@@ -236,39 +235,62 @@ void G33parse(char *line){
 	gt_new_task->init_callback_ref = G33init_callback;
 	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
 	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
+*/
 }
 
 void G01parse(char *line, bool G00G01){ //~60-70us
-	int x0  = init_gp.X 	& ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
-	int x0r = init_gp.Xr 	& ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
-	int z0  = init_gp.Z 	& ~1uL<<(FIXEDPT_FBITS2210-1);
+//	int x0  = init_gp.X 	& ~1uL<<(FIXEDPT_FBITS2210-1); //get from prev gcode
+//	int x0r = init_gp.Xr 	& ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
+//	int z0  = init_gp.Z 	& ~1uL<<(FIXEDPT_FBITS2210-1);
 	state_t *s = &state_precalc;
-
-	G_pipeline_t *gref = G_parse(line);
+	G_pipeline_t gref = {0};
+//	gref.X = gref.Xr = gref.Z = gref.F = 0;
+	s->init = true;
+	if(s->G90G91 == G90mode){
+		G_parse(line, &init_gp);
+		scheduleG00G01move(init_gp.X, init_gp.Z, init_gp.F, G00G01);
+	} else {
+		G_parse(line, &gref);
+		scheduleG00G01move(gref.X, gref.Z, gref.F, G00G01);
+	}
+return;
 	if(s->init == false){
-		init_gp.X  = gref->X;
-		init_gp.Z  = gref->Z;
-		init_gp.Xr = gref->Xr;
+//		s->initial_task_X_pos = 0;
+//		s->initial_task_Z_pos = 0;
+//		s->task_destination_X_pos = gref.X;
+//		s->task_destination_Z_pos = gref.Z;
+
+		
+		init_gp.X  = gref.X;
+		init_gp.Z  = gref.Z;
+//		init_gp.Xr = gref.Xr;
 		s->init = true;
 		return;
 	}
+
+//	scheduleG00G01move(gref.X, gref.Z, gref.F, G00G01);
+	
+/*
 	if(s->G90G91 == G91mode){
-		gref->X = gref->X - x0;
-		gref->Z = gref->Z - z0;
+		gref.X = gref.X - x0;
+		gref.Z = gref.Z - z0;
 	}
-	G01parsed(x0, x0r, z0, gref->F, gref->X, gref->Z,  gref->Xr, G00G01);
-//	gref->code = 1;
+	G01parsed(x0, x0r, z0, gref.F, gref.X, gref.Z,  gref.Xr, G00G01);
+*/
+	//	gref.code = 1;
 }
 
-void scheduleG00G01move(int X, int Z, int F, bool G00G01){
+void scheduleG00G01move(int X, int Z, int F, uint8_t G00G01G33){
 /* make G00 or G01 move from current pos to X,Z position with provided feed F. If feed = -1 move with G00, 
 	if zero - move with previous feed speed
 */
 //	if(feed == 0);
 	state_t *s = &state_precalc;
 	int dx,dz, xdir,zdir;
-	int z0 = s->task_destination_Z_pos, x0 = s->task_destination_X_pos;
-	if(s->G90G91 == G91mode){
+	int z0 = init_gp.Z, x0 = init_gp.X;
+	if(s->G90G91 == G91mode){ // incremental mode
+		init_gp.Z += Z;
+		init_gp.X += X;
 		if(Z >= 0){ // go from left to right
 			dz = Z;
 			zdir = zdir_forward;
@@ -279,11 +301,14 @@ void scheduleG00G01move(int X, int Z, int F, bool G00G01){
 		if(X >= 0){ // go backward(away from stock)
 			dx = X;
 			xdir = xdir_backward;
-		} else { // go forward(to center of stock)
+		} else { // go forward (to center of stock)
 			dx = - X;
 			xdir = xdir_forward;
 		}
-	} else {
+	} else { //absolute mode
+		init_gp.Z = Z;
+		init_gp.X = X;
+
 		if(Z > s->task_destination_Z_pos){ // go from left to right
 			dz = Z - z0;
 			zdir = zdir_forward;
@@ -299,18 +324,19 @@ void scheduleG00G01move(int X, int Z, int F, bool G00G01){
 			xdir = xdir_forward;
 		}
 	}
+	if(dz == 0 && dx == 0)
+		return;
 	G_task_t *prev_task = get_last_task();
 	G_task_t *gt_new_task = 0;
 	gt_new_task = add_empty_task();
 
 
-//	bool G00G01
-//		bool G94G95; // 0 - unit per min, 1 - unit per rev
- 	if(s->G94G95 == G95code && G00G01 == G01code){ 	// unit(mm) per rev
+//		G94G95; // 0 - unit per min, 1 - unit per rev
+	if( (s->G94G95 == G95code && G00G01G33 == G01code ) || G00G01G33 == G33code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(F); //todo inch support
 		// пересчет подачи по длине линии как в коде ниже для G94
 	} else { 											// unit(mm) per min
-		if(G00G01 == G00code){
+		if(G00G01G33 == G00code){
 			if(dx == 0)
 				gt_new_task->F = 10<<16; //4285pps
 			else
@@ -338,20 +364,26 @@ void scheduleG00G01move(int X, int Z, int F, bool G00G01){
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
 	gt_new_task->dz =  fixedpt_toint2210(dz);
-
-//	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
 
 	if(prev_task->stepper == true && prev_task->z_direction == zdir){
 		prev_task->skiprampdown = true;
 	}
-	if(G00G01 == G00code)	
-		gt_new_task->init_callback_ref = G00init_callback;
-	else
-		gt_new_task->init_callback_ref = G01init_callback;
-	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
-	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
+
+	switch(G00G01G33){
+		case G00code:
+			gt_new_task->init_callback_ref = G00init_callback;
+			break;
+		case G01code:
+			gt_new_task->init_callback_ref = G01init_callback;
+			break;
+		case G33code:
+			gt_new_task->init_callback_ref = G33init_callback;
+			break;
+	} 
+	gt_new_task->precalculate_init_callback_ref = G01init_callback_precalculate;
+	gt_new_task->precalculate_callback_ref 			= dxdz_callback_precalculate;
 }
 
 

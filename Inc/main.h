@@ -129,7 +129,19 @@ typedef struct G_pipeline{ //todo remove this struct? what it used for?
 		Z, // z axis
 		F, // feed
 		P; // dwell
-	int 
+
+	int
+//		P,
+//		Z,
+//		I,
+		J,
+		R,
+//		K,
+		Q,
+		H,
+		E,
+		L,		
+
 		I, // arc X axis delta
 		K; // arc Z axis delta
 //	bool sync; // wtf?
@@ -150,6 +162,7 @@ typedef struct G_task{
 	callback_func_t precalculate_callback_ref;
 
 	uint8_t z_direction, x_direction;
+	uint16_t delay; //encoder ticks to wait after tacho pulse to start sync move. used for threading multi screw threads or for dofferend infeed strategy
 	bool stepper; // use this variable if this code use stepper motor
 	bool unlocked; // task unlocked(already processed by precalc)
 	bool skiprampdown;
@@ -171,6 +184,7 @@ typedef struct substep_job{
 
 typedef struct state_s
 {
+	bool rised;
 	bool init;
 //	uint32_t steps_to_end;
 	int32_t global_Z_pos, global_X_pos;
@@ -257,7 +271,7 @@ void Error_Handler2(int);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define min_pulse 145*5
+#define min_pulse 145*10
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
 #define MOTOR_X_STEP_Pin LL_GPIO_PIN_1
@@ -613,6 +627,7 @@ r*3,14/2/(Пп()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
 
 #define G00code 0
 #define G01code 1
+#define G33code 33
 
 
 

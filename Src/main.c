@@ -567,7 +567,6 @@ const char * ga1[] = {
 			uint8_t cmd = aRXBuffer[0];
 			ubUART3ReceptionComplete = 0;
 			if(cmd == '!'){
-				uint32_t skip = 50;
 				switch(aRXBuffer[1]){
 					case '2': // save last comand  '!2'
 						while(state_hw.rised!=0);
@@ -577,95 +576,33 @@ const char * ga1[] = {
 //						__disable_irq();
 						memcpy(&record_task, state_hw.current_task_ref, task_cb.sz);
 						trim_substep();
-						
-					
-//						__enable_irq();
 
 						record_task.unlocked = false; // lock task to recalculate it again
-						// add X
-/*
-						if(record_task.steps_to_end > 50 ) {
-							record_task.dz -= (record_task.steps_to_end - 50);
-							record_task.steps_to_end = record_task.dz;
-							state_hw.current_task_ref->steps_to_end = skip;
-						} else {
-							skip = record_task.steps_to_end;
-						}
-*/
 						record_X = state_hw.initial_task_X_pos;
 						record_Z = state_hw.initial_task_Z_pos;
 
 						int local_Z = fixedpt_toint2210(init_gp.Z);
 						int local_X = fixedpt_toint2210(init_gp.X);
 
-
-						int back_dz = -(local_Z - record_Z);//record_task.z_direction ==zdir_forward ? -record_task.dz : record_task.dz;
-						int back_dx = -(local_X - record_X);//record_task.x_direction ==xdir_forward ? record_task.dx : -record_task.dx;
+						int back_dz = record_Z - local_Z;
+						int back_dx = record_X - local_X;
 						record_task.dz = abs(back_dz);
 						record_task.dx = abs(back_dx);
-						
 
-//						init_gp.Z = fixedpt_fromint2210( state_hw.initial_task_Z_pos - back_dz);
-//						init_gp.X = fixedpt_fromint2210( state_hw.initial_task_X_pos - back_dx);
-
-
-//						if (state_hw.current_task_ref->init_callback_ref == G33init_callback){
 						scheduleG00G01move(fixedpt_fromint2210(400), 0, 0, G00code);
 						scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
 						scheduleG00G01move(-400*1024, 0, 0, G00code);
-
-//								G01parsed(0,0,0,0,fixedpt_fromint2210(400),0,0,0);
-//								init_gp.X += fixedpt_fromint2210(400);
-//								G01parsed(0,0,0,0,0,fixedpt_fromint2210(record_task.dz),0,0);
-//								init_gp.Z += fixedpt_fromint2210(record_task.dz);
-//								G01parsed(0,0,0,0,-400*1024,0,0,0); // todo
-//								init_gp.X +=-400*1024;
-//						}
-							
 						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '3': //repeat last command '!3'
 						// команда 
 						if( abs(state_hw.global_X_pos - record_X) > 400 || abs(state_hw.global_Z_pos - record_Z) > 400 ){
-//							init_gp.Z = state_hw.initial_task_Z_pos;
 							if(state_hw.G90G91 == G90mode){
-								scheduleG00G01move(
-									fixedpt_fromint2210(state_hw.initial_task_X_pos), 
-									fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
-/*
-								G01parsed(
-								fixedpt_fromint2210(state_hw.global_X_pos), 
-								fixedpt_fromint2210(state_hw.global_X_pos), 
-								fixedpt_fromint2210(state_hw.global_Z_pos), 
-								0, //feed
-								fixedpt_fromint2210(state_hw.initial_task_X_pos), 
-								fixedpt_fromint2210(state_hw.initial_task_Z_pos),
-								fixedpt_fromint2210(state_hw.initial_task_X_pos),
-								0);
-								init_gp.X = fixedpt_fromint2210(state_hw.initial_task_X_pos);
-								init_gp.Z = fixedpt_fromint2210(state_hw.initial_task_Z_pos);*/
-								
+								scheduleG00G01move(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
 							} else {
-								scheduleG00G01move(
-									fixedptu_fromint2210(record_X) - init_gp.X, 
-									fixedptu_fromint2210(record_Z) - init_gp.Z, 0, G00code);
-								
-//								G01parsed(0,0,0,0,fixedpt_fromint2210(400),0,0,0);
-//								G01parsed(0,0,0,0,0,fixedpt_fromint2210(record_task.dz),0,0);
-//								G01parsed(0,0,0,0,-400*1024,0,0,0); // todo
-/*
-								int32_t abs_X = fixedpt_fromint2210( record_X - state_hw.global_X_pos );
-								G01parsed(0,0,0,0,
-								abs_X, 
-								fixedpt_fromint2210( record_Z - state_hw.global_Z_pos ),
-								abs_X,
-								0);
-	*/						
+								scheduleG00G01move(	fixedptu_fromint2210(record_X) - init_gp.X, fixedptu_fromint2210(record_Z) - init_gp.Z, 0, G00code);
 							}
-
-
 							move_to_saved_pos = true;
-//							command_parser("G0 Z0. X0.");
 						} else {
 							move_to_saved_pos = false;
 							cb_push_back_item(&task_cb,&record_task);
@@ -678,14 +615,6 @@ const char * ga1[] = {
 							scheduleG00G01move(fixedpt_fromint2210(400), 0, 0, G00code);
 							scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
 							scheduleG00G01move(-400*1024, 0, 0, G00code);
-
-							/*
-							G01parsed(0,0,0,0,fixedpt_fromint2210(400),0,0,0);
-							init_gp.X += fixedpt_fromint2210(400);
-							G01parsed(0,0,0,0,0,fixedpt_fromint2210(record_task.dz),0,0);
-							init_gp.Z += fixedpt_fromint2210(record_task.dz);
-							G01parsed(0,0,0,0,-400*1024,0,0,0); // todo
-							init_gp.X +=-400*1024;*/
 						}
 						break;
 					case '4': // fast feed to start position '!4'

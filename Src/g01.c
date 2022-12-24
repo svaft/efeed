@@ -87,6 +87,7 @@ void G01init_callback(state_t* s){
 		s->G94G00tmp = false;
 		switch_to_sync(s);
 	}
+	s->gcode = 01;
 	G00G01init_callback(s);
 }
 
@@ -96,6 +97,15 @@ void G33init_callback(state_t* s){
 		switch_to_sync(s);
 	}
 	s->gcode = 33;
+	s->sync = true;
+	if(s->current_task_ref->multistart_thread > 1){
+		int degree = 3600/s->current_task_ref->multistart_thread; // degree to delay
+		s->delay += degree;
+		if(s->delay >= 3600)
+			s->delay = 0;
+	} else {
+		s->delay = 0;
+	}
 
 	G00G01init_callback(s);
 	s->function = do_fsm_move33;
@@ -122,11 +132,7 @@ void G00G01init_callback(state_t* s){
 	ZDIR = s->current_task_ref->z_direction;
 	if(s->current_task_ref->dz > s->current_task_ref->dx){
 		s->current_task_ref->steps_to_end = s->current_task_ref->dz;
-//#define XSTP	*((volatile uint32_t *) ((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 ))))
-//#define BITBAND_PERI2(a,b) ((PERIPH_BB_BASE + (a-PERIPH_BASE)*32 + (b*4)))		
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
-
-//		BITBAND_PERI2(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin_num); //(unsigned int *)((PERIPH_BB_BASE + (uint32_t)(  (uint8_t *)MOTOR_X_STEP_GPIO_Port+0xC 	- PERIPH_BASE)*32 + ( MOTOR_X_STEP_Pin_num*4 )));
 		s->substep_pulse_on = 1;
 		s->substep_pulse_off = 0;
 
@@ -141,8 +147,6 @@ void G00G01init_callback(state_t* s){
 		s->substep_axis = SUBSTEP_AXIS_Z;
 
 		s->substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_Z_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_Z_STEP_Pin_num*4)));
-
-//		s->substep_pin = &ZSTP;
 		s->substep_pulse_on = 1;
 		s->substep_pulse_off = 0;
 
@@ -164,7 +168,7 @@ void dxdz_callback(state_t* s){
 }
 
 
-
+int grefM = 0;
 void G33parse(char *line){
 	state_t *s = &state_precalc;
 	G_pipeline_t gref = {0};
@@ -174,6 +178,7 @@ void G33parse(char *line){
 		scheduleG00G01move(init_gp.X, init_gp.Z, init_gp.K, 33);
 	} else {
 		G_parse(line, &gref);
+		grefM = fixedpt_toint2210(gref.M);
 		scheduleG00G01move(gref.X, gref.Z, gref.K, 33);
 	}
 	return;	
@@ -334,6 +339,7 @@ void scheduleG00G01move(int X, int Z, int F, uint8_t G00G01G33){
 //		G94G95; // 0 - unit per min, 1 - unit per rev
 	if( (s->G94G95 == G95code && G00G01G33 == G01code ) || G00G01G33 == G33code){ 	// unit(mm) per rev
 		gt_new_task->F = str_f824mm_rev_to_delay824(F); //todo inch support
+		gt_new_task->multistart_thread = grefM;
 		// пересчет подачи по длине линии как в коде ниже для G94
 	} else { 											// unit(mm) per min
 		if(G00G01G33 == G00code){

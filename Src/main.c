@@ -107,6 +107,7 @@ uint8_t *pBufferReadyForReception;
 __IO uint8_t ubUART3ReceptionComplete = 0;
 
 /* Buffer used for transmission */
+const uint8_t aTxtest[] = "A12345678901234567890BCD\r\n";//crc ok, add to queue ok, continue
 const uint8_t aTxFW2[] = "1.71;123456;\r\n";//crc ok, add to queue ok, continue
 const uint8_t aTxCRC_OK_OK_Continue[] = "ooc\r\n";//crc ok, add to queue ok, continue
 const uint8_t aTxCRC_OK_Ok_Wait[] = "oow\r\n";//crc ok, add to queue ok, wait
@@ -195,9 +196,28 @@ void PrintInfo(uint8_t *String, uint32_t Size)
 
 
 
+int dbg_ste = 0;
+int dbg_gskip = 0;
+int dbg_ss_cnt = 0;
 
 void trim_substep(){
 	uint32_t skip = 50;
+	substep_t *tmp_head = (substep_t *)substep_cb.tail;
+	if(state_precalc.current_task_ref &&  state_precalc.current_task_ref->unlocked == false){
+		//stop precalc
+		tmp_head->skip = 0;
+		state_precalc.current_task_ref->steps_to_end = 0;
+		cb_pop_front_ref2(&task_cb);
+		cb_pop_front_ref(&task_cb);
+		substep_cb.count = substep_cb.count2 = 0;
+		substep_cb.head = substep_cb.tail;
+	  dbg_ste =  1;
+		steps_to_end_shadow = 0;
+		state_precalc.current_task_ref = 0;
+
+//				state_precalc.current_task_ref->unlocked == true;
+		return;
+	}
 	if(state_hw.current_task_ref->steps_to_end > 50){
 		state_hw.current_task_ref->steps_to_end = 50;
 	} else {
@@ -208,7 +228,6 @@ void trim_substep(){
 //	init_gp.Z = state_hw.global_Z_pos;
 //	init_gp.X = state_hw.global_X_pos;
 	
-	substep_t *tmp_head = (substep_t *)substep_cb.tail;
 	int32_t ss_cnt = 0, ss_count = 0, substep_cnt = 0;
 
 	while(ss_cnt < skip){
@@ -224,8 +243,13 @@ void trim_substep(){
 				tmp_head = substep_cb.buffer;
 		}
 	}
+	if(ss_cnt == 0){
+	 int tt =0;
+	}
+	dbg_ss_cnt = ss_cnt;
 	if(ss_cnt > skip ){
 		tmp_head->skip = skip - (ss_cnt - tmp_head->skip);
+		dbg_gskip = tmp_head->skip;
 	}
 
 	substep_cb.count = substep_cb.count2 = ss_count;
@@ -298,10 +322,6 @@ int main(void)
   /* USER CODE BEGIN 1 */
 
 //	strcat(str1, "test");
-
-//	char info[14];
-//	memcpy(info,"1.71;",5);
-//	ui64toa(state_hw.global_Z_pos,&info[5]);
 //	info[11] = ';';
 	aa = sizeof(G_task_t);
 	#define LOOP_FROM 1
@@ -310,15 +330,16 @@ int main(void)
 //	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 	
 	#ifdef _USEENCODER
-	int preload = 3;//LOOP_COUNT;
+	int preload = 2;//LOOP_COUNT;
 	#else
-	int preload = 3;//LOOP_COUNT;
+	int preload = 2;//LOOP_COUNT;
 	#endif	
 
 const char * ga1[] = {
 	#ifdef _USEENCODER
 	"G91",
 	"G95",
+//	"G33 Z-10 K4.5 M3",
 	"G0 X0. Z0.",
 	"G0 Z10",
 	"G94",
@@ -328,12 +349,12 @@ const char * ga1[] = {
 //	"G1 Z-2 F0.05",
 	#else
 	"G91",
-	"G94",
+	"G95",
 //	"G76 P0.05 Z-1 I-.075 J0.008 K0.045 Q29.5 L2 E0.045",
 //	"G76 P2. Z-50. I-8.209 J0.25 K2. R2. Q29.5 H0. E1. L0",
 
-//	"G0 X0. Z0.",
-	"G0 X1",
+	"G0 X0. Z0.",
+	"G0 Z200",
 //	"G0 X10. Z0.",
 	"G1 Z-10 F600",
 //	"G1 Z-200 F0.5",
@@ -380,6 +401,17 @@ const char * ga1[] = {
 
   /* USER CODE BEGIN Init */
 	memset(&state_hw,0,sizeof(state_hw));
+
+	state_hw.uart_header[0] = state_hw.uart_header[1] =state_hw.uart_header[2] =state_hw.uart_header[3] = '!';
+	state_hw.uart_end[0] = '#';
+	state_hw.uart_end[1] = '#';
+	state_hw.uart_end[2] = '\r';
+	state_hw.uart_end[3] = '\n';
+	char info[14];
+//	memcpy(info,"1.71;",5);
+//	state_hw.global_Z_pos = (2<<23) - 1;
+	ui64toa(state_hw.global_Z_pos,&info[0]);
+
 //	state_hw.function = do_fsm_menu_lps;
 	
 	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
@@ -509,8 +541,8 @@ const char * ga1[] = {
 */
 
 // todo need refactor this code how to g-code parsing, precalculation and execution going to start and work together
-	G_task_t record_task;
-	int32_t record_X, record_Z;
+	G_task_t record_task = {0};
+	int32_t record_X = 0, record_Z = 0;
 //	G_task_t *precalculating_task = 0;
 	int command = 0;
 		bool move_to_saved_pos = false;
@@ -520,7 +552,35 @@ const char * ga1[] = {
 	state_hw.substep_pulse_on = 1;
 	state_hw.substep_pulse_off = 0;
 	state_hw.substep_axis = SUBSTEP_AXIS_X;
+	
+//	state_hw.uart_header 
+	sendDefaultResponceDMA();
+//	sendResponce((uint32_t)&state_hw,SYNC_BYTES);
 
+//	sendResponce((uint32_t)aTxtest,SYNC_BYTES);
+	// debug serial ping-pong
+	LED_OFF();
+	for(int a = 0;a<24;a++){
+		state_hw.mid[a]='A'+a;
+	}
+	/*
+	while (1) {
+		if(ubUART3ReceptionComplete == 1){
+			uint8_t cmd = aRXBuffer[0];
+			ubUART3ReceptionComplete = 0;
+			if(cmd == '!'){
+				switch(aRXBuffer[1]){
+					case '0': { // reqest info{  '!0'
+						sendDefaultResponceDMA();
+						state_hw.global_X_pos++;
+						state_hw.global_Z_pos--;
+						LED_SWITCH();
+					}
+				}
+			}
+		}
+	}
+	*/
 	LED_OFF();
 	while (1) {
 		// recalc substep delays
@@ -592,7 +652,8 @@ const char * ga1[] = {
 						scheduleG00G01move(fixedpt_fromint2210(400), 0, 0, G00code);
 						scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
 						scheduleG00G01move(-400*1024, 0, 0, G00code);
-						sendResponce((uint32_t)"ok\r\n",4);
+						sendDefaultResponceDMA();
+//						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '3': //repeat last command '!3'
 						// команда 
@@ -625,7 +686,8 @@ const char * ga1[] = {
 					case 'S': // stop current move  '!S'
 						while(state_hw.rised!=0);
 						trim_substep();
-						sendResponce((uint32_t)"ok\r\n",4);
+						sendDefaultResponceDMA();
+//						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '0': { // reqest info{  '!0'
 						char info[14];
@@ -634,7 +696,7 @@ const char * ga1[] = {
 						info[11] = ';';
 						info[12] = '\r';
 						info[13] = '\n';
-						
+
 						sendResponce((uint32_t)info, 14);
 						break;
 					}
@@ -694,6 +756,7 @@ const char * ga1[] = {
 							state_hw.global_X_pos--;
 							record_X--;
 							jog_pulse(0);
+							sendDefaultResponceDMA();
 						}
 						break;
 					}
@@ -705,6 +768,7 @@ const char * ga1[] = {
 							state_hw.global_X_pos++;
 							record_X++;
 							jog_pulse(0);
+							sendDefaultResponceDMA();
 						}
 						break;
 					}
@@ -752,7 +816,6 @@ const char * ga1[] = {
 
 
 		}
-			
 
 //		process_joystick();
 //		read_sample_i2c(&i2c_device_logging.sample[i2c_device_logging.index]);
@@ -769,6 +832,7 @@ const char * ga1[] = {
 		if(preload > 0) {
 //			if(task_cb.count2 < (task_cb.capacity - 1)) {
 				if(task_cb.count < (task_cb.capacity - 2) &&  preload-- >= 0){
+//					if(!LL_USART_IsActiveFlag_TC(USART1))
 					command_parser((char *)ga1[command++]);
 				}
 			}
@@ -1132,7 +1196,7 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   TIM_InitStruct.Prescaler = 0;
-  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_DOWN;//   UP;
   TIM_InitStruct.Autoreload = 1;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM4, &TIM_InitStruct);

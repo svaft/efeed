@@ -143,7 +143,8 @@ typedef struct G_pipeline{ //todo remove this struct? what it used for?
 		L,		
 
 		I, // arc X axis delta
-		K; // arc Z axis delta
+		K, // arc Z axis delta
+		M; // Multi Start Thread count
 //	bool sync; // wtf?
 //	uint8_t code; // wtf?
 } G_pipeline_t;
@@ -163,6 +164,7 @@ typedef struct G_task{
 
 	uint8_t z_direction, x_direction;
 	uint16_t delay; //encoder ticks to wait after tacho pulse to start sync move. used for threading multi screw threads or for dofferend infeed strategy
+	uint8_t multistart_thread;
 	bool stepper; // use this variable if this code use stepper motor
 	bool unlocked; // task unlocked(already processed by precalc)
 	bool skiprampdown;
@@ -182,12 +184,15 @@ typedef struct substep_job{
 	uint8_t substep_pulse_off;
 } substep_job_t;
 
+
+#define SYNC_BYTES 16 // first 16 bytes to get from state_s struct and send out by USART1 
 typedef struct state_s
 {
-	bool rised;
-	bool init;
-//	uint32_t steps_to_end;
+	char uart_header[4];
+	//	uint32_t steps_to_end;
 	int32_t global_Z_pos, global_X_pos;
+	char uart_end[4];
+	char mid[24];
 	int32_t initial_task_Z_pos, initial_task_X_pos;
 	int32_t task_destination_Z_pos, task_destination_X_pos;
 
@@ -195,6 +200,10 @@ typedef struct state_s
 //	uint8_t ramp_step;
 	uint32_t Q824set; // feed rate
 	uint32_t fract_part; // Q8.24 format fract part
+
+	bool rised;
+	bool init;
+
 	
 	// arc variables for precalculated in task init callback for current task:	
 	int64_t arc_aa, arc_bb, arc_dx, arc_dz; // error increment
@@ -204,6 +213,8 @@ typedef struct state_s
 	
 	uint32_t prescaler; // used for calculating substep delay
 	uint16_t rpm; // current sindle speed in rpm
+
+	uint16_t delay;
 
 	int substep_axis;
 	volatile uint32_t *substep_pin;
@@ -483,6 +494,7 @@ void Error_Handler2(int);
 
 #define LED_OFF()		LL_GPIO_SetOutputPin(  LED_GPIO_Port, LED_Pin)
 #define LED_ON()		LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin)
+#define LED_SWITCH() LL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin)
 
 #define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH4
 #define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH2

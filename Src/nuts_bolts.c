@@ -550,13 +550,20 @@ void ui64toa(uint32_t n, uint8_t s[]){ //generte number with base 64
 		 while(i>=0)
 			 s[i--] = '0';
  }
-void sendResponce(uint32_t SrcAddress, uint32_t NbData){
+void sendDefaultResponceDMA(){
+//	memcpy(info,"1.71;",5);
+	sendResponce((uint32_t)&state_hw,SYNC_BYTES);
+}
+
+ void sendResponce(uint32_t SrcAddress, uint32_t NbData){
+	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
 	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_4,SrcAddress,LL_USART_DMA_GetRegAddr(USART1),LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
 	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, NbData);
 	LL_USART_EnableDMAReq_TX(USART1);
 	/* Enable DMA Channel Tx */
 	LL_USART_ClearFlag_TC(USART1);
 	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
-	LL_USART_EnableIT_TC(USART1);
+//	LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_4);
+//	LL_USART_EnableIT_TC(USART1);
 }
 

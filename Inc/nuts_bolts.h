@@ -12,6 +12,8 @@ uint32_t atoui64(uint8_t* str);
 void ui10toa(uint32_t n, uint8_t s[]);
 void ui64toa(uint32_t n, uint8_t s[]);
 void sendResponce(uint32_t SrcAddress, uint32_t NbData);
+void sendDefaultResponceDMA();
+
 __STATIC_INLINE bool is_crc_ok(uint8_t *bfr, uint8_t len){
 	uint32_t crc = Calculate_CRC(len,bfr,1);
 	uint32_t atoi = atoui64((uint8_t *)(bfr+len));
@@ -70,6 +72,17 @@ __STATIC_INLINE void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
     cb->tail 		= cb->buffer;
 		cb->tail2 	= cb->buffer;
 		cb->top  		= cb->buffer;
+}
+
+__STATIC_INLINE void sendResponceAgain(){
+	if(LL_USART_IsActiveFlag_TC(USART1) && LL_DMA_IsActiveFlag_TC4(DMA1) ){
+		LL_USART_ClearFlag_TC(USART1);
+		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+		LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, SYNC_BYTES);
+	/* Enable DMA Channel Tx */
+		LL_DMA_ClearFlag_TC4(DMA1);
+		LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
+	}
 }
 
 __STATIC_INLINE void cb_free(circular_buffer *cb){

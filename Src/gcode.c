@@ -214,50 +214,33 @@ void do_fsm_move_start2(state_t* s){
 	LL_TIM_EnableIT_UPDATE(TIM3);
 
 
-// reload value in stored in ARR from preload to shadow register without update event 	
-	LL_TIM_DisableARRPreload(s->syncbase);
-	if(s->syncbase->ARR < rampup[0] ){
-		s->syncbase->ARR = rampup[ramp_pos++];
-	} else{
-		s->syncbase->ARR = s->syncbase->ARR;
-	}
-	LL_TIM_EnableARRPreload(s->syncbase);
 
 
 //	#define _USEENCODER
 	#ifdef _USEENCODER // wait tacho only when HW encoder is used, in software emu mode this is not necessary, we start immediately
-	if(s->syncbase == TIM4){ // if sync wait for tacho event and continue. While waiting disable stepper motors to correct position manually if needed
-//		LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
-//		LL_GPIO_SetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
-		LL_TIM_ClearFlag_UPDATE(s->syncbase);
-//		LL_TIM_EnableUpdateEvent(s->syncbase);
-		LL_TIM_EnableCounter(s->syncbase);
-
+// reload value in stored in ARR from preload to shadow register without update event 	
+	if(s->syncbase == TIM4 && s->sync){ // if sync wait for tacho event and continue. While waiting disable stepper motors to correct position manually if needed
+		LL_TIM_DisableIT_UPDATE(s->syncbase);
 		LL_TIM_DisableUpdateEvent(s->syncbase);
-		LL_TIM_ClearFlag_CC3(s->syncbase);
+		s->syncbase->SR = 0;
 		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
+		LL_TIM_EnableCounter(s->syncbase);
 		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase)); //wait tacho to sync move
-		LL_TIM_EnableUpdateEvent(s->syncbase);
 		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
-/*
-		if(s->syncbase->ARR > 0) {
+
+//wait spindle to rotate specific angle if needed:
+		if(s->delay > 0) {
 			s->syncbase->CNT = 0;
+			LL_TIM_DisableARRPreload(s->syncbase);
+			s->syncbase->ARR = s->delay;
+			LL_TIM_EnableARRPreload(s->syncbase);
 			s->syncbase->SR = 0;
 			LL_TIM_EnableUpdateEvent(s->syncbase);
-			while(!LL_TIM_IsActiveFlag_UPDATE(s->syncbase)); //wait spindle to rotate specific angle
-		} else{
-			LL_TIM_EnableUpdateEvent(s->syncbase);
+			while(!LL_TIM_IsActiveFlag_UPDATE(s->syncbase));
+			LL_TIM_DisableCounter(s->syncbase);
+			
 		}
-		*/
-			LL_TIM_EnableUpdateEvent(s->syncbase);
- //		LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
-//		LL_GPIO_ResetOutputPin(MOTOR_Z_ENABLE_GPIO_Port,MOTOR_Z_ENABLE_Pin);
-	} else {
-		LL_TIM_ClearFlag_UPDATE(s->syncbase);
-		LL_TIM_EnableUpdateEvent(s->syncbase);
-		LL_TIM_EnableCounter(s->syncbase);
 	}
-	#else 
 
 	LL_TIM_DisableARRPreload(s->syncbase);
 	if(s->syncbase->ARR < rampup[0] ){
@@ -267,21 +250,31 @@ void do_fsm_move_start2(state_t* s){
 	}
 	LL_TIM_EnableARRPreload(s->syncbase);
 
-	LL_TIM_ClearFlag_UPDATE(s->syncbase);
 	LL_TIM_EnableUpdateEvent(s->syncbase);
-	LL_TIM_EnableCounter(s->syncbase);
-	
-	#endif
-	
-	
-//	LL_TIM_DisableIT_UPDATE(s->syncbase);
-
-//	LL_TIM_GenerateEvent_UPDATE(s->syncbase);
 	s->syncbase->CNT = 0;
 	s->syncbase->SR = 0;
-	LL_TIM_ClearFlag_UPDATE(s->syncbase);
-//	LL_TIM_EnableIT_CC3(s->syncbase);
 	LL_TIM_EnableIT_UPDATE(s->syncbase);
+	LL_TIM_EnableCounter(s->syncbase);
+
+
+#else 
+// initial load ARR
+	LL_TIM_DisableARRPreload(s->syncbase);
+	if(s->syncbase->ARR < rampup[0] ){
+		s->syncbase->ARR = rampup[ramp_pos++];
+	} else{
+		s->syncbase->ARR = s->syncbase->ARR;
+	}
+	LL_TIM_EnableARRPreload(s->syncbase);
+
+	LL_TIM_EnableUpdateEvent(s->syncbase);
+	s->syncbase->CNT = 0;
+	s->syncbase->SR = 0;
+	LL_TIM_EnableIT_UPDATE(s->syncbase);
+	LL_TIM_EnableCounter(s->syncbase);
+
+
+	#endif
 
 //	LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 }
@@ -400,13 +393,15 @@ void do_fsm_move_end2(state_t* s){
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
 		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);	// configure TACHO events on channel 3
+		LL_TIM_DisableCounter(s->syncbase); // pause async timer
 	} else {
 		LL_TIM_DisableCounter(s->syncbase); // pause async timer
 	}
 	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
 	LL_TIM_DisableUpdateEvent(s->syncbase);
-	sendResponce((uint32_t)"end\r\n",5);
+	sendDefaultResponceDMA();
+//	sendResponce((uint32_t)"end\r\n",5);
 }
 
 
@@ -549,6 +544,9 @@ G_pipeline_t* G_parse(char *line, G_pipeline_t *gpos){
 				break;
 			case 'K':
 				gpos->K = str_f_to_2210(line, &char_counter); //str_f_to_steps2210(line, &char_counter);
+				break;
+			case 'M':
+				gpos->M = str_f_to_2210(line, &char_counter); //str_f_to_steps2210(line, &char_counter);
 				break;
 			case 'F':
 				gpos->F = str_f_to_2210(line, &char_counter);

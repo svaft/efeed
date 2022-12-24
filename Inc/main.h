@@ -48,8 +48,9 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include "stm32f1xx_ll_crc.h"
 #include "stm32f1xx_ll_dma.h"
-#include "stm32f1xx_ll_i2c.h"
+#include "stm32f1xx_ll_iwdg.h"
 #include "stm32f1xx_ll_rcc.h"
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_system.h"
@@ -74,9 +75,9 @@ extern "C" {
 #include "stdlib.h"
 #include "string.h"
 
-#include "fixedptc.h" 			// 8_24 format for spindle sync delay calculation
+#include "fixedptc.h" 			// 16_16 format for spindle sync delay calculation
 #include "fixedptc22_10.h" 	// steps per mm, min resolution is screw step / steps per rev / 2^10 = 1/400/1024=0,0000024mm
-#include "fixedptc12_20.h" 	// mm, max 2048mm work field in this case, min resolution is about 0,000001mm
+//#include "fixedptc12_20.h" 	// mm, max 2048mm work field in this case, min resolution is about 0,000001mm
 
 /* USER CODE END Includes */
 
@@ -128,20 +129,33 @@ typedef struct G_pipeline{ //todo remove this struct? what it used for?
 		Z, // z axis
 		F, // feed
 		P; // dwell
-	int 
+
+	int
+//		P,
+//		Z,
+//		I,
+		J,
+		R,
+//		K,
+		Q,
+		H,
+		E,
+		L,		
+
 		I, // arc X axis delta
-		K; // arc Z axis delta
+		K, // arc Z axis delta
+		M; // Multi Start Thread count
 //	bool sync; // wtf?
 //	uint8_t code; // wtf?
 } G_pipeline_t;
 
 typedef struct G_task{
 	int32_t dx, dz;
-	int32_t 	x, z, x1, z1; // delta
-	uint32_t len;
+	int32_t 	x1, z1; // delta
+//	uint32_t len;
 	float len_f;
 	uint32_t steps_to_end;
-	fixedptu F; //Q824, feed value. For mm/min lowest value is 35.16 mm/min
+	fixedptu F; //Q1616, feed value. For mm/min lowest value is 35.16 mm/min
 	callback_func_t callback_ref; //callback ref to iterate line or arc
 	callback_func_t init_callback_ref;
 
@@ -149,8 +163,12 @@ typedef struct G_task{
 	callback_func_t precalculate_callback_ref;
 
 	uint8_t z_direction, x_direction;
+	uint16_t delay; //encoder ticks to wait after tacho pulse to start sync move. used for threading multi screw threads or for dofferend infeed strategy
+	uint8_t multistart_thread;
 	bool stepper; // use this variable if this code use stepper motor
 	bool unlocked; // task unlocked(already processed by precalc)
+	bool skiprampdown;
+
 // arc
 //	int rr, inc_dec;
 	uint32_t a,b;
@@ -166,15 +184,26 @@ typedef struct substep_job{
 	uint8_t substep_pulse_off;
 } substep_job_t;
 
+
+#define SYNC_BYTES 16 // first 16 bytes to get from state_s struct and send out by USART1 
 typedef struct state_s
 {
-	bool init;
-//	uint32_t steps_to_end;
-//	uint32_t current_pos;
+	char uart_header[4];
+	//	uint32_t steps_to_end;
+	int32_t global_Z_pos, global_X_pos;
+	char uart_end[4];
+	char mid[24];
+	int32_t initial_task_Z_pos, initial_task_X_pos;
+	int32_t task_destination_Z_pos, task_destination_X_pos;
+
 //	uint32_t end_pos;
 //	uint8_t ramp_step;
 	uint32_t Q824set; // feed rate
 	uint32_t fract_part; // Q8.24 format fract part
+
+	bool rised;
+	bool init;
+
 	
 	// arc variables for precalculated in task init callback for current task:	
 	int64_t arc_aa, arc_bb, arc_dx, arc_dz; // error increment
@@ -185,16 +214,21 @@ typedef struct state_s
 	uint32_t prescaler; // used for calculating substep delay
 	uint16_t rpm; // current sindle speed in rpm
 
+	uint16_t delay;
+
 	int substep_axis;
 	volatile uint32_t *substep_pin;
 	uint8_t substep_pulse_on;
 	uint8_t substep_pulse_off;
 	
-	G_task_t current_task;
-	G_task_t *precalculating_task_ref;
+	bool jog_pulse; // флаг для отключения логики, не нужной для пульса в ручном режиме
+//	G_task_t current_task;
+	G_task_t *current_task_ref;
+//	G_task_t *precalculating_task_ref;
 	bool task_lock;
 //	bool precalculate_end; // moved to task structure
 	int8_t gcode;
+	int8_t G90G91; // 0 - absolute distance mode, 1 - incremental distance mode
 	int8_t G94G95; // 0 - unit per min, 1 - unit per rev
 	int8_t G94G00tmp; // 0 - unit per min, 1 - unit per rev
 //	uint32_t substep_mask;
@@ -244,29 +278,25 @@ extern const THREAD_INFO Thread_Info[];
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void Error_Handler2(int);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define min_pulse 145*5
+#define min_pulse 145*10
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_0
-#define MOTOR_X_ENABLE_GPIO_Port GPIOA
-#define MOTOR_X_DIR_Pin LL_GPIO_PIN_1
-#define MOTOR_X_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_7
-#define MOTOR_Z_DIR_GPIO_Port GPIOA
-#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_0
-#define MOTOR_Z_STEP_GPIO_Port GPIOB
-#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_1
-#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
-#define BUTTON_1_Pin LL_GPIO_PIN_8
-#define BUTTON_1_GPIO_Port GPIOA
-#define BUTTON_2_Pin LL_GPIO_PIN_9
-#define BUTTON_2_GPIO_Port GPIOA
-#define MOTOR_X_STEP_Pin LL_GPIO_PIN_4
+#define MOTOR_X_STEP_Pin LL_GPIO_PIN_1
 #define MOTOR_X_STEP_GPIO_Port GPIOB
+#define MOTOR_X_ENABLE_Pin LL_GPIO_PIN_12
+#define MOTOR_X_ENABLE_GPIO_Port GPIOA
+#define MOTOR_X_DIR_Pin LL_GPIO_PIN_15
+#define MOTOR_X_DIR_GPIO_Port GPIOA
+#define MOTOR_Z_ENABLE_Pin LL_GPIO_PIN_3
+#define MOTOR_Z_ENABLE_GPIO_Port GPIOB
+#define MOTOR_Z_DIR_Pin LL_GPIO_PIN_4
+#define MOTOR_Z_DIR_GPIO_Port GPIOB
+#define MOTOR_Z_STEP_Pin LL_GPIO_PIN_5
+#define MOTOR_Z_STEP_GPIO_Port GPIOB
 #define ENC_A_Pin LL_GPIO_PIN_6
 #define ENC_A_GPIO_Port GPIOB
 #define ENC_B_Pin LL_GPIO_PIN_7
@@ -462,48 +492,54 @@ void Error_Handler(void);
 #define MOTOR_Z_Enable()             MOTOR_Z_ENABLE_GPIO_Port->BSRR = MOTOR_Z_ENABLE_Pin
 #define MOTOR_Z_Disable()            MOTOR_Z_ENABLE_GPIO_Port->BRR  = MOTOR_Z_ENABLE_Pin
 
-#define LED_OFF()		LL_GPIO_SetOutputPin(LED_GPIO_Port, LED_Pin)
+#define LED_OFF()		LL_GPIO_SetOutputPin(  LED_GPIO_Port, LED_Pin)
 #define LED_ON()		LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin)
+#define LED_SWITCH() LL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin)
 
-#define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH3
-#define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH1
+#define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH4
+#define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH2
 //#define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
-#define MOTOR_Z_AllowPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 1
-#define MOTOR_Z_BlockPulse()         t3ccer[TIM_CCER_CC1E_Pos] = 0
+#define MOTOR_Z_AllowPulse()         LL_TIM_CC_EnableChannel(TIM3,MOTOR_Z_CHANNEL) //t3ccer[TIM_CCER_CC1E_Pos] = 1
+#define MOTOR_Z_BlockPulse()         LL_TIM_CC_DisableChannel(TIM3,MOTOR_Z_CHANNEL) //t3ccer[TIM_CCER_CC1E_Pos] = 0
 
 //#define MOTOR_X_OnlyPulse()         TIM3->CCER = MOTOR_X_CHANNEL
-#define MOTOR_X_AllowPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 1
-#define MOTOR_X_BlockPulse()         t3ccer[TIM_CCER_CC3E_Pos] = 0
+#define MOTOR_X_AllowPulse()         LL_TIM_CC_EnableChannel(TIM3,MOTOR_X_CHANNEL) //t3ccer[TIM_CCER_CC3E_Pos] = 1
+#define MOTOR_X_BlockPulse()         LL_TIM_CC_DisableChannel(TIM3,MOTOR_X_CHANNEL) //t3ccer[TIM_CCER_CC3E_Pos] = 0
 
 
 
 //#define steps_per_unit_Z_2210   400<<10
 
 #define x_steps_unit	400
-#define x_screw_pitch	1.27
+#define x_screw_pitch	4.0f
 
-#define x_screw_pulley 61 // used to transfer torque from stepper motor to screw with reduction
-#define x_motor_pulley 16 // used to transfer torque from stepper motor to screw with reduction
+#define x_screw_pulley 1//61 // used to transfer torque from stepper motor to screw with reduction
+#define x_motor_pulley 1//16 // used to transfer torque from stepper motor to screw with reduction
 
 #define encoder_resolution 1800*2
 #define async_spindle_resolution 30000 // timer is set to 30000hz
 #define z_steps_unit	400
-#define z_screw_pitch	2
+#define z_screw_pitch	2.5f
 
 
 //#define hzminps_z (async_spindle_resolution*60*z_screw_pitch/z_steps_unit)<<10 //30000hz*60sec*z_screw_pitch/z_steps_unit // 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
 //#define hzminps_x  (uint32_t)((async_spindle_resolution*60*x_screw_pitch/x_steps_unit)*1024) // 11430<<10 //async_spindle_resolution*60sec*x_screw_pitch/x_steps_unit 
-#define hzminps_z  (uint32_t)((async_spindle_resolution*60*z_screw_pitch/z_steps_unit)*1024) //30000hz*60sec*z_screw_pitch/z_steps_unit // 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
+#define hzminps_z  (uint32_t)((async_spindle_resolution*60*z_screw_pitch/z_steps_unit)*(FIXEDPT_FMASK2210+1)) //30000hz*60sec*z_screw_pitch/z_steps_unit // 4500<<10 // 30000hz(async timer rate)*60sec/400ps=4500 and convert it to 2210
 //#define hzminps_x  (uint32_t)((async_spindle_resolution*60*x_screw_pitch/x_steps_unit)*1024) // 11430<<10 //async_spindle_resolution*60sec*x_screw_pitch/x_steps_unit 
 
-#define rev_to_delay (uint32_t)(encoder_resolution/(z_steps_unit/z_screw_pitch)*16777216) //(encoder_resolution/(z_steps_unit/z_screw_pitch))<<24
-#define rev_to_delay_f 301989888.0f
+#define rev_to_delay (uint32_t)(encoder_resolution/(z_steps_unit/z_screw_pitch)*(FIXEDPT_FMASK+1)) //(encoder_resolution/(z_steps_unit/z_screw_pitch))<<24
+#define rev_to_delay_f 96636764160.0f // 1474560.0f //301989888.0f
+
+
 // minimum processed value is 0.001mm
 //#define steps_per_unit_Z_2210   273066 //z_steps_unit<<10/z_screw_pitch (1,5mm screw)
 #define steps_per_unit_Z_2210   (uint32_t)(z_steps_unit*1024/z_screw_pitch) //204800
 
 // minimum processed value is 0.0001inch
 #define steps_per_inch_Z_2210   (uint32_t)(steps_per_unit_Z_2210*25.4)    //254*40*1024
+
+#define jog_Z_01_2210	(uint32_t)(0.05*z_steps_unit/z_screw_pitch*(FIXEDPT_FMASK2210+1))
+#define jog_Z_10_2210	(uint32_t)(z_steps_unit/z_screw_pitch*(FIXEDPT_FMASK2210+1))
 
 /*
 Due to the fact that the configuration of the stepper motor for the X and Z axes may not be equal 
@@ -519,25 +555,26 @@ we need to multiply the radius of the X axis (steps by / mm) by 1.5.
 //#define z_to_x_factor2210	1537 //1024*200*61/16/1,27/400/1,5
 
 //#define z_to_x_factor2210	3074 //1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch) //1024*200*61/16/1,27/(400/2)
-#define z_to_x_factor2210	(uint32_t)(1024*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch)) //1024*200*61/16/1,27/(400/2)
+#define z_to_x_factor2210	(uint32_t)((FIXEDPT_FMASK2210+1)*x_steps_unit*x_screw_pulley/x_motor_pulley/x_screw_pitch/(z_steps_unit/z_screw_pitch)) //1024*200*61/16/1,27/(400/2)
 
-#define len_to_arc_factor2210 1137
-#define len_to_feed824	167713215111.444f
+//#define len_to_arc_factor2210 1137
+//#define len_to_feed824	167713215111.444f
 
-#define async_steps_factor 9000 // 30000hz fot 60 sec 400 steps for 2mm screw
+#define async_steps_factor (uint32_t)(async_spindle_resolution*60*z_screw_pitch/z_steps_unit) // 30000hz for 60 sec 400 steps for 2mm screw
 
-#define z_to_x_factor824	100729348
-#define z_to_x_factor_f 6.003937008f
+//#define z_to_x_factor824	100729348
+//#define z_to_x_factor_f 1.25f
 
+#define t3ccer			((uint32_t *)((0x42000000  + ((0x40000420)-0x40000000)*32)))
 
 /*
 ellipse_total_steps2210: total steps to finish full ellipse quadrant arc, 
 for a=1 and b=a*z_to_x_factor2210 total_steps = sqrt(1 + z_to_x_factor2210*z_to_x_factor2210)
 */
-#define ellipse_total_steps2210 6233
+#define ellipse_total_steps2210 1208
 
 
-#define z_to_x_ellipse_equator2210	6064 //a*a/b*b*sqrt(а*а+b*b)/(1+a*a/b*b), for a=1 and b=a*z_to_x_factor, equator = z_to_x_factor*z_to_x_factor*sqrt(1+z_to_x_factor*z_to_x_factor)/(1+z_to_x_factor*z_to_x_factor)
+#define z_to_x_ellipse_equator2210	339 //a*a/b*b*sqrt(а*а+b*b)/(1+a*a/b*b), for a=1 and b=a*z_to_x_factor, equator = z_to_x_factor*z_to_x_factor*sqrt(1+z_to_x_factor*z_to_x_factor)/(1+z_to_x_factor*z_to_x_factor)
 /*
 z_to_x_ellipse_equator2210: под экватором подразумевается точка, в которой дуга квадранта эллипса меняет основную ось, 
 по которой идет основной шаг. что имеется ввиду: 
@@ -570,7 +607,7 @@ z_to_x_ellipse_equator2210: под экватором подразумевает
 /*
 ellipse_arc_len_factor2210: коэффициент, на который нужно умножить радиус окружности(будущего эллипса), 
 для вычисления значения длины одного квадранта эллипса
-r*3,14/2/(ПИ()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
+r*3,14/2/(Пп()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
  ellipse_arc_len_factor2210=1024*2*КОРЕНЬ((1+z_to_x_factor*z_to_x_factor)/8)
 
 #define ellipse_arc_len_factor2210 4407 
@@ -593,12 +630,16 @@ r*3,14/2/(ПИ()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
 #define feed_direction_right        1 // from left to right
 
 
+#define G90mode 0
+#define G91mode 1
+
 
 #define G94code 94
 #define G95code 95
 
 #define G00code 0
 #define G01code 1
+#define G33code 33
 
 
 

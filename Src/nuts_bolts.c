@@ -90,8 +90,9 @@ fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
 //z_steps_unit*z_steps_unit/z_screw_pitch
 //	return fixedptu_div(18<<24,feed);
 	
-	float f2 = feed<<14;
-	float f3 = (rev_to_delay_f / f2)*16777216; //float divide is faster then long?
+	float f2 = feed<<6; // convert input value from 10.24 to 16.16
+//	float f3 = (rev_to_delay_f / f2)*65536; //float divide is faster then long?
+	float f3 = rev_to_delay_f / f2; //float divide is faster then long?
 	return (fixedptu) f3;
 //	return fixedptu_div(rev_to_delay,feed<<14); // feed<<14 - convert feed value in 22.10 to 8.24 format
 }
@@ -208,13 +209,13 @@ int str_f_to_2210(char *line, uint8_t *char_counter){
 	if(fract == true) {
 		switch(number){
 			case 5:
-				t2210 +=512;
+				t2210 += ten == 1 ? 512 : 51;
 				break;
 			case 25:
-				t2210 +=256;
+				t2210 += ten == 2 ? 256 : 26;
 				break;
 			case 75:
-				t2210 +=768;
+				t2210 += ten == 2 ? 768 : 76;
 				break;
 			default:
 				switch(ten){
@@ -345,7 +346,7 @@ int str_f_to_steps2210(char *line, uint8_t *char_counter){
 				t2210 = number * steps_per_unit_Z_2210; //steps_per_unit_Z_2210 already in 2210 format
 				number = 0;
 				fract = true;
-		} else if (c == ' '){ //skip blanks
+		} else if (c == ' ' || c =='+'){ //skip blanks
 		} else break;
 		str++;
 	}
@@ -485,3 +486,84 @@ uint32_t SquareRootRounded(uint32_t a_nInput)
 
 	return res;
 }
+
+
+/**
+  * @brief  This function performs CRC calculation on BufferSize bytes from input data buffer aDataBuffer.
+  * @param  BufferSize Nb of bytes to be processed for CRC calculation
+  * @retval 32-bit CRC value computed on input data buffer
+  */
+uint32_t Calculate_CRC(uint32_t len, uint8_t *bfr, int clear){
+//	if(clear) 
+		LL_CRC_ResetCRCCalculationUnit(CRC);
+	uint32_t *p, x, l = len / 4;
+	p = (uint32_t*)bfr;
+	x = p[l];
+	while(l--)
+		LL_CRC_FeedData32(CRC, *p++);
+	switch(len & 3) {
+		case 1: LL_CRC_FeedData32(CRC, x & 0x000000FF); break;
+		case 2: LL_CRC_FeedData32(CRC, x & 0x0000FFFF); break;
+		case 3: LL_CRC_FeedData32(CRC, x & 0x00FFFFFF); break;
+	}
+  return(LL_CRC_ReadData32(CRC));
+}
+
+uint32_t atoui32(uint8_t* str) 
+{ 
+	int res = 0; // Initialize result 
+//	for (int i = 0; str[i] != '\0'; ++i) 
+    for (int i = 0; i<10; ++i) 
+			res = res * 10 + str[i] - '0'; 
+	return res; 
+} 
+void ui10toa(uint32_t n, uint8_t s[]){
+	int i = 9;
+	do {       /* генерируем цифры в обратном порядке */
+		s[i--] = n % 10 + '0';   /* берем следующую цифру */
+	} while ((n /= 10) > 0);     /* удаляем */
+	while(i>=0)
+		s[i--] = '0';
+ }
+
+ 
+ 
+ 
+
+uint32_t atoui64(uint8_t* str) 
+{ 
+	int res = 0; // Initialize result 
+//	for (int i = 0; str[i] != '\0'; ++i) 
+    for (int i = 0; i<CRC_BASE64_STRLEN; ++i){
+			uint8_t decode = str[i] - '0' > 9 ? str[i] - 'A' + 10 : str[i] - '0';
+			res = res * 64 + decode;
+		}			
+	return res; 
+} 
+
+void ui64toa(uint32_t n, uint8_t s[]){ //generte number with base 64
+     int i = CRC_BASE64_STRLEN - 1;
+     do {
+       uint32_t rem = n % 64;
+			 s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+     } while ((n /= 64) > 0);     /* удаляем */
+		 while(i>=0)
+			 s[i--] = '0';
+ }
+void sendDefaultResponceDMA(){
+//	memcpy(info,"1.71;",5);
+	sendResponce((uint32_t)&state_hw,SYNC_BYTES);
+}
+
+ void sendResponce(uint32_t SrcAddress, uint32_t NbData){
+	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_4,SrcAddress,LL_USART_DMA_GetRegAddr(USART1),LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, NbData);
+	LL_USART_EnableDMAReq_TX(USART1);
+	/* Enable DMA Channel Tx */
+	LL_USART_ClearFlag_TC(USART1);
+	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
+//	LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_4);
+//	LL_USART_EnableIT_TC(USART1);
+}
+

@@ -39,10 +39,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "fixedptc.h"
-#include "buttons.h"
-#include "fsm.h"
-#include "i2c_interface.h"
-#include "ssd1306.h"
+#include "nuts_bolts.h"
+#include "gcode.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -82,7 +80,7 @@
 /* USER CODE END EV */
 
 /******************************************************************************/
-/*           Cortex-M3 Processor Interruption and Exception Handlers          */ 
+/*           Cortex-M3 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
   * @brief This function handles System service call via SWI instruction.
@@ -109,23 +107,26 @@ void PendSV_Handler(void)
 
   /* USER CODE END PendSV_IRQn 1 */
 }
-
+int data_refresh = 40;
+const uint8_t aTxtest2[] = "A12345678901234567890BBB\r\n";//crc ok, add to queue ok, continue
 /**
   * @brief This function handles System tick timer.
   */
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
+//	if(--data_refresh == 0){
+//		data_refresh = 4000;
+//		sendResponceAgain();
+//		sendResponce((uint32_t)aTxtest2,SYNC_BYTES);
+
+//	}
 
   /* USER CODE END SysTick_IRQn 0 */
-  
   /* USER CODE BEGIN SysTick_IRQn 1 */
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
-	for(int a = 0; a<BT_TOTAL;a++){
-		if( bt[a].buttons_mstick > 0 )
-			bt[a].buttons_mstick++;
-	}
+
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -142,68 +143,15 @@ void SysTick_Handler(void)
 void DMA1_Channel4_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
-  if(LL_DMA_IsActiveFlag_TC4(DMA1))
-  {
-    LL_DMA_ClearFlag_GI4(DMA1);
-		
-		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
-		LL_DMA_ClearFlag_TC4(DMA1);
-    Transfer_Complete_Callback();
-//    DMA1_Transfer_Complete_Callback();
-  }
-  else if(LL_DMA_IsActiveFlag_TE4(DMA1))
-  {
-    Transfer_Error_Callback();
-  }
 
   /* USER CODE END DMA1_Channel4_IRQn 0 */
-  
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
 
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
+	LL_USART_EnableIT_TC(USART1);
+	LL_DMA_ClearFlag_TC4(DMA1);
   /* USER CODE END DMA1_Channel4_IRQn 1 */
 }
-
-/**
-  * @brief This function handles DMA1 channel5 global interrupt.
-  */
-void DMA1_Channel5_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
-  if(LL_DMA_IsActiveFlag_TC5(DMA1))
-  {
-    LL_DMA_ClearFlag_GI5(DMA1);
-
-		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_5);
-		LL_DMA_ClearFlag_TC5(DMA1);
-
-    Transfer_Complete_Callback();
-  }
-  else if(LL_DMA_IsActiveFlag_TE5(DMA1))
-  {
-    Transfer_Error_Callback();
-  }
-
-  /* USER CODE END DMA1_Channel5_IRQn 0 */
-  
-  /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel5_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA1 channel7 global interrupt.
-  */
-void DMA1_Channel7_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel7_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel7_IRQn 0 */
-  
-  /* USER CODE BEGIN DMA1_Channel7_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel7_IRQn 1 */
-}
-
+int breakbig =0;
 /**
   * @brief This function handles TIM1 update interrupt.
   */
@@ -213,14 +161,20 @@ void TIM1_UP_IRQHandler(void)
 	// enable corresponding channel for sub-step:
 	TIM1->SR = 0;
 	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_off;
-	
-	if(state_hw.current_task.steps_to_end == 0){
-		state_hw.task_lock = false; // unlock task processor to load next task
-		if(task_cb.count == 0){
-			do_fsm_move_end2(&state_hw);
-//			return;
-		}
-//		load_next_task(&state_hw);
+	if(!state_hw.jog_pulse){
+		if(state_hw.current_task_ref->steps_to_end == 0 ){
+			state_hw.task_lock = false; // unlock task processor to load next task
+			if(task_cb.count == 0){
+				do_fsm_move_end2(&state_hw);
+	//			return;
+			}
+	//		load_next_task(&state_hw);
+		} 
+//		else if (state_hw.current_task_ref->steps_to_end > 4294964598) {
+//			breakbig = 1;
+//		}
+	} else {
+		state_hw.jog_pulse = false;
 	}
 
   /* USER CODE END TIM1_UP_IRQn 0 */
@@ -264,26 +218,30 @@ void TIM2_IRQHandler(void)
 //  }
   /* USER CODE END TIM2_IRQn 1 */
 }
-
+int break11 = 0 ;
 /**
-* @brief This function handles TIM3 global interrupt. Прерывание срабатывает в конце пульса, в нем обрабатываем
-пересчет для следующего шага, а так же выполняются функции обработки конца задания и инициализации следующего задания
+  * @brief This function handles TIM3 global interrupt.
   */
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
 	TIM3->SR = 0;
 
-	if(state_hw.current_task.callback_ref){
-		state_hw.current_task.callback_ref(&state_hw);
+	if(state_hw.current_task_ref->callback_ref){
+		state_hw.current_task_ref->callback_ref(&state_hw);
 	}
-	if(state_hw.current_task.steps_to_end == 0 && !LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
-		state_hw.task_lock = false; // unlock task processor to load next task
-		if(task_cb.count == 0){
-			do_fsm_move_end2(&state_hw);
-//			return;
+	if(state_hw.current_task_ref->steps_to_end == 0){
+		break11 = 1;
+		if(!LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
+			state_hw.task_lock = false; // unlock task processor to load next task
+			if(task_cb.count == 0){
+				do_fsm_move_end2(&state_hw);
+	//			return;
+			}
+	//		load_next_task(&state_hw);
+		} else {
+			break11 = 2;
 		}
-//		load_next_task(&state_hw);
 	}
 
   /* USER CODE END TIM3_IRQn 0 */
@@ -347,99 +305,32 @@ void TIM4_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles I2C2 event interrupt.
+  * @brief This function handles USART1 global interrupt.
   */
-void I2C2_EV_IRQHandler(void)
+void USART1_IRQHandler(void)
 {
-  /* USER CODE BEGIN I2C2_EV_IRQn 0 */
-  /* Check SB flag value in ISR register */
-  if(LL_I2C_IsActiveFlag_SB(I2C2))
-  {
-    /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a write request */
-    LL_I2C_TransmitData8(I2C2, ubI2C_slave_addr | ubMasterRequestDirection);
-
-    /* Send Slave address with a 7-Bit SLAVE_OWN_ADDRESS for a ubMasterRequestDirection request */
-//    LL_I2C_TransmitData8(I2C2, SLAVE_OWN_ADDRESS | ubMasterRequestDirection);
-		
-  }
-  /* Check ADDR flag value in ISR register */
-  else if(LL_I2C_IsActiveFlag_ADDR(I2C2))
-  {
-    /* Verify the transfer direction */
-    if(LL_I2C_GetTransferDirection(I2C2) == LL_I2C_DIRECTION_READ)
-    {
-      ubMasterXferDirection = LL_I2C_DIRECTION_READ;
-
-      if(ubMasterNbDataToReceive == 1)
-      {
-        /* Prepare the generation of a Non ACKnowledge condition after next received byte */
-        LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_NACK);
-
-        /* Enable DMA transmission requests */
-        LL_I2C_EnableDMAReq_RX(I2C2);
-      }
-      else if(ubMasterNbDataToReceive == 2)
-      {
-        /* Prepare the generation of a Non ACKnowledge condition after next received byte */
-        LL_I2C_AcknowledgeNextData(I2C2, LL_I2C_NACK);
-
-        /* Enable Pos */
-        LL_I2C_EnableBitPOS(I2C2);
-      }
-      else
-      {
-        /* Enable Last DMA bit */
-        LL_I2C_EnableLastDMA(I2C2);
-
-        /* Enable DMA transmission requests */
-        LL_I2C_EnableDMAReq_RX(I2C2);
-      }
-    } else {
-			/* Enable DMA transmission requests */
-			LL_I2C_EnableDMAReq_TX(I2C2);
-		}
-    /* Clear ADDR flag value in ISR register */
-    LL_I2C_ClearFlag_ADDR(I2C2);
-  }
-
-  /* USER CODE END I2C2_EV_IRQn 0 */
-  
-  /* USER CODE BEGIN I2C2_EV_IRQn 1 */
-
-  /* USER CODE END I2C2_EV_IRQn 1 */
-}
-
-/**
-  * @brief This function handles I2C2 error interrupt.
-  */
-void I2C2_ER_IRQHandler(void)
-{
-  /* USER CODE BEGIN I2C2_ER_IRQn 0 */
-  Error_Handler();
-
-  /* USER CODE END I2C2_ER_IRQn 0 */
-  
-  /* USER CODE BEGIN I2C2_ER_IRQn 1 */
-
-  /* USER CODE END I2C2_ER_IRQn 1 */
-}
-
-/**
-  * @brief This function handles USART2 global interrupt.
-  */
-void USART2_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART2_IRQn 0 */
-  if(LL_USART_IsActiveFlag_RXNE(USART2) && LL_USART_IsEnabledIT_RXNE(USART2))
+  /* USER CODE BEGIN USART1_IRQn 0 */
+	if(LL_USART_IsActiveFlag_RXNE(USART1) && LL_USART_IsEnabledIT_RXNE(USART1))
   {
     /* RXNE flag will be cleared by reading of DR register (done in call) */
     /* Call function in charge of handling Character reception */
     USART_CharReception_Callback();
-  }
-  /* USER CODE END USART2_IRQn 0 */
-  /* USER CODE BEGIN USART2_IRQn 1 */
+  } else {
+		
+//		while(1);
+//		Error_Handler();
+	}
+	if(LL_USART_IsActiveFlag_TC(USART1) && LL_USART_IsEnabledIT_TC(USART1)){
+		LL_USART_ClearFlag_TC(USART1);
+		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+		
+//		while(1);
+	}
 
-  /* USER CODE END USART2_IRQn 1 */
+  /* USER CODE END USART1_IRQn 0 */
+  /* USER CODE BEGIN USART1_IRQn 1 */
+
+  /* USER CODE END USART1_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

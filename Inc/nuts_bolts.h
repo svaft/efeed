@@ -3,6 +3,27 @@
 
 #include "main.h"
 
+#define CRC_BASE64_STRLEN 6
+
+uint32_t Calculate_CRC(uint32_t len, uint8_t *bfr, int clear);
+uint32_t atoui32(uint8_t* str);
+uint32_t atoui64(uint8_t* str);
+
+void ui10toa(uint32_t n, uint8_t s[]);
+void ui64toa(uint32_t n, uint8_t s[]);
+void sendResponce(uint32_t SrcAddress, uint32_t NbData);
+void sendDefaultResponceDMA();
+
+__STATIC_INLINE bool is_crc_ok(uint8_t *bfr, uint8_t len){
+	uint32_t crc = Calculate_CRC(len,bfr,1);
+	uint32_t atoi = atoui64((uint8_t *)(bfr+len));
+	if(crc == atoi)
+		return true;
+	else
+		return false;
+
+}
+
 uint64_t SquareRoot64(uint64_t a_nInput);
 uint32_t SquareRoot(uint32_t a_nInput);
 uint32_t SquareRootRounded(uint32_t a_nInput);
@@ -51,6 +72,17 @@ __STATIC_INLINE void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
     cb->tail 		= cb->buffer;
 		cb->tail2 	= cb->buffer;
 		cb->top  		= cb->buffer;
+}
+
+__STATIC_INLINE void sendResponceAgain(){
+	if(LL_USART_IsActiveFlag_TC(USART1) && LL_DMA_IsActiveFlag_TC4(DMA1) ){
+		LL_USART_ClearFlag_TC(USART1);
+		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+		LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, SYNC_BYTES);
+	/* Enable DMA Channel Tx */
+		LL_DMA_ClearFlag_TC4(DMA1);
+		LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
+	}
 }
 
 __STATIC_INLINE void cb_free(circular_buffer *cb){
@@ -123,13 +155,31 @@ __STATIC_INLINE void cb_push_back_empty(circular_buffer *cb){
     cb->count2++;
 }
 
+__STATIC_INLINE void cb_push_back_item(circular_buffer *cb, void *item){
+    if(cb->count == cb->capacity){
+        Error_Handler();
+            // handle error
+    }
+//    memset(cb->head, 0, cb->sz);
+    memcpy(cb->head, item, cb->sz);
+		cb->top = cb->head;
+    cb->head = (uint8_t *)cb->head + cb->sz;
+    if(cb->head == cb->buffer_end)
+        cb->head = cb->buffer;
+    cb->count++;
+    cb->count2++;
+}
+
+
 __STATIC_INLINE void cb_init_by_top(circular_buffer *cb, void *item){
     if(cb->count == 0){
         return;
     }
     memcpy(item, cb->top, cb->sz);
 }
-
+/**
+  * @brief pop item from tail of buffer and free slot
+*/
 __STATIC_INLINE void cb_pop_front(circular_buffer *cb, void *item){
     if(cb->count == 0){
         return;
@@ -145,6 +195,44 @@ __STATIC_INLINE void cb_pop_front(circular_buffer *cb, void *item){
     cb->count--;
 }
 
+/**
+  * @brief pop item by ref from tail of buffer and free slot
+*/
+__STATIC_INLINE void* cb_pop_front_ref(circular_buffer *cb){
+    if(cb->count == 0){
+        return 0;
+        // handle error
+    }
+    void *ref = cb->tail; // get ref to stored value to return at the end and step to next
+//    if(cb->tail == cb->tail2)
+		if(cb->count2 >= cb->count)
+			cb->count2--;
+    cb->tail = (char*)cb->tail + cb->sz;
+    if(cb->tail == cb->buffer_end) // if reach the end go to head of buffer
+        cb->tail = cb->buffer;
+    cb->count--;
+    return ref;
+}
+
+
+__STATIC_INLINE void* cb_pop_front_ref2(circular_buffer *cb){
+    if(cb->count2 == 0){
+        return 0;
+        // handle error
+    }
+    void *ref = cb->tail2;
+    cb->tail2 = (char*)cb->tail2 + cb->sz;
+    if(cb->tail2 == cb->buffer_end)
+        cb->tail2 = cb->buffer;
+    cb->count2--;
+    return ref;
+}
+
+
+
+/**
+  * @brief get item ref from tail of buffer, slot is locked untill cb_pop_front_ref 
+*/
 __STATIC_INLINE void* cb_get_front_ref(circular_buffer *cb){
     if(cb->count == 0){
         return 0;
@@ -167,34 +255,6 @@ __STATIC_INLINE void* cb_step_back(circular_buffer *cb){
 }
 
 
-__STATIC_INLINE void* cb_pop_front_ref(circular_buffer *cb){
-    if(cb->count == 0){
-        return 0;
-        // handle error
-    }
-    void *ref = cb->tail; // get ref to stored value to return at the end and step to next
-    if(cb->tail == cb->tail2)
-			cb->count2--;
-    cb->tail = (char*)cb->tail + cb->sz;
-    if(cb->tail == cb->buffer_end) // if reach the end go to head of buffer
-        cb->tail = cb->buffer;
-    cb->count--;
-    return ref;
-}
-
-
-__STATIC_INLINE void* cb_pop_front_ref2(circular_buffer *cb){
-    if(cb->count2 == 0){
-        return 0;
-        // handle error
-    }
-    void *ref = cb->tail2;
-    cb->tail2 = (char*)cb->tail2 + cb->sz;
-    if(cb->tail2 == cb->buffer_end)
-        cb->tail2 = cb->buffer;
-    cb->count2--;
-    return ref;
-}
 
 
 #endif

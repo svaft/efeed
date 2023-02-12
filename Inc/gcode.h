@@ -43,6 +43,7 @@ void G95(state_t* s);
 
 void G33parse(char *line);
 void G00parse(char *line);
+void G98G99parse(char *line, uint8_t G98G99);
 
 extern G_task_t gt_precalc[];
 extern G_task_t gt[];

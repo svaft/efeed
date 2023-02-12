@@ -49,6 +49,7 @@ void load_next_task(state_t* s){
 	if(s->task_lock == false && task_cb.count > 0) {
 		G_task_t *next_task = cb_get_front_ref(&task_cb);
 		if(next_task && next_task->unlocked == true) {
+			s->last_loaded_task_ref  = next_task;
 			current_step++;
 //			if(current_step == 46)
 //				break1 = 1;
@@ -56,7 +57,7 @@ void load_next_task(state_t* s){
 //	debug();
 			s->task_lock = true;
 //			cb_pop_front(&task_cb, s->current_task_ref);
-			s->current_task_ref = cb_get_front_ref(&task_cb);
+			s->current_task_ref = next_task;//cb_get_front_ref(&task_cb);
 			cb_pop_front_ref(&task_cb);
 			if(s->current_task_ref->init_callback_ref){
 				s->current_task_ref->init_callback_ref(s); // task specific init
@@ -387,8 +388,13 @@ void do_fsm_move_end2(state_t* s){
 //	debug();
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 	ramp_pos = 0; // reset ramp map 
-	substep_cb.count = substep_cb.count2 = 0;
-	substep_cb.top = substep_cb.head = substep_cb.tail2 = substep_cb.tail;
+	cb_reset(&substep_cb);
+	init_gp.Z = fixedpt_fromint2210(s->global_Z_pos);
+	init_gp.X = fixedpt_fromint2210(s->global_X_pos);
+
+	s->current_task_ref = 0;
+//	substep_cb.count = substep_cb.count2 = 0;
+//	substep_cb.top = substep_cb.head = substep_cb.tail2 = substep_cb.tail;
 
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
@@ -488,6 +494,12 @@ void command_parser(char *line){
 					case 76*steps_per_unit_Z_2210: //G76 threading cycle
 						G33parse(line+char_counter - 1);
 						return;	
+					case 98*steps_per_unit_Z_2210: //G98 threading cycle
+						G98G99parse(line+char_counter - 1, G98code);
+						return;	
+					case 99*steps_per_unit_Z_2210: //G98 threading cycle
+						G98G99parse(line+char_counter - 1, G99code);
+						return;	
 				}
 				break;
 			case 'X':
@@ -580,6 +592,11 @@ G_pipeline_t* G_parse(char *line, G_pipeline_t *gpos){
 //	cb_push_back(&gp_cb, &init_gp);
 	return &init_gp; //gp_cb.top;
 }
+
+void G98G99parse(char *line, uint8_t G98G99){
+
+}
+
 
 void calibrate_init_callback(state_t *s){ 
 	// todo not sure if it's working from timer interrupt where load_task is started...

@@ -74,6 +74,16 @@ __STATIC_INLINE void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
 		cb->top  		= cb->buffer;
 }
 
+__STATIC_INLINE void cb_reset(circular_buffer *cb){
+    cb->count 	= 0;
+    cb->count2 	= 0;
+    cb->head 		= cb->buffer;
+    cb->tail 		= cb->buffer;
+		cb->tail2 	= cb->buffer;
+		cb->top  		= cb->buffer;
+}
+
+
 __STATIC_INLINE void sendResponceAgain(){
 	if(LL_USART_IsActiveFlag_TC(USART1) && LL_DMA_IsActiveFlag_TC4(DMA1) ){
 		LL_USART_ClearFlag_TC(USART1);

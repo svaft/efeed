@@ -47,6 +47,7 @@
 
 #include "gcode.h"
 #include "nuts_bolts.h"
+#include "..\buildno.txt"
 
 
 //#define ARM_MATH_CM3
@@ -195,11 +196,31 @@ void PrintInfo(uint8_t *String, uint32_t Size)
 
 
 
+bool dbg_ssh = false;
 
 int dbg_ste = 0;
 int dbg_gskip = 0;
 int dbg_ss_cnt = 0;
+void trim_substep_short(){
+	// 1. check if there is any active task is running:
+	if(state_hw.current_task_ref) {
+		if(state_hw.current_task_ref->steps_to_end > 50){
+			state_hw.current_task_ref->steps_to_end = 50;
+		}
+		// reset task cb:
+		cb_reset(&task_cb);
+	}
 
+	// check if any task is precalculating:
+	if(state_precalc.current_task_ref) {
+		//stop precalculating process, reset tasks and substep cb:
+		state_precalc.current_task_ref = 0;
+		cb_reset(&task_cb);
+		if(state_hw.current_task_ref == 0) //drop substeps only if there is no active running task
+			cb_reset(&substep_cb);
+	}
+}
+/*
 void trim_substep(){
 	uint32_t skip = 50;
 	substep_t *tmp_head = (substep_t *)substep_cb.tail;
@@ -274,7 +295,7 @@ void trim_substep(){
 	init_gp.Z = fixedpt_fromint2210(local_Z);
 	init_gp.X = fixedpt_fromint2210(local_X);
 }
-
+*/
 /**
   * @brief  Function called from USART IRQ Handler when RXNE flag is set
   *         Function is in charge of reading character received on USART RX line.
@@ -327,12 +348,12 @@ int main(void)
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
-//	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 	
 	#ifdef _USEENCODER
 	int preload = 2;//LOOP_COUNT;
 	#else
-	int preload = 2;//LOOP_COUNT;
+	int preload = 3;//LOOP_COUNT;
 	#endif	
 
 const char * ga1[] = {
@@ -401,14 +422,16 @@ const char * ga1[] = {
 
   /* USER CODE BEGIN Init */
 	memset(&state_hw,0,sizeof(state_hw));
+	
+	state_hw.retract = 100;
 
-	state_hw.uart_header[0] = state_hw.uart_header[1] =state_hw.uart_header[2] =state_hw.uart_header[3] = '!';
+  state_hw.uart_header[0] = state_hw.uart_header[1] =state_hw.uart_header[2] =state_hw.uart_header[3] = '!';
 	state_hw.uart_end[0] = '#';
 	state_hw.uart_end[1] = '#';
 	state_hw.uart_end[2] = '\r';
 	state_hw.uart_end[3] = '\n';
 	char info[14];
-//	memcpy(info,"1.71;",5);
+//	memcpy(info,"1.80;",5);
 //	state_hw.global_Z_pos = (2<<23) - 1;
 	ui64toa(state_hw.global_Z_pos,&info[0]);
 
@@ -545,7 +568,7 @@ const char * ga1[] = {
 	int32_t record_X = 0, record_Z = 0;
 //	G_task_t *precalculating_task = 0;
 	int command = 0;
-		bool move_to_saved_pos = false;
+	bool move_to_saved_pos = false;
 
 // some init hardware state
 	state_hw.substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
@@ -634,9 +657,15 @@ const char * ga1[] = {
 						move_to_saved_pos = false;
 						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cycle
 //						__disable_irq();
-						memcpy(&record_task, state_hw.current_task_ref, task_cb.sz);
-						trim_substep();
-
+						memcpy(&record_task, state_hw.last_loaded_task_ref, task_cb.sz);
+//						if(dbg_ssh)
+							trim_substep_short();
+//						else 
+//							trim_substep();
+						// due to predict where machine will end its movement currently work not good do next trick:
+						//wait until active task is finished to update init_gp position with actual global_Z(X)_pos:
+						while(state_hw.current_task_ref);
+ 
 						record_task.unlocked = false; // lock task to recalculate it again
 						record_X = state_hw.initial_task_X_pos;
 						record_Z = state_hw.initial_task_Z_pos;
@@ -649,15 +678,19 @@ const char * ga1[] = {
 						record_task.dz = abs(back_dz);
 						record_task.dx = abs(back_dx);
 
-						scheduleG00G01move(fixedpt_fromint2210(400), 0, 0, G00code);
+					// move back:
+					// 1. move back 400 steps from blank(or move forward if ID)
+						scheduleG00G01move(fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
+					// repeat same movement in back direction
 						scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
-						scheduleG00G01move(-400*1024, 0, 0, G00code);
+          // move forward 400 steps to blank
+						scheduleG00G01move(-fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
 						sendDefaultResponceDMA();
 //						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '3': //repeat last command '!3'
 						// команда 
-						if( abs(state_hw.global_X_pos - record_X) > 400 || abs(state_hw.global_Z_pos - record_Z) > 400 ){
+						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
 							if(state_hw.G90G91 == G90mode){
 								scheduleG00G01move(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
 							} else {
@@ -673,9 +706,9 @@ const char * ga1[] = {
 							int back_dz = record_task.z_direction ==zdir_forward ? -record_task.dz : record_task.dz;
 							int back_dx = record_task.x_direction ==xdir_forward ? record_task.dx : -record_task.dx;
 
-							scheduleG00G01move(fixedpt_fromint2210(400), 0, 0, G00code);
+							scheduleG00G01move(fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
 							scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
-							scheduleG00G01move(-400*1024, 0, 0, G00code);
+							scheduleG00G01move(-state_hw.retract*1024, 0, 0, G00code);
 						}
 						break;
 					case '4': // fast feed to start position '!4'
@@ -685,13 +718,16 @@ const char * ga1[] = {
 					case 'X': // stop current move '!X'
 					case 'S': // stop current move  '!S'
 						while(state_hw.rised!=0);
-						trim_substep();
+						trim_substep_short();
 						sendDefaultResponceDMA();
 //						sendResponce((uint32_t)"ok\r\n",4);
 						break;
 					case '0': { // reqest info{  '!0'
 						char info[14];
-						memcpy(info,"2.10;",5); //version
+//						memcpy(info,"2.10;",5); //version
+						memset(info,32,5); //fill version block with spaces
+						ui10toa(Build_No, (uint8_t *)&info); //copy dynamic build nubmer to info field
+						
 						ui64toa(state_hw.global_Z_pos,(uint8_t *)&info[5]);
 						info[11] = ';';
 						info[12] = '\r';
@@ -760,6 +796,15 @@ const char * ga1[] = {
 						}
 						break;
 					}
+					case 't':
+					if(state_hw.Q824set > 1400000)	
+						state_hw.Q824set -= 740171;
+					else 
+						state_hw.Q824set >>=1;
+						break;
+					case 'g':
+						state_hw.Q824set += 740171;
+						break;
 					case 's': {// go backward by 1 step '!s'
 //						state_hw.substep_axis = SUBSTEP_AXIS_X;
 //						state_hw.current_task_ref->dx = 0;
@@ -796,6 +841,14 @@ const char * ga1[] = {
 						}
 						break;
 					}
+					case 'I': // set ID
+						state_hw.ODID = 1;
+						state_hw.retract = -100;
+						break;
+					case 'O': // set OD
+						state_hw.ODID = 0;
+						state_hw.retract = 100;
+						break;
 				}
 			} else {
 //				int charsCount = uNbReceivedCharsForUser - CRC_BASE64_STRLEN;

@@ -77,13 +77,13 @@ int str_f_to_steps(const char *str, uint16_t steps_per_unit, char **endptr)
 */
 
 /**
- * \brief convert value mm/rev in Q22.10 format to Q824 delay according to stepper per rev,
+ * \brief convert value mm/rev in Q22.10 format to Q16.16 delay according to stepper per rev,
  * 	lead screw pitch and encoder resolution
  * \param[in] 
  *
  * \return 
  */
-fixedptu str_f824mm_rev_to_delay824(fixedptu feed){
+fixedptu str_f2210mm_rev_to_delay1616(fixedptu feed){
 /* 1800enc lines*2(2x mode) / (400steps p mm / 1mm lead screw * current_code.feed ) << 24 to q824
 		1800*2/(400/1*feed)<<24 = 3600/(400feed)<<24=9<<24/feed
 */
@@ -526,6 +526,27 @@ void ui10toa(uint32_t n, uint8_t s[]){
 		s[i--] = '0';
  }
 
+ void ui16toa(void* ptr , uint8_t s[], int len){ //generte number with base 64
+  int i = len*2-1;
+	unsigned char *byte = ptr;
+	do{
+		uint8_t rem = *byte % 16;
+		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+		rem = *byte++ / 16;
+		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+	} while(i>0);
+}
+
+
+void ui64toa(uint32_t n, uint8_t s[]){ //generte number with base 64
+     int i = CRC_BASE64_STRLEN - 1;
+     do {
+       uint32_t rem = n % 75;//64;
+			 s[i--] =  rem+'0'; //rem>9 ? (rem-10)+'A' : rem+'0';
+     } while ((n /= 75) > 0);     /* удаляем */
+		 while(i>=0)
+			 s[i--] = '0';
+ }
  
  
  
@@ -541,21 +562,14 @@ uint32_t atoui64(uint8_t* str)
 	return res; 
 } 
 
-void ui64toa(uint32_t n, uint8_t s[]){ //generte number with base 64
-     int i = CRC_BASE64_STRLEN - 1;
-     do {
-       uint32_t rem = n % 64;
-			 s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
-     } while ((n /= 64) > 0);     /* удаляем */
-		 while(i>=0)
-			 s[i--] = '0';
- }
-void sendDefaultResponceDMA(){
-//	memcpy(info,"1.71;",5);
-	sendResponce((uint32_t)&state_hw,SYNC_BYTES);
+void sendDefaultResponseDMA(uint8_t cmd, void* ptr){
+	state_hw.uart_header[3] = cmd;
+	ui16toa(ptr, &state_hw.uart_body[0],4);
+	sendResponse((uint32_t)&state_hw,SYNC_BYTES);
 }
 
- void sendResponce(uint32_t SrcAddress, uint32_t NbData){
+
+ void sendResponse(uint32_t SrcAddress, uint32_t NbData){
 	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
 	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_4,SrcAddress,LL_USART_DMA_GetRegAddr(USART1),LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
 	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, NbData);

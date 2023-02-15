@@ -60,7 +60,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+extern __IO uint8_t ubLIMITleftZ;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -107,8 +107,7 @@ void PendSV_Handler(void)
 
   /* USER CODE END PendSV_IRQn 1 */
 }
-int data_refresh = 40;
-const uint8_t aTxtest2[] = "A12345678901234567890BBB\r\n";//crc ok, add to queue ok, continue
+
 /**
   * @brief This function handles System tick timer.
   */
@@ -117,12 +116,13 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 //	if(--data_refresh == 0){
 //		data_refresh = 4000;
-//		sendResponceAgain();
-//		sendResponce((uint32_t)aTxtest2,SYNC_BYTES);
+//		sendResponseAgain();
+//		sendResponse((uint32_t)aTxtest2,SYNC_BYTES);
 
 //	}
 
   /* USER CODE END SysTick_IRQn 0 */
+
   /* USER CODE BEGIN SysTick_IRQn 1 */
 //      if(auto_mode_delay > 0)
 //              auto_mode_delay--;
@@ -151,7 +151,28 @@ void DMA1_Channel4_IRQHandler(void)
 	LL_DMA_ClearFlag_TC4(DMA1);
   /* USER CODE END DMA1_Channel4_IRQn 1 */
 }
-int breakbig =0;
+
+/**
+  * @brief This function handles EXTI line[9:5] interrupts.
+  */
+void EXTI9_5_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+
+  /* USER CODE END EXTI9_5_IRQn 0 */
+  if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_7) != RESET)
+  {
+    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_7);
+    /* USER CODE BEGIN LL_EXTI_LINE_7 */
+		
+		ubLIMITleftZ = 1;
+    /* USER CODE END LL_EXTI_LINE_7 */
+  }
+  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
+
+  /* USER CODE END EXTI9_5_IRQn 1 */
+}
+
 /**
   * @brief This function handles TIM1 update interrupt.
   */
@@ -218,7 +239,7 @@ void TIM2_IRQHandler(void)
 //  }
   /* USER CODE END TIM2_IRQn 1 */
 }
-int break11 = 0 ;
+
 /**
   * @brief This function handles TIM3 global interrupt.
   */
@@ -231,7 +252,6 @@ void TIM3_IRQHandler(void)
 		state_hw.current_task_ref->callback_ref(&state_hw);
 	}
 	if(state_hw.current_task_ref->steps_to_end == 0){
-		break11 = 1;
 		if(!LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
 			state_hw.task_lock = false; // unlock task processor to load next task
 			if(task_cb.count == 0){
@@ -240,7 +260,6 @@ void TIM3_IRQHandler(void)
 			}
 	//		load_next_task(&state_hw);
 		} else {
-			break11 = 2;
 		}
 	}
 

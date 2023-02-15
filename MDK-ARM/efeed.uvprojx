@@ -188,7 +188,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>1</useUlib>
+            <useUlib>0</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <nSecure>0</nSecure>
@@ -338,7 +338,7 @@
               <MiscControls>--C99</MiscControls>
               <Define>_SIMU,__TARGET_FPU_SOFTVFP,STM32F103xB,USE_FULL_LL_DRIVER,HSE_VALUE=8000000,HSE_STARTUP_TIMEOUT=100,LSE_STARTUP_TIMEOUT=5000,LSE_VALUE=32768,HSI_VALUE=8000000,LSI_VALUE=40000,VDD_VALUE=3300,PREFETCH_ENABLE=1</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;                                                                                             ../Drivers/STM32F1xx_HAL_Driver/Inc;                                                                                             ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;                                                                                             ../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Inc;                                                                                               ../Drivers/STM32F1xx_HAL_Driver/Inc;                                                                                               ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;                                                                                               ../Drivers/CMSIS/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>

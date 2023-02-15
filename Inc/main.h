@@ -60,7 +60,6 @@ extern "C" {
 #include "stm32f1xx_ll_pwr.h"
 #include "stm32f1xx_ll_tim.h"
 #include "stm32f1xx_ll_usart.h"
-#include "stm32f1xx.h"
 #include "stm32f1xx_ll_gpio.h"
 
 #if defined(USE_FULL_ASSERT)
@@ -190,16 +189,17 @@ typedef struct state_s
 {
 	char uart_header[4];
 	//	uint32_t steps_to_end;
-	int32_t global_Z_pos, global_X_pos;
+	char uart_body[8];
 	char uart_end[4];
+	int32_t global_Z_pos, global_X_pos;
 	char mid[24];
 	int32_t initial_task_Z_pos, initial_task_X_pos;
 	int32_t task_destination_Z_pos, task_destination_X_pos;
 
 //	uint32_t end_pos;
 //	uint8_t ramp_step;
-	uint32_t Q824set; // feed rate
-	uint32_t fract_part; // Q8.24 format fract part
+	uint32_t Q824set; // feed rate, now its actually in 1616 format, todo rename?
+	uint32_t fract_part; // Q8.24 format fract part now its actually in 1616 format, todo rename?
 
 	bool rised;
 	bool init;
@@ -532,8 +532,11 @@ void Error_Handler2(int);
 //#define hzminps_x  (uint32_t)((async_spindle_resolution*60*x_screw_pitch/x_steps_unit)*1024) // 11430<<10 //async_spindle_resolution*60sec*x_screw_pitch/x_steps_unit 
 
 #define rev_to_delay (uint32_t)(encoder_resolution/(z_steps_unit/z_screw_pitch)*(FIXEDPT_FMASK+1)) //(encoder_resolution/(z_steps_unit/z_screw_pitch))<<24
-#define rev_to_delay_f 96636764160.0f // 1474560.0f //301989888.0f
+// используется для деления 16.16 чисел, где x1616 = a1616*65536/b1616 , где а1616 = rev_to_delay_f = rev_to_delay * 65536
+#define rev_to_delay_f 96636764160.0f // 1474560.0f //301989888.0f 
 
+// 1474560 = 65536*encoder_resolution*z_screw_pitch/z_steps_unit = 3600*0,00625*65536 and * 1000 to get integer math
+#define feed_on_the_fly_factor (uint32_t)(encoder_resolution*z_screw_pitch/z_steps_unit*65536*1000) // 1474560000
 
 // minimum processed value is 0.001mm
 //#define steps_per_unit_Z_2210   273066 //z_steps_unit<<10/z_screw_pitch (1,5mm screw)

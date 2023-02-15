@@ -107,6 +107,8 @@ __IO uint8_t	uNbReceivedCharsForUser;
 uint8_t *pBufferReadyForReception;
 __IO uint8_t ubUART3ReceptionComplete = 0;
 
+__IO uint8_t ubLIMITleftZ = 0;
+
 /* Buffer used for transmission */
 const uint8_t aTxtest[] = "A12345678901234567890BCD\r\n";//crc ok, add to queue ok, continue
 const uint8_t aTxFW2[] = "1.71;123456;\r\n";//crc ok, add to queue ok, continue
@@ -331,7 +333,11 @@ uint8_t ss[100];
 						int d_cnt = 0;
 bool rised2;
 char str1[64];
-//#define _USEENCODER
+char str2[64];
+float fft = 3.14f;
+
+
+ //#define _USEENCODER
 /* USER CODE END 0 */
 
 /**
@@ -341,10 +347,12 @@ char str1[64];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+//state_hw.global_Z_pos = -1;
+//	ui64toa(state_hw.global_Z_pos, &str1[0]);//generte number with base 64
+//	ui16toa(&state_hw.global_Z_pos,&str1[0],4);
 //	strcat(str1, "test");
 //	info[11] = ';';
-	aa = sizeof(G_task_t);
+//	aa = sizeof(G_task_t);
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
@@ -356,7 +364,7 @@ int main(void)
 	int preload = 3;//LOOP_COUNT;
 	#endif	
 
-const char * ga1[] = {
+const char * ga1[] = { 
 	#ifdef _USEENCODER
 	"G91",
 	"G95",
@@ -375,7 +383,7 @@ const char * ga1[] = {
 //	"G76 P2. Z-50. I-8.209 J0.25 K2. R2. Q29.5 H0. E1. L0",
 
 	"G0 X0. Z0.",
-	"G0 Z200",
+	"G1 Z200 F0.1",
 //	"G0 X10. Z0.",
 	"G1 Z-10 F600",
 //	"G1 Z-200 F0.5",
@@ -433,7 +441,8 @@ const char * ga1[] = {
 	char info[14];
 //	memcpy(info,"1.80;",5);
 //	state_hw.global_Z_pos = (2<<23) - 1;
-	ui64toa(state_hw.global_Z_pos,&info[0]);
+
+//ui64toa(state_hw.global_Z_pos,&info[0]);
 
 //	state_hw.function = do_fsm_menu_lps;
 	
@@ -577,10 +586,13 @@ const char * ga1[] = {
 	state_hw.substep_axis = SUBSTEP_AXIS_X;
 	
 //	state_hw.uart_header 
-	sendDefaultResponceDMA();
-//	sendResponce((uint32_t)&state_hw,SYNC_BYTES);
+	uint32_t bn = Build_No;
+	sendDefaultResponseDMA('R',&bn);
 
-//	sendResponce((uint32_t)aTxtest,SYNC_BYTES);
+//	sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
+//	sendResponse((uint32_t)&state_hw,SYNC_BYTES);
+
+//	sendResponse((uint32_t)aTxtest,SYNC_BYTES);
 	// debug serial ping-pong
 	LED_OFF();
 	for(int a = 0;a<24;a++){
@@ -594,7 +606,7 @@ const char * ga1[] = {
 			if(cmd == '!'){
 				switch(aRXBuffer[1]){
 					case '0': { // reqest info{  '!0'
-						sendDefaultResponceDMA();
+						sendDefaultResponseDMA();
 						state_hw.global_X_pos++;
 						state_hw.global_Z_pos--;
 						LED_SWITCH();
@@ -645,16 +657,33 @@ const char * ga1[] = {
 
 //		ubUART3ReceptionComplete = 1;
 //		memcpy(aRXBuffer,"!test",4);
-
+    
+		// simple processing of A7 button trigger event from EXTI:
+		if(ubLIMITleftZ == 1) {
+			ubLIMITleftZ = 0;
+			while(state_hw.rised!=0);
+			trim_substep_short();
+			sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
+		}
 		if(ubUART3ReceptionComplete == 1){
 			uint8_t cmd = aRXBuffer[0];
 			ubUART3ReceptionComplete = 0;
 			if(cmd == '!'){
 				switch(aRXBuffer[1]){
+					case '1':
+//						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
+							if(state_hw.G90G91 == G90mode){
+								scheduleG00G01move(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
+							} else {
+								scheduleG00G01move(	fixedptu_fromint2210(record_X) - init_gp.X, fixedptu_fromint2210(record_Z) - init_gp.Z, 0, G00code);
+							}
+//							move_to_saved_pos = true;
+//						}
+						break;
 					case '2': // save last comand  '!2'
 						while(state_hw.rised!=0);
 						LED_ON();
-						move_to_saved_pos = false;
+//						move_to_saved_pos = false;
 						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cycle
 //						__disable_irq();
 						memcpy(&record_task, state_hw.last_loaded_task_ref, task_cb.sz);
@@ -664,7 +693,8 @@ const char * ga1[] = {
 //							trim_substep();
 						// due to predict where machine will end its movement currently work not good do next trick:
 						//wait until active task is finished to update init_gp position with actual global_Z(X)_pos:
-						while(state_hw.current_task_ref);
+						while(state_hw.current_task_ref != 0){
+						}
  
 						record_task.unlocked = false; // lock task to recalculate it again
 						record_X = state_hw.initial_task_X_pos;
@@ -677,6 +707,7 @@ const char * ga1[] = {
 						int back_dx = record_X - local_X;
 						record_task.dz = abs(back_dz);
 						record_task.dx = abs(back_dx);
+//						record_task.F = state_hw.Q824set; // get from hw if it feed was changed on the fly
 
 					// move back:
 					// 1. move back 400 steps from blank(or move forward if ID)
@@ -685,20 +716,21 @@ const char * ga1[] = {
 						scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
           // move forward 400 steps to blank
 						scheduleG00G01move(-fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
-						sendDefaultResponceDMA();
-//						sendResponce((uint32_t)"ok\r\n",4);
+						sendDefaultResponseDMA('X',&state_hw.global_X_pos);
+//						sendResponse((uint32_t)"ok\r\n",4);
 						break;
 					case '3': //repeat last command '!3'
 						// команда 
-						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
+/*						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
 							if(state_hw.G90G91 == G90mode){
 								scheduleG00G01move(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
 							} else {
 								scheduleG00G01move(	fixedptu_fromint2210(record_X) - init_gp.X, fixedptu_fromint2210(record_Z) - init_gp.Z, 0, G00code);
 							}
-							move_to_saved_pos = true;
-						} else {
-							move_to_saved_pos = false;
+//							move_to_saved_pos = true;
+						} else*/ 
+						{
+//							move_to_saved_pos = false;
 							cb_push_back_item(&task_cb,&record_task);
 							init_gp.Z += record_task.z_direction == zdir_backward ? -fixedpt_fromint2210(record_task.dz) : fixedpt_fromint2210(record_task.dz);
 							init_gp.X += record_task.x_direction == zdir_backward ? fixedpt_fromint2210(record_task.dx) : -fixedpt_fromint2210(record_task.dx);
@@ -711,16 +743,12 @@ const char * ga1[] = {
 							scheduleG00G01move(-state_hw.retract*1024, 0, 0, G00code);
 						}
 						break;
-					case '4': // fast feed to start position '!4'
-//						command_parser("G0 Z0. X0.");
-//						cb_push_back_item(&task_cb,&homing_task);
-						break;
 					case 'X': // stop current move '!X'
 					case 'S': // stop current move  '!S'
 						while(state_hw.rised!=0);
 						trim_substep_short();
-						sendDefaultResponceDMA();
-//						sendResponce((uint32_t)"ok\r\n",4);
+						sendDefaultResponseDMA('S',&state_hw.global_Z_pos);
+//						sendResponse((uint32_t)"ok\r\n",4);
 						break;
 					case '0': { // reqest info{  '!0'
 						char info[14];
@@ -733,7 +761,7 @@ const char * ga1[] = {
 						info[12] = '\r';
 						info[13] = '\n';
 
-						sendResponce((uint32_t)info, 14);
+						sendResponse((uint32_t)info, 14);
 						break;
 					}
 
@@ -752,12 +780,9 @@ const char * ga1[] = {
 							LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 							LL_mDelay(5);
 						}
-
-
 						if(pin_dir != zdir_backward){ // change DIR back
 							LL_GPIO_TogglePin(MOTOR_Z_DIR_GPIO_Port,MOTOR_Z_DIR_Pin);
 						}
-						
 						LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 						break;
 					}
@@ -792,19 +817,10 @@ const char * ga1[] = {
 							state_hw.global_X_pos--;
 							record_X--;
 							jog_pulse(0);
-							sendDefaultResponceDMA();
+							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}
 						break;
 					}
-					case 't':
-					if(state_hw.Q824set > 1400000)	
-						state_hw.Q824set -= 740171;
-					else 
-						state_hw.Q824set >>=1;
-						break;
-					case 'g':
-						state_hw.Q824set += 740171;
-						break;
 					case 's': {// go backward by 1 step '!s'
 //						state_hw.substep_axis = SUBSTEP_AXIS_X;
 //						state_hw.current_task_ref->dx = 0;
@@ -813,7 +829,7 @@ const char * ga1[] = {
 							state_hw.global_X_pos++;
 							record_X++;
 							jog_pulse(0);
-							sendDefaultResponceDMA();
+							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}
 						break;
 					}
@@ -841,6 +857,37 @@ const char * ga1[] = {
 						}
 						break;
 					}
+
+					case 'g':{ //decrease feed speed on the fly, resolution 0.1mm (0.1*1000=100)
+						int32_t ff = feed_on_the_fly_factor / state_hw.Q824set - 100;
+						if(ff < 100) // limit min FOTF by 0.1mm/rev
+							ff = 100;
+						record_task.F = state_hw.Q824set = feed_on_the_fly_factor / ff;
+						sendDefaultResponseDMA('f',&state_hw.Q824set);
+//						record_task.F = state_hw.Q824set;
+/*record_task.F = = 1474560.0f / state_hw.Q824set;
+					  ff -=0.1f;
+						if(ff < 0.1)
+							ff = 0.1;
+						state_hw.Q824set = 1474560 / ff;*/
+						break;
+					}
+					case 't': { //increase feed speed on the fly
+						// 1474560 = 65536*encoder_resolution*z_screw_pitch/z_steps_unit = 3600*0,00625*65536 and * 1000 to get integer math
+						int32_t ff = feed_on_the_fly_factor / state_hw.Q824set + 100;
+						if(ff > 3000) // limit max FOTF by 3mm/rev
+							ff = 3000;
+						record_task.F = state_hw.Q824set = feed_on_the_fly_factor / ff;
+						sendDefaultResponseDMA('f',&state_hw.Q824set);
+/*						float ff = 1474560.0 / state_hw.Q824set;
+					  ff +=0.1f;
+						if(ff > 3)
+							ff = 3;
+						state_hw.Q824set = 1474560.0 / ff; */
+						break;
+					}
+
+					
 					case 'I': // set ID
 						state_hw.ODID = 1;
 						state_hw.retract = -100;
@@ -856,18 +903,11 @@ const char * ga1[] = {
 
 //				if(charsCount>0) {
 //					if(is_crc_ok(aRXBuffer,charsCount)){
-//						sendResponce((uint32_t)aTxCRC_OK_OK_Continue, 5);
+//						sendResponse((uint32_t)aTxCRC_OK_OK_Continue, 5);
 //						*(aRXBuffer+charsCount) = 0;
 	//					uint8_t cmd = *(char *)aRXBuffer;
-						command_parser((char *)aRXBuffer);
-						
-//					} else {
-//						sendResponce((uint32_t)aTxCRC_Fail, 5);
-//					}
-//				}
+				command_parser((char *)aRXBuffer);
 			}
-
-
 		}
 
 //		process_joystick();
@@ -1150,8 +1190,6 @@ static void MX_TIM3_Init(void)
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH2, &TIM_OC_InitStruct);
   LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH2);
   LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH4);
-  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH4, &TIM_OC_InitStruct);
   LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH4);
   LL_TIM_SetOnePulseMode(TIM3, LL_TIM_ONEPULSEMODE_SINGLE);
@@ -1205,7 +1243,6 @@ static void MX_TIM3_Init(void)
 
 }
 
-
 /**
   * @brief TIM4 Initialization Function
   * @param None
@@ -1249,7 +1286,7 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   TIM_InitStruct.Prescaler = 0;
-  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_DOWN;//   UP;
+  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_DOWN;
   TIM_InitStruct.Autoreload = 1;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM4, &TIM_InitStruct);
@@ -1479,6 +1516,7 @@ static void MX_DMA_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  LL_EXTI_InitTypeDef EXTI_InitStruct = {0};
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
@@ -1510,7 +1548,7 @@ static void MX_GPIO_Init(void)
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_1|LL_GPIO_PIN_4|LL_GPIO_PIN_5
-                          |LL_GPIO_PIN_6|LL_GPIO_PIN_7|LL_GPIO_PIN_8|LL_GPIO_PIN_11;
+                          |LL_GPIO_PIN_6|LL_GPIO_PIN_8|LL_GPIO_PIN_11;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -1533,6 +1571,26 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /**/
+  LL_GPIO_AF_SetEXTISource(LL_GPIO_AF_EXTI_PORTA, LL_GPIO_AF_EXTI_LINE7);
+
+  /**/
+  EXTI_InitStruct.Line_0_31 = LL_EXTI_LINE_7;
+  EXTI_InitStruct.LineCommand = ENABLE;
+  EXTI_InitStruct.Mode = LL_EXTI_MODE_IT;
+  EXTI_InitStruct.Trigger = LL_EXTI_TRIGGER_RISING;
+  LL_EXTI_Init(&EXTI_InitStruct);
+
+  /**/
+  LL_GPIO_SetPinPull(GPIOA, LL_GPIO_PIN_7, LL_GPIO_PULL_UP);
+
+  /**/
+  LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_7, LL_GPIO_MODE_INPUT);
+
+  /* EXTI interrupt init*/
+  NVIC_SetPriority(EXTI9_5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
 

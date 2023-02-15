@@ -609,7 +609,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 
 //feed:
 	if(s->G94G95 == G95code){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(gref.F);
+		gt_new_task->F = str_f2210mm_rev_to_delay1616(gref.F);
 	} else { 											// unit(mm) per min
 		gt_new_task->F = gref.F;//str_f824mm_min_to_delay824(gref.F);
 	}
@@ -657,7 +657,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 			gt_new_task->stepper = true;
 		//feed:
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
-				gt_new_task->F = str_f824mm_rev_to_delay824(gref.F);
+				gt_new_task->F = str_f2210mm_rev_to_delay1616(gref.F);
 			} else { 											// unit(mm) per min
 				gt_new_task->F = gref.F; //str_f824mm_min_to_delay824(gref.F);
 			}
@@ -708,7 +708,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 			gt_new_task->stepper = true;
 		//feed:
 			if(s->G94G95 == 1){ 	// unit(mm) per rev
-				gt_new_task->F = str_f824mm_rev_to_delay824(gref.F);
+				gt_new_task->F = str_f2210mm_rev_to_delay1616(gref.F);
 			} else { 											// unit(mm) per min
 				gt_new_task->F = gref.F; //str_f824mm_min_to_delay824(gref.F);
 			}

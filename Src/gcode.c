@@ -406,8 +406,8 @@ void do_fsm_move_end2(state_t* s){
 	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
 	LL_TIM_DisableUpdateEvent(s->syncbase);
-	sendDefaultResponceDMA();
-//	sendResponce((uint32_t)"end\r\n",5);
+	sendDefaultResponseDMA('E',&state_hw.global_X_pos);
+//	sendResponse((uint32_t)"end\r\n",5);
 }
 
 
@@ -445,7 +445,6 @@ void command_parser(char *line){
 						break;
 					case 21*steps_per_unit_Z_2210: //G21 - to use millimeters for length units
 						break;
-					
 					case 4*steps_per_unit_Z_2210: //G4 dwell, pause P seconds
 						G04parse(line+char_counter);
 						break;

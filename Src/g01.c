@@ -338,7 +338,7 @@ void scheduleG00G01move(int X, int Z, int F, uint8_t G00G01G33){
 
 //		G94G95; // 0 - unit per min, 1 - unit per rev
 	if( (s->G94G95 == G95code && G00G01G33 == G01code ) || G00G01G33 == G33code){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(F); //todo inch support
+		gt_new_task->F = str_f2210mm_rev_to_delay1616(F); //todo inch support
 		gt_new_task->multistart_thread = grefM;
 		// пересчет подачи по длине линии как в коде ниже для G94
 	} else { 											// unit(mm) per min
@@ -434,7 +434,7 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 
 //		bool G94G95; // 0 - unit per min, 1 - unit per rev
  	if(s->G94G95 == G95code && G00G01 == G01code){ 	// unit(mm) per rev
-		gt_new_task->F = str_f824mm_rev_to_delay824(F); //todo inch support
+		gt_new_task->F = str_f2210mm_rev_to_delay1616(F); //todo inch support
 		// пересчет подачи по длине линии как в коде ниже для G94
 	} else { 											// unit(mm) per min
 		if(G00G01 == G00code){

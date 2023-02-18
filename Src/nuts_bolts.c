@@ -517,6 +517,16 @@ uint32_t atoui32(uint8_t* str)
 			res = res * 10 + str[i] - '0'; 
 	return res; 
 } 
+
+uint32_t ahextoui32(uint8_t* str) 
+{ 
+	int res = 0; // Initialize result 
+    for (int i = 0; i<8; ++i){
+			res = res * 16 + (str[i] > '9' ? (str[i] - 'A' + 10) : str[i] - '0'); 
+		} 
+	return res; 
+} 
+
 void ui10toa(uint32_t n, uint8_t s[]){
 	int i = 9;
 	do {       /* генерируем цифры в обратном порядке */
@@ -563,6 +573,8 @@ uint32_t atoui64(uint8_t* str)
 } 
 
 void sendDefaultResponseDMA(uint8_t cmd, void* ptr){
+	if(LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_4) > 0)
+		return;
 	state_hw.uart_header[3] = cmd;
 	ui16toa(ptr, &state_hw.uart_body[0],4);
 	sendResponse((uint32_t)&state_hw,SYNC_BYTES);

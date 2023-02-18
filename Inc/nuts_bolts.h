@@ -8,6 +8,8 @@
 uint32_t Calculate_CRC(uint32_t len, uint8_t *bfr, int clear);
 uint32_t atoui32(uint8_t* str);
 uint32_t atoui64(uint8_t* str);
+uint32_t ahextoui32(uint8_t* str);
+
 
 void ui16toa(void* ptr , uint8_t s[], int len);
 void ui10toa(uint32_t n, uint8_t s[]);

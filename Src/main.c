@@ -353,10 +353,11 @@ int main(void)
 //	strcat(str1, "test");
 //	info[11] = ';';
 //	aa = sizeof(G_task_t);
+	
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
-	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+ 	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 	
 	#ifdef _USEENCODER
 	int preload = 2;//LOOP_COUNT;
@@ -588,6 +589,7 @@ const char * ga1[] = {
 //	state_hw.uart_header 
 	uint32_t bn = Build_No;
 	sendDefaultResponseDMA('R',&bn);
+	LL_mDelay(1);
 
 //	sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
 //	sendResponse((uint32_t)&state_hw,SYNC_BYTES);
@@ -598,6 +600,9 @@ const char * ga1[] = {
 	for(int a = 0;a<24;a++){
 		state_hw.mid[a]='A'+a;
 	}
+
+	sendDefaultResponseDMA('S',&state_hw.global_X_pos);
+
 	/*
 	while (1) {
 		if(ubUART3ReceptionComplete == 1){
@@ -670,6 +675,14 @@ const char * ga1[] = {
 			ubUART3ReceptionComplete = 0;
 			if(cmd == '!'){
 				switch(aRXBuffer[1]){
+					case '=':
+						switch(aRXBuffer[2]){
+							case 'X':
+							  state_hw.global_X_pos = ahextoui32(&aRXBuffer[3]);
+							case 'Y':
+							  state_hw.global_Z_pos = ahextoui32(&aRXBuffer[3]);
+						}
+						break;
 					case '1':
 //						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
 							if(state_hw.G90G91 == G90mode){
@@ -814,8 +827,8 @@ const char * ga1[] = {
 //						state_hw.current_task_ref->dx = 0;
 						if(state_hw.task_lock == false || ( state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
 							XDIR = xdir_forward;
-							state_hw.global_X_pos--;
-							record_X--;
+							state_hw.global_X_pos-=2;// twice increment because in diameter mode
+							record_X-=2;
 							jog_pulse(0);
 							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}
@@ -826,8 +839,8 @@ const char * ga1[] = {
 //						state_hw.current_task_ref->dx = 0;
 						if(state_hw.task_lock == false || (state_hw.current_task_ref && state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
 							XDIR = xdir_backward;
-							state_hw.global_X_pos++;
-							record_X++;
+							state_hw.global_X_pos+=2; // twice increment because in diameter mode!
+							record_X+=2;
 							jog_pulse(0);
 							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}

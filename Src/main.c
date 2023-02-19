@@ -826,7 +826,10 @@ const char * ga1[] = {
 //						state_hw.substep_axis = SUBSTEP_AXIS_X;
 //						state_hw.current_task_ref->dx = 0;
 						if(state_hw.task_lock == false || ( state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
-							XDIR = xdir_forward;
+							if(XDIR != xdir_forward){
+								XDIR = xdir_forward;
+								LL_mDelay(1); // time to switch direction
+							}
 							state_hw.global_X_pos-=2;// twice increment because in diameter mode
 							record_X-=2;
 							jog_pulse(0);
@@ -838,7 +841,10 @@ const char * ga1[] = {
 //						state_hw.substep_axis = SUBSTEP_AXIS_X;
 //						state_hw.current_task_ref->dx = 0;
 						if(state_hw.task_lock == false || (state_hw.current_task_ref && state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
-							XDIR = xdir_backward;
+							if(XDIR != xdir_backward){
+								XDIR = xdir_backward;
+								LL_mDelay(1); // time to switch direction
+							}
 							state_hw.global_X_pos+=2; // twice increment because in diameter mode!
 							record_X+=2;
 							jog_pulse(0);

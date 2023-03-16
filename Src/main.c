@@ -206,8 +206,8 @@ int dbg_ss_cnt = 0;
 void trim_substep_short(){
 	// 1. check if there is any active task is running:
 	if(state_hw.current_task_ref) {
-		if(state_hw.current_task_ref->steps_to_end > 50){
-			state_hw.current_task_ref->steps_to_end = 50;
+		if(state_hw.current_task_ref->steps_to_end > 10){
+			state_hw.current_task_ref->steps_to_end = 10;
 		}
 		// reset task cb:
 		cb_reset(&task_cb);
@@ -357,7 +357,7 @@ int main(void)
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
- 	#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+//!!!! 	_USEENCODER define  moved to gcode.h
 	
 	#ifdef _USEENCODER
 	int preload = 2;//LOOP_COUNT;
@@ -830,8 +830,8 @@ const char * ga1[] = {
 								XDIR = xdir_forward;
 								LL_mDelay(1); // time to switch direction
 							}
-							state_hw.global_X_pos-=2;// twice increment because in diameter mode
-							record_X-=2;
+							state_hw.global_X_pos--;// =2;// twice increment because in diameter mode
+							record_X--;//=2;
 							jog_pulse(0);
 							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}
@@ -845,8 +845,8 @@ const char * ga1[] = {
 								XDIR = xdir_backward;
 								LL_mDelay(1); // time to switch direction
 							}
-							state_hw.global_X_pos+=2; // twice increment because in diameter mode!
-							record_X+=2;
+							state_hw.global_X_pos++;//=2; // twice increment because in diameter mode!
+							record_X++;//=2;
 							jog_pulse(0);
 							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}

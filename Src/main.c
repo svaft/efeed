@@ -316,7 +316,10 @@ void USART_CharReception_Callback(void)
 			Error_Handler2(2);
 		uNbReceivedCharsForUser = uwNbReceivedChars;
 		memset(&aRXBuffer,0,uwNbReceivedChars);
-		memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars-1);
+		if(aRXBuffer[uwNbReceivedChars-1] == '\r')
+			memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars-1);
+		else
+			memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars);
 		memset(&aRXBufferA,0,uwNbReceivedChars);
     uwNbReceivedChars = 0;
 	} else {
@@ -353,7 +356,7 @@ int main(void)
 //	strcat(str1, "test");
 //	info[11] = ';';
 //	aa = sizeof(G_task_t);
-	
+
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
@@ -362,7 +365,7 @@ int main(void)
 	#ifdef _USEENCODER
 	int preload = 2;//LOOP_COUNT;
 	#else
-	int preload = 3;//LOOP_COUNT;
+	int preload = 4;//LOOP_COUNT;
 	#endif	
 
 const char * ga1[] = { 
@@ -373,20 +376,20 @@ const char * ga1[] = {
 	"G0 X0. Z0.",
 	"G0 Z10",
 	"G94",
-	"G1 Z-10 F600", //F900",
+	"G1 Z-600 F600", //F900",
 	"G0 Z200",
 	
 //	"G1 Z-2 F0.05",
 	#else
 	"G91",
-	"G95",
+	"G94",
 //	"G76 P0.05 Z-1 I-.075 J0.008 K0.045 Q29.5 L2 E0.045",
 //	"G76 P2. Z-50. I-8.209 J0.25 K2. R2. Q29.5 H0. E1. L0",
 
 	"G0 X0. Z0.",
-	"G1 Z200 F0.1",
+//	"G1 Z200 F0.1",
 //	"G0 X10. Z0.",
-	"G1 Z-10 F600",
+	"G1 Z-10 F60",
 //	"G1 Z-200 F0.5",
 	"G0 X0. Z0.",
 	"G1 Z-10 F600",
@@ -853,6 +856,8 @@ const char * ga1[] = {
 						break;
 					}
 					case 'a': {// left small '!a'
+						scheduleG00G01move(0, -jog_Z_01_2210, 0, G00code);
+						/*
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
 						if(state_hw.G90G91 == G90mode) {
@@ -862,9 +867,12 @@ const char * ga1[] = {
 							G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, 0, -jog_Z_01_2210,  0, G00code);
 							record_Z -= jog_Z_01_2210 / 1024;
 						}
+						*/
 						break;
 					}
 					case 'd': {// right small '!d'
+						scheduleG00G01move(0, jog_Z_01_2210, 0, G00code);
+						/*
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
 						if(state_hw.G90G91 == G90mode) {
@@ -874,6 +882,7 @@ const char * ga1[] = {
 							G01parsed(init_gp.X, init_gp.Xr, from_Z, init_gp.F, 0, jog_Z_01_2210,  0, G00code);
 							record_Z += jog_Z_01_2210 / 1024;
 						}
+						*/
 						break;
 					}
 

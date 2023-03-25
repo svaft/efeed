@@ -182,65 +182,6 @@ void G33parse(char *line){
 		scheduleG00G01move(gref.X, gref.Z, gref.K, 33);
 	}
 	return;	
-	
-/*	
-	int x0 =  init_gp.X  & ~1uL<<(FIXEDPT_FBITS2210-1); //округляем предыдущее значение до целого числа шагов
-//	int x0r = init_gp.Xr & ~1uL<<(FIXEDPT_FBITS2210-1); //save pos from prev gcode
-	int z0 =  init_gp.Z  & ~1uL<<(FIXEDPT_FBITS2210-1);
-	state_t *s = &state_precalc;
-
-	G_pipeline_t gref;
-	G_parse(line,&gref);
-	if(s->init == false){
-		init_gp.X = gref.X;
-		init_gp.Z = gref.Z;
-		s->init = true;
-		return;
-	}
-
-	int dx,dz, xdir,zdir;
-	{
-		if(gref.Z >= z0){ // go from left to right
-			dz = gref.Z - z0;
-			zdir = zdir_forward;
-		} else { // go back from right to left
-			dz = z0 - gref.Z;
-			zdir = zdir_backward;
-		}
-		if(gref.X >= x0){ // go backward
-			dx = gref.X - x0;
-			xdir = xdir_backward;
-		} else { // go forward
-			dx = x0 - gref.X;
-			xdir = xdir_forward;
-		}
-	}
-
-//	uint64_t il = (int64_t)(gref.Xr-x0r)*(gref.Xr-x0r)+(int64_t)dz*dz;
-	G_task_t *gt_new_task = 0;
-
-	gt_new_task = add_empty_task();
-
-	gt_new_task->F = str_f824mm_rev_to_delay824(gref.K); //todo inch support
-	if(dx > dz){
-//		float f2 = gref.K<<14;
-//		float f3 = (rev_to_delay_f / f2)*2794369.09f; //float divide is faster then long?
-
-//		gt_new_task->F = f3;
-	}
-	gt_new_task->stepper = true;
-	gt_new_task->callback_ref = dxdz_callback;
-	gt_new_task->dx =  fixedpt_toint2210(dx);
-	gt_new_task->dz =  fixedpt_toint2210(dz);
-
-//	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
-	gt_new_task->x_direction = xdir;
-	gt_new_task->z_direction = zdir;
-
-	gt_new_task->init_callback_ref = G33init_callback;
-	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
-	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
-*/
 }
 
 void G01parse(char *line, bool G00G01){ //~60-70us
@@ -258,41 +199,16 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 		G_parse(line, &gref);
 		scheduleG00G01move(gref.X, gref.Z, gref.F, G00G01);
 	}
-return;
-	if(s->init == false){
-//		s->initial_task_X_pos = 0;
-//		s->initial_task_Z_pos = 0;
-//		s->task_destination_X_pos = gref.X;
-//		s->task_destination_Z_pos = gref.Z;
-
-		
-		init_gp.X  = gref.X;
-		init_gp.Z  = gref.Z;
-//		init_gp.Xr = gref.Xr;
-		s->init = true;
-		return;
-	}
-
-//	scheduleG00G01move(gref.X, gref.Z, gref.F, G00G01);
-	
-/*
-	if(s->G90G91 == G91mode){
-		gref.X = gref.X - x0;
-		gref.Z = gref.Z - z0;
-	}
-	G01parsed(x0, x0r, z0, gref.F, gref.X, gref.Z,  gref.Xr, G00G01);
-*/
-	//	gref.code = 1;
+	return;
 }
 
 void scheduleG00G01move(int X, int Z, int F, uint8_t G00G01G33){
 /* make G00 or G01 move from current pos to X,Z position with provided feed F. If feed = -1 move with G00, 
 	if zero - move with previous feed speed
 */
-//	if(feed == 0);
+	int z0 = init_gp.Z, x0 = init_gp.X;
 	state_t *s = &state_precalc;
 	int dx,dz, xdir,zdir;
-	int z0 = init_gp.Z, x0 = init_gp.X;
 	if(s->G90G91 == G91mode){ // incremental mode
 		init_gp.Z += Z;
 		init_gp.X += X;
@@ -349,20 +265,20 @@ void scheduleG00G01move(int X, int Z, int F, uint8_t G00G01G33){
 				gt_new_task->F = 20<<16;
 		} else {
 			// вычисляем длину линии как корень квадратный от суммы квадратов катетов. на этом шаге вычисляем сумму квадратов катетов:
-			uint64_t il = 0; //(int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;
+			uint64_t il = (int64_t)dz*dz+(int64_t)dx*dx;//(int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;
 			gt_new_task->len_f = sqrtf(il); // получили длину отрезка в условных единицах
 			uint32_t len = gt_new_task->len_f; //
 			/* далее производим пересчет скорости подачи в проекции на основную ось, 
 			по которой идет отсчет шагов по алгоритму Брезенхэма. 
-			Так, для прямой длина линччии её проекция будет равна длине линии, а для 
+			Так, для прямой линии её проекция будет равна длине линии, а для 
 			линии по углом 45 градусов ее проекция будет в 1.41меньше, соответственно для сохранения постоянной
 			скорости подачи исходная величина F должна быть скорректирована	*/
 			uint32_t ff = (async_steps_factor * (len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
 			float f1 = ff;
 			float f2 = F;
-			float f3 = f1 / f2;
-			fixedptu f = f3;
-			gt_new_task->F = f << 16; // translate to 16.16 format used for delays
+			float f3 = f1 * 65536.0f / f2;
+//			fixedptu f = f3;
+			gt_new_task->F = f3; //f << 16; // translate to 16.16 format used for delays
 		}
 	}
 
@@ -392,7 +308,7 @@ void scheduleG00G01move(int X, int Z, int F, uint8_t G00G01G33){
 	gt_new_task->precalculate_callback_ref 			= dxdz_callback_precalculate;
 }
 
-
+/*
 void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G01){
 	state_t *s = &state_precalc;
 	int dx,dz, xdir,zdir;
@@ -447,11 +363,11 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 			uint64_t il = (int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;
 			gt_new_task->len_f = sqrtf(il); // получили длину отрезка в услонвых единицах
 			uint32_t len = gt_new_task->len_f; //
-			/* далее производим пересчет скорости подачи в проекции на основную ось, 
-			по которой идет отсчет шагов по алгоритму Брезенхэма. 
-			Так, для прямой длина линччии её проекция будет равна длине линии, а для 
-			линии по углом 45 градусов ее проекция будет в 1.41меньше, соответственно для сохранения постоянной
-			скорости подачи исходная величина F должна быть скорректирована	*/
+			// далее производим пересчет скорости подачи в проекции на основную ось, 
+			//по которой идет отсчет шагов по алгоритму Брезенхэма. 
+			//Так, для прямой длина линччии её проекция будет равна длине линии, а для 
+			//линии по углом 45 градусов ее проекция будет в 1.41меньше, соответственно для сохранения постоянной
+			//скорости подачи исходная величина F должна быть скорректирована
 			uint32_t ff = (async_steps_factor * (len>>10) / (dz > dx ? fixedpt_toint2210(dz) : fixedpt_toint2210(dx)))<<10; //todo to float?
 			float f1 = ff;
 			float f2 = F;
@@ -465,8 +381,6 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 	gt_new_task->callback_ref = dxdz_callback;
 	gt_new_task->dx =  fixedpt_toint2210(dx);
 	gt_new_task->dz =  fixedpt_toint2210(dz);
-
-//	gt_new_task->steps_to_end = gt_new_task->dz > gt_new_task->dx ? gt_new_task->dz : gt_new_task->dx;
 	gt_new_task->x_direction = xdir;
 	gt_new_task->z_direction = zdir;
 
@@ -480,3 +394,6 @@ void G01parsed(int x0, int x0r, int z0, int F, int X, int Z,  int Xr, bool G00G0
 	gt_new_task->precalculate_init_callback_ref =  G01init_callback_precalculate;
 	gt_new_task->precalculate_callback_ref = dxdz_callback_precalculate;
 }
+*/
+
+

@@ -88,6 +88,13 @@ __STATIC_INLINE void cb_reset(circular_buffer *cb){
 }
 
 
+__STATIC_INLINE void cb_free(circular_buffer *cb){
+    free(cb->buffer);
+    // clear out other fields too, just to be safe
+}
+
+
+
 __STATIC_INLINE void sendResponseAgain(){
 	if(LL_USART_IsActiveFlag_TC(USART1) && LL_DMA_IsActiveFlag_TC4(DMA1) ){
 		LL_USART_ClearFlag_TC(USART1);
@@ -97,11 +104,6 @@ __STATIC_INLINE void sendResponseAgain(){
 		LL_DMA_ClearFlag_TC4(DMA1);
 		LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
 	}
-}
-
-__STATIC_INLINE void cb_free(circular_buffer *cb){
-    free(cb->buffer);
-    // clear out other fields too, just to be safe
 }
 
 __STATIC_INLINE void sysFastMemCopy2( void *pDest,const void *pSrc )

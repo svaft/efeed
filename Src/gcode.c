@@ -406,7 +406,8 @@ void do_fsm_move_end2(state_t* s){
 	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
 	LL_TIM_DisableUpdateEvent(s->syncbase);
-	sendDefaultResponseDMA('E',&state_hw.global_X_pos);
+	EOM();
+//	sendDefaultResponseDMA('E',&state_hw.global_X_pos);
 //	sendResponse((uint32_t)"end\r\n",5);
 }
 

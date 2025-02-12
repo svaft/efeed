@@ -172,7 +172,7 @@ int grefM = 0;
 void G33parse(char *line){
 	state_t *s = &state_precalc;
 	G_pipeline_t gref = {0};
-	s->init = true;
+//	s->init = true;
 	if(s->G90G91 == G90mode){
 		G_parse(line, &init_gp);
 		scheduleG00G01move(init_gp.X, init_gp.Z, init_gp.K, 33);
@@ -191,7 +191,7 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	state_t *s = &state_precalc;
 	G_pipeline_t gref = {0};
 //	gref.X = gref.Xr = gref.Z = gref.F = 0;
-	s->init = true;
+//	s->init = true;
 	if(s->G90G91 == G90mode){
 		G_parse(line, &init_gp);
 		scheduleG00G01move(init_gp.X, init_gp.Z, init_gp.F, G00G01);

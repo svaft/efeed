@@ -61,6 +61,10 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 extern __IO uint8_t ubLIMITleftZ;
+extern __IO uint8_t initSync;
+
+uint16_t xzsync = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -114,6 +118,11 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
+	if(xzsync++ == 300){
+		initSync = 1;
+		xzsync = 0;
+	};
+
 //	if(--data_refresh == 0){
 //		data_refresh = 4000;
 //		sendResponseAgain();
@@ -145,7 +154,6 @@ void DMA1_Channel4_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
 
   /* USER CODE END DMA1_Channel4_IRQn 0 */
-
   /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
 	LL_USART_EnableIT_TC(USART1);
 	LL_DMA_ClearFlag_TC4(DMA1);
@@ -380,4 +388,3 @@ void USART1_IRQHandler(void)
 //}
 
 /* USER CODE END 1 */
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -16,6 +16,9 @@ void ui10toa(uint32_t n, uint8_t s[]);
 void ui64toa(uint32_t n, uint8_t s[]);
 void sendResponse(uint32_t SrcAddress, uint32_t NbData);
 void sendDefaultResponseDMA(uint8_t cmd, void* ptr);
+void sendDefaultResponseXZ();
+void EOM();
+
 __STATIC_INLINE bool is_crc_ok(uint8_t *bfr, uint8_t len){
 	uint32_t crc = Calculate_CRC(len,bfr,1);
 	uint32_t atoi = atoui64((uint8_t *)(bfr+len));
@@ -44,7 +47,7 @@ typedef struct circular_buffer{
     void *buffer;     // data buffer
     void *buffer_end; // end of data buffer
     size_t capacity;  // maximum number of items in the buffer
-    size_t count;     // number of items in the buffer
+    volatile size_t count;     // number of items in the buffer
     size_t count2;     // number of items in the buffer
     size_t sz;        // size of each item in the buffer
     void *head;       // pointer to head

@@ -79,7 +79,8 @@ state_t state_precalc;
 
 __IO uint8_t ubI2C_slave_addr = 0;
 __IO uint8_t ubMasterRequestDirection  = 0;
-
+char cmd1 = 0;
+char cmd2 = 0;
 
 //int count;
 extern bool demo;
@@ -95,13 +96,17 @@ G96, G97 Spindle Control Mode, G97 (RPM Mode)
 
 // ***** Stepper Motor *****
 
-
+__IO uint32_t rised = 0;
 #define RX_BUFFER_SIZE   64
 uint8_t aRXBufferA[RX_BUFFER_SIZE];
 uint8_t aRXBuffer[RX_BUFFER_SIZE];
 __IO uint8_t	uwNbReceivedChars;
 __IO uint8_t	uNbReceivedCharsForUser;
 //__IO uint32_t	uwBufferReadyIndication;
+
+
+__IO uint8_t initSync = 0;
+
 
 //uint8_t *pBufferReadyForUser;
 uint8_t *pBufferReadyForReception;
@@ -140,7 +145,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void USART_CharReception_Callback(void);
+
 
 #ifndef _USEENCODER
 void spindle_emulator(void);
@@ -349,6 +354,7 @@ float fft = 3.14f;
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 //state_hw.global_Z_pos = -1;
 //	ui64toa(state_hw.global_Z_pos, &str1[0]);//generte number with base 64
@@ -420,13 +426,11 @@ const char * ga1[] = {
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_AFIO);
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 
-  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_2);
-
   /* System interrupt init*/
+  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_2);
 
   /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled
   */
@@ -511,7 +515,7 @@ const char * ga1[] = {
 
 
 /* Enable DMA TX Interrupt */
-//  LL_USART_EnableDMAReq_TX(USART3);
+//  LL_USART_EnableDMAReq_TX(USART1);
   /* Enable DMA Channel Tx */
 //  LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_2);
   /* Clear Overrun flag, in case characters have already been sent to USART */
@@ -600,11 +604,11 @@ const char * ga1[] = {
 //	sendResponse((uint32_t)aTxtest,SYNC_BYTES);
 	// debug serial ping-pong
 	LED_OFF();
-	for(int a = 0;a<24;a++){
-		state_hw.mid[a]='A'+a;
-	}
+//	for(int a = 0;a<24;a++){
+//		state_hw.mid[a]='A'+a;
+//	}
 
-	sendDefaultResponseDMA('S',&state_hw.global_X_pos);
+	sendDefaultResponseXZ(); //							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 
 	/*
 	while (1) {
@@ -662,7 +666,10 @@ const char * ga1[] = {
 //		__WFI();
 		load_next_task(&state_hw);
 		LL_IWDG_ReloadCounter(IWDG);
-
+		if(initSync == 1){
+			initSync = 0;
+			sendDefaultResponseXZ(); //					sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
+		}
 //		ubUART3ReceptionComplete = 1;
 //		memcpy(aRXBuffer,"!test",4);
     
@@ -671,10 +678,12 @@ const char * ga1[] = {
 			ubLIMITleftZ = 0;
 			while(state_hw.rised!=0);
 			trim_substep_short();
-			sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
+			EOM(); //					sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
 		}
 		if(ubUART3ReceptionComplete == 1){
 			uint8_t cmd = aRXBuffer[0];
+			cmd1 = aRXBuffer[0];
+			cmd2 = aRXBuffer[1];
 			ubUART3ReceptionComplete = 0;
 			if(cmd == '!'){
 				switch(aRXBuffer[1]){
@@ -682,8 +691,10 @@ const char * ga1[] = {
 						switch(aRXBuffer[2]){
 							case 'X':
 							  state_hw.global_X_pos = ahextoui32(&aRXBuffer[3]);
+							break;
 							case 'Y':
 							  state_hw.global_Z_pos = ahextoui32(&aRXBuffer[3]);
+							break;
 						}
 						break;
 					case '1':
@@ -732,7 +743,7 @@ const char * ga1[] = {
 						scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
           // move forward 400 steps to blank
 						scheduleG00G01move(-fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
-						sendDefaultResponseDMA('X',&state_hw.global_X_pos);
+						EOM();
 //						sendResponse((uint32_t)"ok\r\n",4);
 						break;
 					case '3': //repeat last command '!3'
@@ -759,11 +770,16 @@ const char * ga1[] = {
 							scheduleG00G01move(-state_hw.retract*1024, 0, 0, G00code);
 						}
 						break;
+					case 'R': // infinite loop to reset by WD
+						LL_mDelay(10000);
+						break;
 					case 'X': // stop current move '!X'
 					case 'S': // stop current move  '!S'
-						while(state_hw.rised!=0);
+						while(state_hw.rised!=0){
+//							rised++;
+						}
 						trim_substep_short();
-						sendDefaultResponseDMA('S',&state_hw.global_Z_pos);
+						EOM();
 //						sendResponse((uint32_t)"ok\r\n",4);
 						break;
 					case '0': { // reqest info{  '!0'
@@ -828,6 +844,9 @@ const char * ga1[] = {
 					case 'w': {// go forward by 1 step '!w'
 //						state_hw.substep_axis = SUBSTEP_AXIS_X;
 //						state_hw.current_task_ref->dx = 0;
+							if(state_hw.jog_pulse == true)
+								break; 
+
 						if(state_hw.task_lock == false || ( state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
 							if(XDIR != xdir_forward){
 								XDIR = xdir_forward;
@@ -836,13 +855,15 @@ const char * ga1[] = {
 							state_hw.global_X_pos--;// =2;// twice increment because in diameter mode
 							record_X--;//=2;
 							jog_pulse(0);
-							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
+							sendDefaultResponseXZ(); //							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}
 						break;
 					}
 					case 's': {// go backward by 1 step '!s'
 //						state_hw.substep_axis = SUBSTEP_AXIS_X;
 //						state_hw.current_task_ref->dx = 0;
+						if(state_hw.jog_pulse == true)
+							break; 
 						if(state_hw.task_lock == false || (state_hw.current_task_ref && state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
 							if(XDIR != xdir_backward){
 								XDIR = xdir_backward;
@@ -851,7 +872,7 @@ const char * ga1[] = {
 							state_hw.global_X_pos++;//=2; // twice increment because in diameter mode!
 							record_X++;//=2;
 							jog_pulse(0);
-							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
+							sendDefaultResponseXZ(); //							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}
 						break;
 					}
@@ -1041,7 +1062,7 @@ static void MX_IWDG_Init(void)
 {
 
   /* USER CODE BEGIN IWDG_Init 0 */
-	return;
+//	return;
   /* USER CODE END IWDG_Init 0 */
 
   /* USER CODE BEGIN IWDG_Init 1 */
@@ -1398,7 +1419,7 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 1 */
 
   /* USER CODE END USART1_Init 1 */
-  USART_InitStruct.BaudRate = 115200;
+  USART_InitStruct.BaudRate = 921600; //115200;
   USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
   USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
   USART_InitStruct.Parity = LL_USART_PARITY_NONE;
@@ -1546,6 +1567,8 @@ static void MX_GPIO_Init(void)
 {
   LL_EXTI_InitTypeDef EXTI_InitStruct = {0};
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
@@ -1620,6 +1643,8 @@ static void MX_GPIO_Init(void)
   NVIC_SetPriority(EXTI9_5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(EXTI9_5_IRQn);
 
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1686,6 +1711,23 @@ void Error_Handler2(int code)
 
 /* USER CODE END 4 */
 
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler1(int code)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+//	codeg = code;
+	/* User can add his own implementation to report the HAL error return state */
+	TIM1->CR1 = TIM2->CR1 = TIM3->CR1 = TIM4->CR1 = 0;
+	while (1) {
+	}
+  /* USER CODE END Error_Handler_ Debug */
+}
+
+/* USER CODE END 4 */
+
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -1717,5 +1759,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

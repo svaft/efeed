@@ -192,18 +192,14 @@ typedef struct state_s
 	char uart_body[8];
 	char uart_end[4];
 	int32_t global_Z_pos, global_X_pos;
-	char mid[24];
+//	char mid[24];
 	int32_t initial_task_Z_pos, initial_task_X_pos;
 	int32_t task_destination_Z_pos, task_destination_X_pos;
 
-//	uint32_t end_pos;
-//	uint8_t ramp_step;
 	uint32_t Q824set; // feed rate, now its actually in 1616 format, todo rename?
 	uint32_t fract_part; // Q8.24 format fract part now its actually in 1616 format, todo rename?
 
-	bool rised;
-	bool init;
-
+	volatile bool rised;
 	
 	// arc variables for precalculated in task init callback for current task:	
 	int64_t arc_aa, arc_bb, arc_dx, arc_dz; // error increment
@@ -221,7 +217,7 @@ typedef struct state_s
 	uint8_t substep_pulse_on;
 	uint8_t substep_pulse_off;
 	
-	bool jog_pulse; // флаг для отключения логики, не нужной для пульса в ручном режиме
+	volatile bool jog_pulse; // флаг для отключения логики, не нужной для пульса в ручном режиме
 //	G_task_t current_task;
 	G_task_t *current_task_ref;
 	G_task_t *last_loaded_task_ref;
@@ -240,11 +236,12 @@ typedef struct state_s
 //  callback_func_t callback;
 //	uint32_t async_z;
 //	uint8_t z_period;
-	bool f_encoder;
-	bool f_tacho;
-	bool spindle_dir;
+
+//	bool f_encoder;
+//	bool f_tacho;
+//	bool spindle_dir;
 	_Bool sync;
-	_Bool main_feed_direction;
+//	_Bool main_feed_direction;
 	TIM_TypeDef *syncbase;
   // other stateful data
 
@@ -283,6 +280,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void Error_Handler2(int);
+void USART_CharReception_Callback(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -319,6 +317,7 @@ void Error_Handler2(int);
 #define NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003) /*!< 4 bits for pre-emption priority,
                                                                  0 bit  for subpriority */
 #endif
+
 /* USER CODE BEGIN Private defines */
 // extract GPIO pin nuber by passing LL_GPIO_PIN_x value to it. 
 // Use this value for compute bit-banding address of pin at compiling time by preprocessor
@@ -660,5 +659,3 @@ r*3,14/2/(Пп()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
 #endif
 
 #endif /* __MAIN_H */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

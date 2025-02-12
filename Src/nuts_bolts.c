@@ -536,7 +536,7 @@ void ui10toa(uint32_t n, uint8_t s[]){
 		s[i--] = '0';
  }
 
- void ui16toa(void* ptr , uint8_t s[], int len){ //generte number with base 64
+ void ui16toa(void* ptr , uint8_t s[], int len){ //generte number with base 16
   int i = len*2-1;
 	unsigned char *byte = ptr;
 	do{
@@ -546,6 +546,18 @@ void ui10toa(uint32_t n, uint8_t s[]){
 		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
 	} while(i>0);
 }
+
+ void ui16toa2(void* ptr , uint8_t s[], int len){ //generte number with base 16
+  int i = len-1;
+	unsigned char *byte = ptr;
+	do{
+		uint8_t rem = *byte % 16;
+		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+		rem = *byte++ / 16;
+		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+	} while(i>0);
+}
+
 
 
 void ui64toa(uint32_t n, uint8_t s[]){ //generte number with base 64
@@ -572,11 +584,37 @@ uint32_t atoui64(uint8_t* str)
 	return res; 
 } 
 
+
+
+void sendDefaultResponseXZ(){
+	if(LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_4) > 0)
+		return;
+	state_hw.uart_header[3] = '!';
+	int16_t z = state_hw.global_Z_pos;
+	int16_t x = state_hw.global_X_pos;
+
+	ui16toa2(&x, (uint8_t *)&state_hw.uart_body[4],4);
+	ui16toa2(&z, (uint8_t *)&state_hw.uart_body[0],4);
+	sendResponse((uint32_t)&state_hw,SYNC_BYTES);
+}
+
+void EOM(){
+	if(LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_4) > 0)
+		return;
+	state_hw.uart_header[3] = 'E';
+	int16_t z = state_hw.global_Z_pos;
+	int16_t x = state_hw.global_X_pos;
+
+	ui16toa2(&x, (uint8_t *)&state_hw.uart_body[4],4);
+	ui16toa2(&z, (uint8_t *)&state_hw.uart_body[0],4);
+	sendResponse((uint32_t)&state_hw,SYNC_BYTES);
+}
+
 void sendDefaultResponseDMA(uint8_t cmd, void* ptr){
 	if(LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_4) > 0)
 		return;
 	state_hw.uart_header[3] = cmd;
-	ui16toa(ptr, &state_hw.uart_body[0],4);
+	ui16toa(ptr, (uint8_t *)&state_hw.uart_body[0],4);
 	sendResponse((uint32_t)&state_hw,SYNC_BYTES);
 }
 

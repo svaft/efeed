@@ -1,8 +1,8 @@
 '===========================================================
 '===========================================================
 
-Const sNumberFile = "C:\DEV\projects\efeed\numfile.txt"
-Const sBuildFile  = "C:\DEV\projects\efeed\buildno.txt"
+Const sNumberFile = "..\numfile.txt"
+Const sBuildFile  = "..\buildno.txt"
 
 
 '===========================================================

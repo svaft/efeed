@@ -8,6 +8,13 @@ int count_total = 0;
 //uint8_t bufx[2000];
 //uint8_t bufz[2000];
 
+#define smaNumbers_len 8
+substep_sma_ref_t smaNumbers[smaNumbers_len] = {0};
+//substep_t* smaSubstepRefs[smaNumbers_len] = {0};
+circular_buffer sma_cb;
+//circular_buffer sma_substep_cb;
+
+
 int subdelay_x=0, subdelay_z=0, subdelay_zfast = 0;
 //int x=0, z=0;
 int acnt = 0, ecnt=0, exx=0, ezz=0, ldt = 0;

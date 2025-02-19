@@ -6,9 +6,6 @@ circular_buffer task_cb;
 circular_buffer substep_cb;
 circular_buffer substep_job_cb;
 
-circular_buffer sma_cb;
-circular_buffer sma_substep_cb;
-
 
 void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref){
     cb->buffer = ref;
@@ -623,11 +620,9 @@ void sendDefaultResponseDMA(uint8_t cmd, void* ptr){
 	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
 	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_4,SrcAddress,LL_USART_DMA_GetRegAddr(USART1),LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
 	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, NbData);
-	LL_USART_EnableDMAReq_TX(USART1);
+//	LL_USART_EnableDMAReq_TX(USART1);
 	/* Enable DMA Channel Tx */
-	LL_USART_ClearFlag_TC(USART1);
+//	LL_USART_ClearFlag_TC(USART1);
 	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
-//	LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_4);
-//	LL_USART_EnableIT_TC(USART1);
 }
 

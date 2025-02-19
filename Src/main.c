@@ -395,7 +395,7 @@ const char * ga1[] = {
 	"G0 X0. Z0.",
 //	"G1 Z200 F0.1",
 //	"G0 X10. Z0.",
-	"G1 Z-10 F60",
+	"G1 Z-10 F600",
 //	"G1 Z-200 F0.5",
 	"G0 X0. Z0.",
 	"G1 Z-10 F600",
@@ -440,6 +440,8 @@ const char * ga1[] = {
 	memset(&state_hw,0,sizeof(state_hw));
 	
 	state_hw.retract = 100;
+	G95(&state_hw);
+	switch_to_sync(&state_hw); //  set sync mode as default
 
   state_hw.uart_header[0] = state_hw.uart_header[1] =state_hw.uart_header[2] =state_hw.uart_header[3] = '!';
 	state_hw.uart_end[0] = '#';
@@ -461,7 +463,7 @@ const char * ga1[] = {
 //	cb_init_ref(&substep_job_cb, substep_job_size, sizeof(substep_job_t),&substep_delay);
 
 	cb_init_ref(&sma_cb,  8, sizeof(substep_sma_ref_t), &smaNumbers);
-	cb_init_ref(&sma_substep_cb,  8, sizeof(uint32_t), &smaSubstepRefs);
+	//cb_init_ref(&sma_substep_cb,  8, sizeof(uint32_t), &smaSubstepRefs);
 
 // init USART
   pBufferReadyForReception = aRXBufferA;
@@ -515,7 +517,7 @@ const char * ga1[] = {
 
 
 /* Enable DMA TX Interrupt */
-//  LL_USART_EnableDMAReq_TX(USART1);
+  LL_USART_EnableDMAReq_TX(USART1);
   /* Enable DMA Channel Tx */
 //  LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_2);
   /* Clear Overrun flag, in case characters have already been sent to USART */
@@ -678,7 +680,7 @@ const char * ga1[] = {
 			ubLIMITleftZ = 0;
 			while(state_hw.rised!=0);
 			trim_substep_short();
-			EOM(); //					sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
+//			EOM(); //					sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
 		}
 		if(ubUART3ReceptionComplete == 1){
 			uint8_t cmd = aRXBuffer[0];
@@ -743,7 +745,7 @@ const char * ga1[] = {
 						scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
           // move forward 400 steps to blank
 						scheduleG00G01move(-fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
-						EOM();
+//						EOM();
 //						sendResponse((uint32_t)"ok\r\n",4);
 						break;
 					case '3': //repeat last command '!3'
@@ -779,7 +781,7 @@ const char * ga1[] = {
 //							rised++;
 						}
 						trim_substep_short();
-						EOM();
+//						EOM();
 //						sendResponse((uint32_t)"ok\r\n",4);
 						break;
 					case '0': { // reqest info{  '!0'
@@ -794,6 +796,14 @@ const char * ga1[] = {
 						info[13] = '\n';
 
 						sendResponse((uint32_t)info, 14);
+						break;
+					}
+					
+					case 'v':{ // vector of carriage move, 1st argument is direction, 24 values by 15 gegree number packet to single byte, second argument is 1 byte relative speed
+						uint8_t direction = aRXBuffer[2] - '0' > 9 ? aRXBuffer[2] - 'A' + 10 : aRXBuffer[2] - '0';
+						uint8_t speed = aRXBuffer[3] - '0';
+						if(speed>0)
+							state_hw.vector = 1;
 						break;
 					}
 
@@ -842,26 +852,21 @@ const char * ga1[] = {
 					//X axis
 					// X jog is allowed only when no active job on this axis is performed
 					case 'w': {// go forward by 1 step '!w'
-//						state_hw.substep_axis = SUBSTEP_AXIS_X;
-//						state_hw.current_task_ref->dx = 0;
 							if(state_hw.jog_pulse == true)
 								break; 
-
 						if(state_hw.task_lock == false || ( state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
 							if(XDIR != xdir_forward){
 								XDIR = xdir_forward;
 								LL_mDelay(1); // time to switch direction
 							}
-							state_hw.global_X_pos--;// =2;// twice increment because in diameter mode
-							record_X--;//=2;
+							state_hw.global_X_pos--;
+							record_X--;
 							jog_pulse(0);
 							sendDefaultResponseXZ(); //							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}
 						break;
 					}
 					case 's': {// go backward by 1 step '!s'
-//						state_hw.substep_axis = SUBSTEP_AXIS_X;
-//						state_hw.current_task_ref->dx = 0;
 						if(state_hw.jog_pulse == true)
 							break; 
 						if(state_hw.task_lock == false || (state_hw.current_task_ref && state_hw.substep_axis == SUBSTEP_AXIS_X && state_hw.current_task_ref->dx ==0 && !LL_TIM_IsEnabledCounter(TIM1))){
@@ -869,8 +874,8 @@ const char * ga1[] = {
 								XDIR = xdir_backward;
 								LL_mDelay(1); // time to switch direction
 							}
-							state_hw.global_X_pos++;//=2; // twice increment because in diameter mode!
-							record_X++;//=2;
+							state_hw.global_X_pos++;
+							record_X++;
 							jog_pulse(0);
 							sendDefaultResponseXZ(); //							sendDefaultResponseDMA('X',&state_hw.global_X_pos);
 						}
@@ -1062,7 +1067,10 @@ static void MX_IWDG_Init(void)
 {
 
   /* USER CODE BEGIN IWDG_Init 0 */
-//	return;
+	#ifndef _USEENCODER
+
+	return;
+	#endif
   /* USER CODE END IWDG_Init 0 */
 
   /* USER CODE BEGIN IWDG_Init 1 */

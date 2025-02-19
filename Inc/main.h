@@ -87,6 +87,19 @@ typedef void (*state_func_t)( struct state_s* );
 typedef void (*callback_func_t)(struct state_s*);
 
 typedef struct {
+	uint8_t G90G91 			: 1;  // 0 - absolute distance mode, 1 - incremental distance mode
+	uint8_t G94G95			: 1;  // 0 - unit per min, 1 - unit per rev
+	uint8_t ODID 				: 1;  // 0 - outside turning, 1 - inside turning
+	uint8_t vector 			: 1;  // 0 - default mode, 1 - vector mode enabled
+	uint8_t r1 		: 1; 
+	uint8_t r2 		: 1; 
+	uint8_t r3 		: 1; 
+	uint8_t r4 		: 1;
+} stateFlags_t;
+
+
+
+typedef struct {
 	fixedptu Q824; //Q8.24 fixed math format
 	uint8_t submenu;
 	char Text[6];
@@ -206,7 +219,6 @@ typedef struct state_s
 	int64_t arc_err; // error of 1.step
 	int32_t arc_equator;
 	int32_t arc_total_steps;
-	
 	uint32_t prescaler; // used for calculating substep delay
 	uint16_t rpm; // current sindle speed in rpm
 
@@ -224,12 +236,14 @@ typedef struct state_s
 //	G_task_t *precalculating_task_ref;
 	bool task_lock;
 //	bool precalculate_end; // moved to task structure
+	stateFlags_t flags;
 	int8_t gcode;
 	int8_t G90G91; // 0 - absolute distance mode, 1 - incremental distance mode
 	int8_t G94G95; // 0 - unit per min, 1 - unit per rev
 	int8_t G94G00tmp; // 0 - unit per min, 1 - unit per rev
 	uint8_t G98G99; // retract mode: 98 - retract to initial position, 99 - retract to value R
 	uint8_t ODID; // Outer Diameter(0) or Inner Diameter(1) turning. used to detect retract direction(backward for OD or forward for ID)
+	uint8_t vector; // vector mode flag
 	int retract;
 //	uint32_t substep_mask;
   state_func_t function;
@@ -640,11 +654,11 @@ r*3,14/2/(Пп()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
 #define G91mode 1
 
 
-#define G94code 94
-#define G95code 95
+#define G94code 0
+#define G95code 1
 
-#define G98code 98
-#define G99code 99
+#define G98code 0
+#define G99code 1
 
 #define G00code 0
 #define G01code 1

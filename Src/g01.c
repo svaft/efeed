@@ -118,11 +118,8 @@ void G00G01init_callback(state_t* s){
 //	3. set channels
 	s->function = do_fsm_move2;
 	s->syncbase->ARR = fixedpt_toint(s->current_task_ref->F) - 1;
-//	if(s->syncbase->ARR < 75 ) // todo костыль, нулевое значение в таблице ускорения
-//		s->syncbase->ARR = 75;
 
 	s->Q824set = s->current_task_ref->F;
-
 	s->prescaler = s->syncbase->PSC;
 //	TIM3->CCER = 0;
 	s->initial_task_X_pos = s->global_X_pos; // save current position to return here if we decide to repeat last move

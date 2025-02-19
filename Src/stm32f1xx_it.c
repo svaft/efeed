@@ -63,7 +63,8 @@
 extern __IO uint8_t ubLIMITleftZ;
 extern __IO uint8_t initSync;
 
-uint16_t xzsync = 0;
+uint8_t xzsync = 0;
+#define syncTicks 100
 
 /* USER CODE END PV */
 
@@ -118,7 +119,7 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-	if(xzsync++ == 300){
+	if(xzsync++ == syncTicks){
 		initSync = 1;
 		xzsync = 0;
 	};

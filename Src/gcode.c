@@ -11,11 +11,6 @@ substep_t substep_delay[substep_size]; // todo check how its work with small sub
 substep_job_t substep_job[substep_job_size];
 
 
-#define smaNumbers_len 8
-
-substep_sma_ref_t smaNumbers[smaNumbers_len] = {0};
-substep_t* smaSubstepRefs[smaNumbers_len] = {0};
-
 //профиль ускорения при 300000pps/ps расчитан в файле rapmup.xls
 uint8_t ramp_pos = 0;
 uint32_t steps2end_equator = 0;
@@ -594,7 +589,7 @@ G_pipeline_t* G_parse(char *line, G_pipeline_t *gpos){
 }
 
 void G98G99parse(char *line, uint8_t G98G99){
-
+//todo
 }
 
 

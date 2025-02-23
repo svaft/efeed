@@ -338,7 +338,7 @@ void G03init_callback(state_t* s){
 	s->Q824set = s->current_task_ref->F;
 //	s->Q824set = fixedpt_toint(f) - 1; //s->current_task_ref->F;
 	// set callback iterator for feed speed:
-	s->function = do_fsm_move2; 
+//	s->function = do_fsm_move2; 
 	s->prescaler = s->syncbase->PSC;
 	s->syncbase->ARR = fixedpt_toint(s->current_task_ref->F) - 1;
 	
@@ -402,7 +402,7 @@ void G03init_callback(state_t* s){
 	// use this variable as flag, set it in callback when arc is done:
 	s->current_task_ref->steps_to_end = 1; 
 	// init and prepare corresponding output channels to generate first step pulse:
-	s->current_task_ref->callback_ref(s);
+//	s->current_task_ref->callback_ref(s);
 }
 
 
@@ -641,7 +641,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 	if(cwccw>0){ //cw
 		switch(q_from){
 			case 1:
-				gt_new_task->callback_ref = arc_q1_callback_light;
+	//			gt_new_task->callback_ref = arc_q1_callback_light;
 				gt_new_task->precalculate_callback_ref = arc_q1_callback_precalculate;
 
 //				gt_new_task->dx =  (2*x0z+1)*gt_new_task->bb>>1;
@@ -649,7 +649,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 	//		x+z-
 				break;
 			case 4:
-				gt_new_task->callback_ref = arc_q4_callback;
+	//			gt_new_task->callback_ref = arc_q4_callback;
 //				gt_new_task->dx = -(2*x0z-1)*gt_new_task->bb>>1;
 //				gt_new_task->dz = -(2*z0z-1)*gt_new_task->aa>>1;
 	//			gt_new_task->x_direction = xdir_backward;
@@ -685,7 +685,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 				gt_new_task->x1 = x1z;
 				gt_new_task->z1 = z1z;
 				
-				gt_new_task->callback_ref = arc_q4_callback;
+	//			gt_new_task->callback_ref = arc_q4_callback;
 //				gt_new_task->dx = -(2*xf-1)*gt_new_task->bb>>1;
 //				gt_new_task->dz = -(2*0-1)*gt_new_task->aa>>1;
 			} else Error_Handler(); // impossible case trap
@@ -696,14 +696,14 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 		switch(q_from){
 			case 2:
 				// Q2
-				gt_new_task->callback_ref = arc_q2_callback;
+	//			gt_new_task->callback_ref = arc_q2_callback;
 //				gt_new_task->dx =  (2*x0z+1)*gt_new_task->bb>>1;
 //				gt_new_task->dz =  (2*z0z+1)*gt_new_task->aa>>1;
 				break;
 			case 3:
 //				gt_new_task->dx = -(2*x0z-1)*gt_new_task->bb>>1;
 //				gt_new_task->dz =  (2*z0z+1)*gt_new_task->aa>>1;
-				gt_new_task->callback_ref = arc_q3_callback;
+//				gt_new_task->callback_ref = arc_q3_callback;
 				break;
 			default: Error_Handler(); // impossible case trap
 		}
@@ -737,7 +737,7 @@ for the x stepper config of 400step/rev and z screw pitch of 2mm z_to_x = 6. see
 					gt_new_task->z1 = z1z;
 //				gt_new_task->dx = -(2*xf-1)*gt_new_task->bb>>1;
 //				gt_new_task->dz =  (2*0+1)*gt_new_task->aa>>1;
-				gt_new_task->callback_ref = arc_q3_callback;
+		//		gt_new_task->callback_ref = arc_q3_callback;
 			} else Error_Handler(); // impossible case trap
 		}
 	}

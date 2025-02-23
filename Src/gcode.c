@@ -12,7 +12,8 @@ substep_job_t substep_job[substep_job_size];
 
 
 //профиль ускорения при 300000pps/ps расчитан в файле rapmup.xls
-uint8_t ramp_pos = 0;
+uint8_t ramp_posX = 0;
+uint8_t ramp_posZ = 0;
 uint32_t steps2end_equator = 0;
 
 substep_t* cb_push_back_empty_ref(void){
@@ -46,31 +47,19 @@ void load_next_task(state_t* s){
 		if(next_task && next_task->unlocked == true) {
 			s->last_loaded_task_ref  = next_task;
 			current_step++;
-//			if(current_step == 46)
-//				break1 = 1;
-//		if(next_task && next_task->unlocked == true) {
-//	debug();
+
 			s->task_lock = true;
-//			cb_pop_front(&task_cb, s->current_task_ref);
-			s->current_task_ref = next_task;//cb_get_front_ref(&task_cb);
+			s->current_task_ref = next_task;
 			cb_pop_front_ref(&task_cb);
 			if(s->current_task_ref->init_callback_ref){
 				s->current_task_ref->init_callback_ref(s); // task specific init
-//				if(s->task_lock == false)
-//					cb_pop_front_ref(&task_cb);
 			}
-//			ramp_pos = 0; //todo костыль. надо смотреть по вектору движения, скорости и относительно этого корректировать ускорение,
-			//например при смене направления нужно остановиться и с нуля ускориться, при движении в том же направлении можно продолжить на той же скорости			
-//			s->Q824set = s->current_task_ref->F; // load feed value
 			if(s->current_task_ref->stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
-				do_fsm_move_start2(s);
+				do_fsm_move_start3(s);
 			}
 		} else{ // no next task
 		}
 	} 
-//	else if (task_cb.count == 0 && s->task_lock == false){
-//		s->current_task_ref = 0;
-//	}
 }
 
 
@@ -92,34 +81,44 @@ void G91(state_t* s){
 }
 
 
-
+/**
+* @brief  G94init_callback_precalculate
+* @retval void.
+  */
 void G94init_callback_precalculate(state_t* s){
 	s->G94G95 = G94code;
 	s->current_task_ref->unlocked = true;
 }
 
-int sta = 0;
-void switch_to_async(state_t* s){
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR0);
 
+/**
+* @brief  Set timer2 as master and timer3 as slave, async mode
+* @retval void.
+  */
+void switch_to_async(state_t* s){
 // unattach sync master TIM4 from slave	
   LL_TIM_DisableMasterSlaveMode(TIM4);
-  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_RESET);
+//  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_RESET);
 	LL_TIM_DisableCounter(TIM4); // pause sync timer
-	sta++;
-	LL_TIM_DisableCounter(TIM2); // pause async timer
+	LL_TIM_DisableCounter(TIM1); 
+	LL_TIM_DisableCounter(TIM2); 
+	LL_TIM_DisableCounter(TIM3); 
+
 	// connect sync timer:
 	s->syncbase = TIM2; 									// sync with internal clock source(virtual spindle, "async" to main spindle)
+	
+	LL_TIM_SetTriggerInput(TIM1, LL_TIM_TS_ITR1); // async: timer2 as master
+//	LL_TIM_SetClockSource(TIM1, LL_TIM_CLOCKSOURCE_EXT_MODE1);
 
-  LL_TIM_EnableMasterSlaveMode(TIM2);
-  LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_UPDATE);
+	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); // async: timer2 as master
+//	LL_TIM_SetClockSource(TIM3, LL_TIM_CLOCKSOURCE_EXT_MODE1);
+//	LL_TIM_SetOnePulseMode(TIM3, LL_TIM_ONEPULSEMODE_REPETITIVE);
 
-// calibrate timer delay
-//	LL_TIM_DisableUpdateEvent(TIM2);
-	// connect async timer:
-	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1); 				//trigger by asnyc timer TIM2(async mode)
-	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+
+//	LL_TIM_EnableCounter(TIM2); // start master
+	LL_TIM_EnableCounter(TIM1); // start slave1
+	LL_TIM_EnableCounter(TIM3); // start slave3
+
 }
 
 void G94(state_t* s){
@@ -138,7 +137,33 @@ void G94(state_t* s){
 }
 
 bool msm;
+
+/**
+* @brief  Set timer4(spindle encoder) as master and timer3 as slave, sync mode
+* @retval void.
+  */
 void switch_to_sync(state_t* s){
+	LL_TIM_DisableCounter(TIM4); // stop sync timer
+	LL_TIM_DisableCounter(TIM2); // stop async timer
+
+	LL_TIM_DisableCounter(TIM1); 
+	LL_TIM_DisableCounter(TIM3); 
+
+	LL_TIM_SetTriggerInput(TIM1, LL_TIM_TS_ITR3); // sync: timer4(ITR3) as master
+	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); // sync: timer4 as master
+	s->syncbase = TIM4; 									// sync with main spindle encoder
+
+	TIM1->SR = 0;
+	TIM3->SR = 0;	
+	LL_TIM_DisableCounter(TIM1); 
+	LL_TIM_DisableCounter(TIM3); 
+	return;
+	
+	
+
+
+
+
 	// отключаем TIM3 как ведомый таймер от мастера
 	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
 	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR0);
@@ -164,7 +189,6 @@ void switch_to_sync(state_t* s){
 //	LL_TIM_DisableUpdateEvent(TIM4);
   LL_TIM_EnableMasterSlaveMode(TIM4);
   LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
-
 
 	// connect sync timer:
 	s->syncbase = TIM4; 									// sync with main spindle encoder
@@ -194,7 +218,70 @@ void G95init_callback_precalculate(state_t* s){
 
 
 #define leddbg 100
-int ms =0;
+
+
+void do_fsm_move_start3(state_t* s){
+	ramp_posX = 0;
+	ramp_posZ = 0;
+
+	//	#define _USEENCODER
+#ifdef _USEENCODER // wait tacho only when HW encoder is used, in software emu mode this is not necessary, we start immediately
+// reload value in stored in ARR from preload to shadow register without update event 	
+	if(s->syncbase == TIM4 && s->sync){ // if sync wait for tacho event and continue. While waiting disable stepper motors to correct position manually if needed
+		LL_TIM_DisableIT_UPDATE(s->syncbase);
+		LL_TIM_DisableUpdateEvent(s->syncbase);
+		s->syncbase->SR = 0;
+		LL_TIM_CC_EnableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
+		LL_TIM_EnableCounter(s->syncbase);
+		while(!LL_TIM_IsActiveFlag_CC3(s->syncbase)); //wait tacho to sync move
+		LL_TIM_CC_DisableChannel(s->syncbase, LL_TIM_CHANNEL_CH3);
+
+//wait spindle to rotate specific angle if needed:
+		if(s->delay > 0) {
+			s->syncbase->CNT = 0;
+			LL_TIM_DisableARRPreload(s->syncbase);
+			s->syncbase->ARR = s->delay;
+			LL_TIM_EnableARRPreload(s->syncbase);
+			s->syncbase->SR = 0;
+			LL_TIM_EnableUpdateEvent(s->syncbase);
+			while(!LL_TIM_IsActiveFlag_UPDATE(s->syncbase));
+			LL_TIM_DisableCounter(s->syncbase);
+			
+		}
+	}
+
+	LL_TIM_DisableARRPreload(s->syncbase);
+	if(s->syncbase->ARR < rampup2[0] ){
+//		s->syncbase->ARR = rampup2[ramp_pos++];
+	} else{
+		s->syncbase->ARR = s->syncbase->ARR;
+	}
+	LL_TIM_EnableARRPreload(s->syncbase);
+
+	LL_TIM_EnableUpdateEvent(s->syncbase);
+	s->syncbase->CNT = 0;
+	s->syncbase->SR = 0;
+	LL_TIM_EnableIT_UPDATE(s->syncbase);
+	LL_TIM_EnableCounter(s->syncbase);
+
+#else 
+// initial load ARR
+	LL_TIM_EnableCounter(TIM1); // start slave1
+	LL_TIM_EnableCounter(TIM3); // start slave3
+	
+	LL_TIM_EnableUpdateEvent(s->syncbase);
+	s->syncbase->CNT = 0;
+	s->syncbase->SR = 0;
+	LL_TIM_EnableIT_UPDATE(s->syncbase);
+	LL_TIM_EnableCounter(s->syncbase);
+	#endif
+}
+
+
+/**
+* @brief  start move callback do_fsm_move_start2
+* @retval void.
+  */
 void do_fsm_move_start2(state_t* s){
 //	load_next_task(s); // load first task from queue
 //	LL_TIM_DisableARRPreload(s->syncbase); // prepare timer start after EnableCounter plus one timer tick to owerflow
@@ -203,14 +290,11 @@ void do_fsm_move_start2(state_t* s){
 	// disclamer: why not to generate	update event by setting in EGR UG bit? with hardware logic analyzer all works fine,
 	// but in simulator this first pulse not generater propertly by UG
 //	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
-	ms++;
-	ramp_pos = 0;
+	ramp_posX = 0;
+	ramp_posZ = 0;
 	steps2end_equator = s->current_task_ref->steps_to_end>>1;
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
-
-
-
 
 //	#define _USEENCODER
 	#ifdef _USEENCODER // wait tacho only when HW encoder is used, in software emu mode this is not necessary, we start immediately
@@ -239,8 +323,8 @@ void do_fsm_move_start2(state_t* s){
 	}
 
 	LL_TIM_DisableARRPreload(s->syncbase);
-	if(s->syncbase->ARR < rampup[0] ){
-		s->syncbase->ARR = rampup[ramp_pos++];
+	if(s->syncbase->ARR < rampup2[0] ){
+//		s->syncbase->ARR = rampup2[ramp_pos++];
 	} else{
 		s->syncbase->ARR = s->syncbase->ARR;
 	}
@@ -256,8 +340,8 @@ void do_fsm_move_start2(state_t* s){
 #else 
 // initial load ARR
 	LL_TIM_DisableARRPreload(s->syncbase);
-	if(s->syncbase->ARR < rampup[0] ){
-		s->syncbase->ARR = rampup[ramp_pos++];
+	if(s->syncbase->ARR < rampup2[0] ){
+		s->syncbase->ARR = rampup2[ramp_posZ++];
 	} else{
 		s->syncbase->ARR = s->syncbase->ARR;
 	}
@@ -277,102 +361,6 @@ void do_fsm_move_start2(state_t* s){
 int32_t move_cnt = 0;
 
 
-int break1;
-/**
-* @brief  do_fsm_move2
-* @retval void.
-  */
-void do_fsm_move2(state_t* s){
-	//todo нужен рефакторинг метода
-	s->rised = true;
-	substep_t *sb = substep_cb.tail; //get ref to current substep
-
-	if(s->substep_axis == SUBSTEP_AXIS_X){
-		s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
-		if(sb->skip ==0) s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
-	}	else {
-		s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
-		if(sb->skip ==0) s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
-	}
-	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
-		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
-		delay >>=4;
-		if(delay>65500)
-			Error_Handler(); // owerflow error, enlarge tim1 prescaler, timer1 is too fast
-
-		//jog_pulse(delay);	
-		TIM1->CCR1	= delay + 1;
-		TIM1->ARR 	= delay + 46;//min_pulse + 1;
-		TIM1->SR = 0;
-//		if(LL_TIM_IsEnabledCounter(TIM1))
-	//		Error_Handler(); // some error?
-		LL_TIM_EnableCounter(TIM1);
-		cb_pop_front_ref(&substep_cb); 		// timer to substep pulse started, move substep ref to next value in circular buffer to get in on next iteration
-	} else { 														// substep contain packed value of skipped steps, continue to skip steps until skip = 0
-		sb->skip--;
-		if(sb->skip == 0)
-			cb_pop_front_ref(&substep_cb); 	// substep reach zero, move substep ref to next value in circular buffer to get in on next iteration
-	}
-
-	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
-	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
-	if(s->current_task_ref->skiprampdown!=true && ramp_pos >= s->current_task_ref->steps_to_end){
-		s->syncbase->ARR = rampup[--ramp_pos];
-	} else {
-		if(s->syncbase->ARR < rampup[ramp_pos]){
-			s->syncbase->ARR = rampup[ramp_pos++];
-		} else{
-			s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
-		}
-	}
-//	s->current_task_ref->steps_to_end--; // migrated to callback
-}
-
-void do_fsm_move33(state_t* s){
-	s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
-	move_cnt++;
-//	if(move_cnt>460 && move_cnt<470) 
-//		break1 = 1;
-	substep_t *sb = substep_cb.tail; //get ref to current substep
-	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
-		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
-		delay >>=4;
-		if(delay>65500)
-			Error_Handler(); // owerflow error, enlarge tim1 prescaler, timer1 is too fast
-		
-		//jog_pulse(delay);		
-		TIM1->CCR1	= delay + 1;
-		TIM1->ARR 	= delay + 46;//min_pulse + 1;
-		TIM1->SR = 0;
-//		if(LL_TIM_IsEnabledCounter(TIM1))
-		//	Error_Handler(); // some error?
-		LL_TIM_EnableCounter(TIM1);
-		cb_pop_front_ref(&substep_cb); 		// timer to substep pulse started, move substep ref to next value in circular buffer to get in on next iteration
-	} else { 														// substep contain packed value of skipped steps, continue to skip steps until skip = 0
-		sb->skip--;
-		if(sb->skip == 0)
-			cb_pop_front_ref(&substep_cb); 	// substep reach zero, move substep ref to next value in circular buffer to get in on next iteration
-	}
-
-	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
-	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
-
-	s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
-
-	if(ramp_pos >= s->current_task_ref->steps_to_end){
-	//	s->syncbase->ARR = rampup[--ramp_pos];
-	} else {
-//		if(s->syncbase->ARR < rampup[ramp_pos]){
-//			s->syncbase->ARR = rampup[ramp_pos++];
-//		} else{
-//			s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
-//		}
-	}
-		
-//	s->current_task_ref->steps_to_end--; // migrated to callback
-}
-
-
 
 
 /**
@@ -382,14 +370,13 @@ void do_fsm_move33(state_t* s){
 void do_fsm_move_end2(state_t* s){
 //	debug();
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-	ramp_pos = 0; // reset ramp map 
-	cb_reset(&substep_cb);
+	ramp_posZ = 0; // reset ramp map 
+	ramp_posX = 0; // reset ramp map 
+//	cb_reset(&substep_cb);
 	init_gp.Z = fixedpt_fromint2210(s->global_Z_pos);
 	init_gp.X = fixedpt_fromint2210(s->global_X_pos);
 
 	s->current_task_ref = 0;
-//	substep_cb.count = substep_cb.count2 = 0;
-//	substep_cb.top = substep_cb.head = substep_cb.tail2 = substep_cb.tail;
 
 	if (s->sync) {
 		disable_encoder_ticks(); 										//reset interrupt for encoder ticks, only tacho todo async mode not compatible now
@@ -399,7 +386,6 @@ void do_fsm_move_end2(state_t* s){
 		LL_TIM_DisableCounter(s->syncbase); // pause async timer
 	}
 	LL_TIM_DisableIT_UPDATE(s->syncbase);
-
 	LL_TIM_DisableUpdateEvent(s->syncbase);
 	EOM();
 //	sendDefaultResponseDMA('E',&state_hw.global_X_pos);
@@ -539,7 +525,7 @@ G_pipeline_t* G_parse(char *line, G_pipeline_t *gpos){
     letter = line[char_counter++];
 		switch(letter){
 			case 'X':
-				gpos->Xr = str_f_to_steps2210(line, &char_counter) >> 1;
+				gpos->Xr = str_f_to_steps2210(line, &char_counter); // >> 1;
 				gpos->X = fixedpt_xmul2210(gpos->Xr,z_to_x_factor2210);
 //				gpos->X >>= 1; //Fusion360 generate X in diameter mode, so divide by 2
 				break;
@@ -593,94 +579,301 @@ void G98G99parse(char *line, uint8_t G98G99){
 }
 
 
-void calibrate_init_callback(state_t *s){ 
-	// todo not sure if it's working from timer interrupt where load_task is started...
-	if(s->syncbase == TIM2){
-		s->prescaler = s->syncbase->PSC + 1;
-		return;
-	}
-	LL_TIM_DisableCounter(s->syncbase); // pause current timer
-	// reset calibrated value
-	s->prescaler = 0;
-	s->function = calibrate_callback;
-	LL_TIM_SetAutoReload(TIM1,0xFFFF);
-	TIM1->CNT = 0;
+//void calibrate_init_callback(state_t *s){ 
+//	// todo not sure if it's working from timer interrupt where load_task is started...
+//	if(s->syncbase == TIM2){
+//		s->prescaler = s->syncbase->PSC + 1;
+//		return;
+//	}
+//	LL_TIM_DisableCounter(s->syncbase); // pause current timer
+//	// reset calibrated value
+//	s->prescaler = 0;
+//	s->function = calibrate_callback;
+//	LL_TIM_SetAutoReload(TIM1,0xFFFF);
+//	TIM1->CNT = 0;
 
-	s->syncbase->CNT = 1;
-	LL_TIM_EnableIT_UPDATE(s->syncbase);
-	LL_TIM_DisableARRPreload(s->syncbase);
-	LL_TIM_SetAutoReload(s->syncbase,10);
-	LL_TIM_EnableCounter(s->syncbase); // start current timer
-//	while(s->async_z==0);
-}
+//	s->syncbase->CNT = 1;
+//	LL_TIM_EnableIT_UPDATE(s->syncbase);
+//	LL_TIM_DisableARRPreload(s->syncbase);
+//	LL_TIM_SetAutoReload(s->syncbase,10);
+//	LL_TIM_EnableCounter(s->syncbase); // start current timer
+////	while(s->async_z==0);
+//}
 
-void calibrate_callback(state_t *s){
-	if(TIM1->CNT == 0){
-		LL_TIM_EnableCounter(TIM1);
-	} else {
-		LL_TIM_DisableCounter(TIM1);
-		s->prescaler = (TIM1->CNT - 110)/s->syncbase->ARR;
-		LL_TIM_DisableCounter(s->syncbase); // pause current timer
-		LL_TIM_EnableARRPreload(s->syncbase);
-	}
-}
-
-
+//void calibrate_callback(state_t *s){
+//	if(TIM1->CNT == 0){
+//		LL_TIM_EnableCounter(TIM1);
+//	} else {
+//		LL_TIM_DisableCounter(TIM1);
+//		s->prescaler = (TIM1->CNT - 110)/s->syncbase->ARR;
+//		LL_TIM_DisableCounter(s->syncbase); // pause current timer
+//		LL_TIM_EnableARRPreload(s->syncbase);
+//	}
+//}
 
 
-const uint8_t rampup[] = {
-	75,
-	65,
-	50,
-	33,
-	28,
-	24,
-	20,
-	18,
-	16,
-	15,
-	14,
-	13,
-	13,
-	12,
-	11,
-	11,
-	11,
-	10,
-	10,
-	10,
-	9,
-	9,
-	9,
-	9,
-	8,
-	8,
-	8,
-	8,
-	8,
-	8,
-	7,
-	7,
-	7,
-	7,
-	7,
-	7,
-	7,
-	7,
-	7,
-	6,
-	6,
-	6,
-	6,
-	6,
-	5,
-	5,
-	5,
-	5,
-	4,
-	4,
-	4,
-	3,
-	2,
-	1,
+const uint16_t rampup2[] = {
+1437,
+1231,
+1026,
+870,
+761,
+682,
+622,
+576,
+538,
+507,
+480,
+458,
+438,
+420,
+405,
+391,
+378,
+367,
+356,
+347,
+338,
+330,
+322,
+315,
+308,
+302,
+296,
+290,
+285,
+280,
+275,
+271,
+266,
+262,
+258,
+255,
+251,
+248,
+244,
+241,
+238,
+235,
+232,
+230,
+227,
+224,
+222,
+219,
+217,
+215,
+213,
+211,
+209,
+207,
+205,
+203,
+201,
+199,
+197,
+196,
+194,
+193,
+191,
+189,
+188,
+186,
+185,
+184,
+182,
+181,
+180,
+178,
+177,
+176,
+175,
+174,
+172,
+171,
+170,
+169,
+168,
+167,
+166,
+165,
+164,
+163,
+162,
+161,
+160,
+159,
+158,
+158,
+157,
+156,
+155,
+154,
+153,
+153,
+152,
+151,
+150,
+149,
+149,
+148,
+147,
+147,
+146,
 };
+
+//const uint8_t rampup[] = {
+//	75,
+//	65,
+//	50,
+//	33,
+//	28,
+//	24,
+//	20,
+//	18,
+//	16,
+//	15,
+//	14,
+//	13,
+//	13,
+//	12,
+//	11,
+//	11,
+//	11,
+//	10,
+//	10,
+//	10,
+//	9,
+//	9,
+//	9,
+//	9,
+//	8,
+//	8,
+//	8,
+//	8,
+//	8,
+//	8,
+//	7,
+//	7,
+//	7,
+//	7,
+//	7,
+//	7,
+//	7,
+//	7,
+//	7,
+//	6,
+//	6,
+//	6,
+//	6,
+//	6,
+//	5,
+//	5,
+//	5,
+//	5,
+//	4,
+//	4,
+//	4,
+//	3,
+//	2,
+//	1,
+//};
+
+
+///**
+//* @brief  do_fsm_move2
+//* @retval void.
+//  */
+//void do_fsm_move2(state_t* s){
+//	//todo нужен рефакторинг метода
+//	s->rised = true;
+//	substep_t *sb = substep_cb.tail; //get ref to current substep
+
+//	if(s->substep_axis == SUBSTEP_AXIS_X){
+//		s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
+//		if(sb->skip ==0) s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
+//	}	else {
+//		s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
+//		if(sb->skip ==0) s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
+//	}
+//	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
+//		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+//		delay >>=4;
+//		if(delay>65500)
+//			Error_Handler(); // owerflow error, enlarge tim1 prescaler, timer1 is too fast
+
+//		//jog_pulse(delay);	
+//		TIM1->CCR1	= delay + 1;
+//		TIM1->ARR 	= delay + 46;//min_pulse + 1;
+//		TIM1->SR = 0;
+////		if(LL_TIM_IsEnabledCounter(TIM1))
+//	//		Error_Handler(); // some error?
+//		LL_TIM_EnableCounter(TIM1);
+//		cb_pop_front_ref(&substep_cb); 		// timer to substep pulse started, move substep ref to next value in circular buffer to get in on next iteration
+//	} else { 														// substep contain packed value of skipped steps, continue to skip steps until skip = 0
+//		sb->skip--;
+//		if(sb->skip == 0)
+//			cb_pop_front_ref(&substep_cb); 	// substep reach zero, move substep ref to next value in circular buffer to get in on next iteration
+//	}
+
+//	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
+//	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
+//	if(s->current_task_ref->skiprampdown!=true && ramp_pos >= s->current_task_ref->steps_to_end){
+//		s->syncbase->ARR = rampup[--ramp_pos];
+//	} else {
+//		if(s->syncbase->ARR < rampup[ramp_pos]){
+//			s->syncbase->ARR = rampup[ramp_pos++];
+//		} else{
+//			s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
+//		}
+//	}
+////	s->current_task_ref->steps_to_end--; // migrated to callback
+//}
+///**
+//* @brief  do_fsm_move33
+//* @retval void.
+//  */
+//void do_fsm_move33(state_t* s){
+//	s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
+//	move_cnt++;
+////	if(move_cnt>460 && move_cnt<470) 
+////		break1 = 1;
+//	substep_t *sb = substep_cb.tail; //get ref to current substep
+//	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
+//		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
+//		delay >>=4;
+//		if(delay>65500)
+//			Error_Handler(); // owerflow error, enlarge tim1 prescaler, timer1 is too fast
+//		
+//		//jog_pulse(delay);		
+//		TIM1->CCR1	= delay + 1;
+//		TIM1->ARR 	= delay + 46;//min_pulse + 1;
+//		TIM1->SR = 0;
+////		if(LL_TIM_IsEnabledCounter(TIM1))
+//		//	Error_Handler(); // some error?
+//		LL_TIM_EnableCounter(TIM1);
+//		cb_pop_front_ref(&substep_cb); 		// timer to substep pulse started, move substep ref to next value in circular buffer to get in on next iteration
+//	} else { 														// substep contain packed value of skipped steps, continue to skip steps until skip = 0
+//		sb->skip--;
+//		if(sb->skip == 0)
+//			cb_pop_front_ref(&substep_cb); 	// substep reach zero, move substep ref to next value in circular buffer to get in on next iteration
+//	}
+
+//	fixedptu set_with_fract = fixedpt_add(s->Q824set, s->fract_part); // calculate new step delay with fract from previous step
+//	s->syncbase->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
+
+//	s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
+
+//	if(ramp_pos >= s->current_task_ref->steps_to_end){
+//	//	s->syncbase->ARR = rampup[--ramp_pos];
+//	} else {
+////		if(s->syncbase->ARR < rampup[ramp_pos]){
+////			s->syncbase->ARR = rampup[ramp_pos++];
+////		} else{
+////			s->fract_part = fixedpt_fracpart( set_with_fract ); 					// save fract part for future use on next step
+////		}
+//	}
+//		
+////	s->current_task_ref->steps_to_end--; // migrated to callback
+//}
+

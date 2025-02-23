@@ -165,10 +165,21 @@ typedef struct G_task{
 	int32_t dx, dz;
 	int32_t 	x1, z1; // delta
 //	uint32_t len;
-	float len_f;
+	float len_f; //2210
 	uint32_t steps_to_end;
 	fixedptu F; //Q1616, feed value. For mm/min lowest value is 35.16 mm/min
-	callback_func_t callback_ref; //callback ref to iterate line or arc
+
+	uint32_t steps_to_endX;// steps to end on x
+	uint32_t steps_to_endZ; // steps to end on z
+	fixedptu Fx; //Q1616, feed value for x axis
+	fixedptu Fz; //Q1616, feed value for z axis
+
+//	callback_func_t callback_ref; //callback ref to iterate line or arc
+
+	callback_func_t callback_refX; //callback ref to iterate line or arc
+	callback_func_t callback_refZ; //callback ref to iterate line or arc
+
+
 	callback_func_t init_callback_ref;
 
 	callback_func_t precalculate_init_callback_ref;
@@ -179,7 +190,8 @@ typedef struct G_task{
 	uint8_t multistart_thread;
 	bool stepper; // use this variable if this code use stepper motor
 	bool unlocked; // task unlocked(already processed by precalc)
-	bool skiprampdown;
+	bool skiprampdownX;
+	bool skiprampdownZ;
 
 // arc
 //	int rr, inc_dec;
@@ -209,6 +221,13 @@ typedef struct state_s
 	int32_t initial_task_Z_pos, initial_task_X_pos;
 	int32_t task_destination_Z_pos, task_destination_X_pos;
 
+
+	uint32_t x1616set; // feed rate, now its actually in 1616 format, todo rename?
+	uint32_t x1616fract_part; // Q8.24 format fract part now its actually in 1616 format, todo rename?
+
+	uint32_t z1616set; // feed rate, now its actually in 1616 format, todo rename?
+	uint32_t z1616fract_part; // Q8.24 format fract part now its actually in 1616 format, todo rename?
+	
 	uint32_t Q824set; // feed rate, now its actually in 1616 format, todo rename?
 	uint32_t fract_part; // Q8.24 format fract part now its actually in 1616 format, todo rename?
 
@@ -247,6 +266,10 @@ typedef struct state_s
 	int retract;
 //	uint32_t substep_mask;
   state_func_t function;
+
+  state_func_t functionX;
+  state_func_t functionZ;
+
 //  callback_func_t callback;
 //	uint32_t async_z;
 //	uint8_t z_period;
@@ -515,11 +538,11 @@ void USART_CharReception_Callback(void);
 
 #define MOTOR_X_CHANNEL         		LL_TIM_CHANNEL_CH4
 #define MOTOR_Z_CHANNEL         		LL_TIM_CHANNEL_CH2
-//#define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
+////#define MOTOR_Z_OnlyPulse()         TIM3->CCER = MOTOR_Z_CHANNEL
 #define MOTOR_Z_AllowPulse()         LL_TIM_CC_EnableChannel(TIM3,MOTOR_Z_CHANNEL) //t3ccer[TIM_CCER_CC1E_Pos] = 1
 #define MOTOR_Z_BlockPulse()         LL_TIM_CC_DisableChannel(TIM3,MOTOR_Z_CHANNEL) //t3ccer[TIM_CCER_CC1E_Pos] = 0
 
-//#define MOTOR_X_OnlyPulse()         TIM3->CCER = MOTOR_X_CHANNEL
+////#define MOTOR_X_OnlyPulse()         TIM3->CCER = MOTOR_X_CHANNEL
 #define MOTOR_X_AllowPulse()         LL_TIM_CC_EnableChannel(TIM3,MOTOR_X_CHANNEL) //t3ccer[TIM_CCER_CC3E_Pos] = 1
 #define MOTOR_X_BlockPulse()         LL_TIM_CC_DisableChannel(TIM3,MOTOR_X_CHANNEL) //t3ccer[TIM_CCER_CC3E_Pos] = 0
 

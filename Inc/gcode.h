@@ -19,7 +19,7 @@
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
 #define substep_job_size task_size*2
 
-#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+//#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 
 
 typedef struct substep{
@@ -62,14 +62,24 @@ void calibrate_init_callback(state_t* s);
 
 
 void do_fsm_move_start2(state_t* s);
+void do_fsm_move_start3(state_t* s);
+
 
 void do_fsm_move33(state_t*);
 void do_fsm_move2(state_t*);
+
 void do_fsm_move_end2(state_t* );
 void load_next_task(state_t* s);
 
 
-extern const uint8_t rampup[];
+void tim1toslave();
+void do_fsm_move_start3(state_t* s);
+void do_fsm_moveZ(state_t*);
+void do_fsm_moveX(state_t*);
+void do_fsm_move_end3(state_t* );
+
+
+extern const uint16_t rampup2[];
 extern uint32_t steps_to_end_shadow; // костыль
 extern substep_t substep_delay[];
 substep_t* cb_push_back_empty_ref(void);

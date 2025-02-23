@@ -62,9 +62,10 @@
 /* USER CODE BEGIN PV */
 extern __IO uint8_t ubLIMITleftZ;
 extern __IO uint8_t initSync;
-
+bool xPulse = false, zPulse = false;
 uint8_t xzsync = 0;
 #define syncTicks 100
+__IO uint32_t ttt = 0;
 
 /* USER CODE END PV */
 
@@ -123,6 +124,7 @@ void SysTick_Handler(void)
 		initSync = 1;
 		xzsync = 0;
 	};
+	ttt++;
 
 //	if(--data_refresh == 0){
 //		data_refresh = 4000;
@@ -190,23 +192,25 @@ void TIM1_UP_IRQHandler(void)
   /* USER CODE BEGIN TIM1_UP_IRQn 0 */
 	// enable corresponding channel for sub-step:
 	TIM1->SR = 0;
-	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_off;
-	if(!state_hw.jog_pulse){
-		if(state_hw.current_task_ref->steps_to_end == 0 ){
-			state_hw.task_lock = false; // unlock task processor to load next task
-			if(task_cb.count == 0){
-				do_fsm_move_end2(&state_hw);
-	//			return;
-			}
-	//		load_next_task(&state_hw);
-		} 
-//		else if (state_hw.current_task_ref->steps_to_end > 4294964598) {
-//			breakbig = 1;
-//		}
+	if(!xPulse){
+		LL_GPIO_SetOutputPin(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin);
+		xPulse = true;
+		TIM1->ARR = 1; // clear ARR to call interrapt on next async timep tick
+		return;
 	} else {
-		state_hw.jog_pulse = false;
+		xPulse = false;
+		LL_GPIO_ResetOutputPin(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin);
 	}
-
+	if(state_hw.current_task_ref->callback_refX){
+		state_hw.current_task_ref->callback_refX(&state_hw);
+		TIM1->ARR-=2;
+	}
+	if(state_hw.current_task_ref->steps_to_endX == 0  && state_hw.current_task_ref->steps_to_endZ == 0){
+			state_hw.current_task_ref = 0;
+			state_hw.task_lock = false; // unlock task processor to load next task
+			do_fsm_move_end2(&state_hw);
+		} else {
+		}
   /* USER CODE END TIM1_UP_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_IRQn 1 */
   /* USER CODE END TIM1_UP_IRQn 1 */
@@ -219,7 +223,6 @@ void TIM1_CC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_CC_IRQn 0 */
 	TIM1->SR = 0;
-	*((volatile unsigned int *)state_hw.substep_pin) = state_hw.substep_pulse_on;
   /* USER CODE END TIM1_CC_IRQn 0 */
   /* USER CODE BEGIN TIM1_CC_IRQn 1 */
 
@@ -232,45 +235,49 @@ void TIM1_CC_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
-// prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
 	TIM2->SR = 0;
-	state_hw.function(&state_hw);
-
-//	TIM2->EGR |= TIM_EGR_UG;
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
-  /* Check whether update interrupt is pending */
-
-//  if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == 1)
-//  {
-    /* Clear the update interrupt flag*/
-//    LL_TIM_ClearFlag_UPDATE(TIM2);
-//  }
   /* USER CODE END TIM2_IRQn 1 */
 }
 
 /**
-  * @brief This function handles TIM3 global interrupt.
+  * @brief Z axis step generation, hw pulses by hw OC2 reg (output compare) 
   */
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
 	TIM3->SR = 0;
-
-	if(state_hw.current_task_ref->callback_ref){
-		state_hw.current_task_ref->callback_ref(&state_hw);
+	if(!zPulse){
+//		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+		zPulse = true;
+		TIM3->ARR = 1; // clear ARR to call interrapt on next async timep tick
+		TIM3->CNT = 0;
+//		TIM3->SR = 0;
+		return;
+	} else {
+		zPulse = false;
+//		LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 	}
-	if(state_hw.current_task_ref->steps_to_end == 0){
-		if(!LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
+//	TIM3->CNT = 0;
+
+	if(state_hw.current_task_ref->callback_refZ){
+		state_hw.current_task_ref->callback_refZ(&state_hw);
+		TIM3->ARR-=2; // remove one tick we used for pulse generation 
+	}
+	if(state_hw.current_task_ref->steps_to_endZ == 0 && state_hw.current_task_ref->steps_to_endX == 0){
+		
+//		if(!LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
+			state_hw.current_task_ref = 0;
 			state_hw.task_lock = false; // unlock task processor to load next task
-			if(task_cb.count == 0){
+//			if(task_cb.count == 0){
 				do_fsm_move_end2(&state_hw);
 	//			return;
-			}
+//			}
 	//		load_next_task(&state_hw);
 		} else {
 		}
-	}
+//	}
 
   /* USER CODE END TIM3_IRQn 0 */
   /* USER CODE BEGIN TIM3_IRQn 1 */
@@ -286,6 +293,8 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 	TIM4->SR = 0; // clear SR at the beginning of the interrupt to avoid false call it twice, http://www.keil.com/support/docs/3928.htm 
+	return;
+	
 	state_hw.function(&state_hw);
 
 

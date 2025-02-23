@@ -369,7 +369,7 @@ int main(void)
 //!!!! 	_USEENCODER define  moved to gcode.h
 	
 	#ifdef _USEENCODER
-	int preload = 2;//LOOP_COUNT;
+	int preload = 4;//LOOP_COUNT;
 	#else
 	int preload = 4;//LOOP_COUNT;
 	#endif	
@@ -377,10 +377,10 @@ int main(void)
 const char * ga1[] = { 
 	#ifdef _USEENCODER
 	"G91",
-	"G95",
+	"G94",
 //	"G33 Z-10 K4.5 M3",
 	"G0 X0. Z0.",
-	"G0 Z10",
+	"G1 X0.1 Z0.1 F600",
 	"G94",
 	"G1 Z-600 F600", //F900",
 	"G0 Z200",
@@ -388,17 +388,17 @@ const char * ga1[] = {
 //	"G1 Z-2 F0.05",
 	#else
 	"G91",
-	"G94",
+	"G95",
 //	"G76 P0.05 Z-1 I-.075 J0.008 K0.045 Q29.5 L2 E0.045",
 //	"G76 P2. Z-50. I-8.209 J0.25 K2. R2. Q29.5 H0. E1. L0",
 
 	"G0 X0. Z0.",
 //	"G1 Z200 F0.1",
 //	"G0 X10. Z0.",
-	"G1 Z-10 F600",
-//	"G1 Z-200 F0.5",
+//	"G1 X1 Z-20 F600",
+	"G1 Z-200 F0.5",
 	"G0 X0. Z0.",
-	"G1 Z-10 F600",
+	"G1 X10. Z-10 F600",
 	"G0 X0. Z0.",
 	"G1 Z-10 F600",
 	"G0 X0. Z0.",
@@ -440,8 +440,6 @@ const char * ga1[] = {
 	memset(&state_hw,0,sizeof(state_hw));
 	
 	state_hw.retract = 100;
-	G95(&state_hw);
-	switch_to_sync(&state_hw); //  set sync mode as default
 
   state_hw.uart_header[0] = state_hw.uart_header[1] =state_hw.uart_header[2] =state_hw.uart_header[3] = '!';
 	state_hw.uart_end[0] = '#';
@@ -495,17 +493,34 @@ const char * ga1[] = {
 //	LL_TIM_OC_SetPolarity(TIM3,LL_TIM_CHANNEL_CH1,LL_TIM_OCPOLARITY_LOW);
 //	LL_TIM_CC_EnableChannel(TIM3,LL_TIM_CHANNEL_CH1);
 	
+	
+	
+	
+	
+	LL_TIM_CC_DisablePreload(TIM3);
+	LL_TIM_OC_DisablePreload(TIM3, LL_TIM_CHANNEL_CH2);
+
+	LL_TIM_EnableIT_CC1(TIM3);
+//	LL_TIM_SetOnePulseMode(TIM1,LL_TIM_ONEPULSEMODE_SINGLE);
+
+	LL_TIM_CC_EnableChannel(TIM3,LL_TIM_CHANNEL_CH2);
+
 //	while(1){
 //		LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_5);
 //		LL_mDelay(100);
 //	}
 	
 //	LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_OUTPUT);
+
 //	LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port, MOTOR_Z_STEP_Pin); 
 //	LL_mDelay(50);
+//	LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port, MOTOR_Z_STEP_Pin); 
 //	LL_GPIO_SetPinMode(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin,LL_GPIO_MODE_ALTERNATE);
 //	LL_mDelay(50);
 
+ // LL_TIM_EnableIT_UPDATE(TIM2);
+ // LL_TIM_EnableCounter(TIM2);
+	
 
   /* Clear Overrun flag, in case characters have already been sent to USART */
   LL_USART_ClearFlag_ORE(USART1);
@@ -550,7 +565,7 @@ const char * ga1[] = {
 
 
 	// prepare TIM1 for sub-step:	
-	LL_TIM_ClearFlag_UPDATE(TIM1);
+/*	LL_TIM_ClearFlag_UPDATE(TIM1);
 	LL_TIM_CC_DisablePreload(TIM1);
 	LL_TIM_OC_DisablePreload(TIM1, LL_TIM_CHANNEL_CH1);
 
@@ -561,8 +576,12 @@ const char * ga1[] = {
 //	TIM1->CCR1 = 50;
 	LL_TIM_EnableIT_UPDATE(TIM1);
 	LL_TIM_DisableARRPreload(TIM1);
+*/
 
-
+	G95(&state_hw);
+	switch_to_sync(&state_hw); //  set sync mode as default
+//	tim1toslave();
+//	LL_mDelay(1000);
 // calibration test
 /*
 	LL_TIM_DisableARRPreload(TIM4);
@@ -590,10 +609,10 @@ const char * ga1[] = {
 	bool move_to_saved_pos = false;
 
 // some init hardware state
-	state_hw.substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
-	state_hw.substep_pulse_on = 1;
-	state_hw.substep_pulse_off = 0;
-	state_hw.substep_axis = SUBSTEP_AXIS_X;
+//	state_hw.substep_pin = (unsigned int *)((PERIPH_BB_BASE + ((uint32_t)&(MOTOR_X_STEP_GPIO_Port->ODR) -PERIPH_BASE)*32 + (MOTOR_X_STEP_Pin_num*4)));
+//	state_hw.substep_pulse_on = 1;
+//	state_hw.substep_pulse_off = 0;
+//	state_hw.substep_axis = SUBSTEP_AXIS_X;
 	
 //	state_hw.uart_header 
 	uint32_t bn = Build_No;
@@ -637,8 +656,8 @@ const char * ga1[] = {
 			// get pointer to last processed task
 			if(state_precalc.current_task_ref->precalculate_callback_ref) {
 				state_precalc.current_task_ref->precalculate_callback_ref(&state_precalc);
-				if(state_precalc.current_task_ref->unlocked  == true && steps_to_end_shadow == 0) // precalc finished, load next task to precalc
-					state_precalc.current_task_ref = 0;
+//				if(state_precalc.current_task_ref->unlocked  == true && steps_to_end_shadow == 0) // precalc finished, load next task to precalc
+//					state_precalc.current_task_ref = 0;
 				}
 		} else {
 			if(state_precalc.current_task_ref == 0 && task_cb.count2 > 0){
@@ -651,6 +670,8 @@ const char * ga1[] = {
 								state_precalc.current_task_ref->precalculate_callback_ref(&state_precalc);
 						if(state_precalc.current_task_ref->unlocked  == true) // precalc finished, load next task to precalc
 							state_precalc.current_task_ref = 0;
+					} else {
+						state_precalc.current_task_ref = 0;
 					}
 				}
 			} else if (substep_cb.count2 == substep_cb.capacity && state_precalc.current_task_ref ){ // buffer overflow, unlock task to process precalculated data
@@ -662,6 +683,7 @@ const char * ga1[] = {
 			// if buffer is full go to sleep
 //			__WFI();
 		}
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -702,9 +724,9 @@ const char * ga1[] = {
 					case '1':
 //						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
 							if(state_hw.G90G91 == G90mode){
-								scheduleG00G01move(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
+								scheduleG00G01move3(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0,0, G00code);
 							} else {
-								scheduleG00G01move(	fixedptu_fromint2210(record_X) - init_gp.X, fixedptu_fromint2210(record_Z) - init_gp.Z, 0, G00code);
+								scheduleG00G01move3(	fixedptu_fromint2210(record_X) - init_gp.X, fixedptu_fromint2210(record_Z) - init_gp.Z, 0, 0, G00code);
 							}
 //							move_to_saved_pos = true;
 //						}
@@ -740,11 +762,11 @@ const char * ga1[] = {
 
 					// move back:
 					// 1. move back 400 steps from blank(or move forward if ID)
-						scheduleG00G01move(fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
+						scheduleG00G01move3(fixedpt_fromint2210(state_hw.retract), 0, 0,0, G00code);
 					// repeat same movement in back direction
-						scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
+						scheduleG00G01move3(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0,0, G00code);
           // move forward 400 steps to blank
-						scheduleG00G01move(-fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
+						scheduleG00G01move3(-fixedpt_fromint2210(state_hw.retract), 0, 0,0, G00code);
 //						EOM();
 //						sendResponse((uint32_t)"ok\r\n",4);
 						break;
@@ -767,9 +789,9 @@ const char * ga1[] = {
 							int back_dz = record_task.z_direction ==zdir_forward ? -record_task.dz : record_task.dz;
 							int back_dx = record_task.x_direction ==xdir_forward ? record_task.dx : -record_task.dx;
 
-							scheduleG00G01move(fixedpt_fromint2210(state_hw.retract), 0, 0, G00code);
-							scheduleG00G01move(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0, G00code);
-							scheduleG00G01move(-state_hw.retract*1024, 0, 0, G00code);
+							scheduleG00G01move3(fixedpt_fromint2210(state_hw.retract), 0, 0, 0,G00code);
+							scheduleG00G01move3(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0,0, G00code);
+							scheduleG00G01move3(-state_hw.retract*1024, 0, 0,0, G00code);
 						}
 						break;
 					case 'R': // infinite loop to reset by WD
@@ -882,7 +904,7 @@ const char * ga1[] = {
 						break;
 					}
 					case 'a': {// left small '!a'
-						scheduleG00G01move(0, -jog_Z_01_2210, 0, G00code);
+						scheduleG00G01move3(0, -jog_Z_01_2210, 0,0, G00code);
 						/*
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
@@ -897,7 +919,7 @@ const char * ga1[] = {
 						break;
 					}
 					case 'd': {// right small '!d'
-						scheduleG00G01move(0, jog_Z_01_2210, 0, G00code);
+						scheduleG00G01move3(0, jog_Z_01_2210, 0,0, G00code);
 						/*
 						int from_Z = init_gp.Z;
 					// get current Z position - 0.1mm
@@ -1071,6 +1093,7 @@ static void MX_IWDG_Init(void)
 
 	return;
 	#endif
+	return;
   /* USER CODE END IWDG_Init 0 */
 
   /* USER CODE BEGIN IWDG_Init 1 */
@@ -1104,8 +1127,6 @@ static void MX_TIM1_Init(void)
   /* USER CODE END TIM1_Init 0 */
 
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
-  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
-  LL_TIM_BDTR_InitTypeDef TIM_BDTRInitStruct = {0};
 
   /* Peripheral clock enable */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_TIM1);
@@ -1119,35 +1140,19 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
-  TIM_InitStruct.Prescaler = 15;
+  TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 65535;
+  TIM_InitStruct.Autoreload = 100;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   TIM_InitStruct.RepetitionCounter = 0;
   LL_TIM_Init(TIM1, &TIM_InitStruct);
   LL_TIM_DisableARRPreload(TIM1);
-  LL_TIM_SetClockSource(TIM1, LL_TIM_CLOCKSOURCE_INTERNAL);
-  LL_TIM_OC_EnablePreload(TIM1, LL_TIM_CHANNEL_CH1);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
-  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.CompareValue = 0;
-  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
-  TIM_OC_InitStruct.OCNPolarity = LL_TIM_OCPOLARITY_HIGH;
-  TIM_OC_InitStruct.OCIdleState = LL_TIM_OCIDLESTATE_LOW;
-  TIM_OC_InitStruct.OCNIdleState = LL_TIM_OCIDLESTATE_LOW;
-  LL_TIM_OC_Init(TIM1, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
-  LL_TIM_OC_DisableFast(TIM1, LL_TIM_CHANNEL_CH1);
+  LL_TIM_SetTriggerInput(TIM1, LL_TIM_TS_ITR1);
+  LL_TIM_SetClockSource(TIM1, LL_TIM_CLOCKSOURCE_EXT_MODE1);
+  LL_TIM_DisableIT_TRIG(TIM1);
+  LL_TIM_DisableDMAReq_TRIG(TIM1);
   LL_TIM_SetTriggerOutput(TIM1, LL_TIM_TRGO_RESET);
   LL_TIM_DisableMasterSlaveMode(TIM1);
-  TIM_BDTRInitStruct.OSSRState = LL_TIM_OSSR_DISABLE;
-  TIM_BDTRInitStruct.OSSIState = LL_TIM_OSSI_DISABLE;
-  TIM_BDTRInitStruct.LockLevel = LL_TIM_LOCKLEVEL_OFF;
-  TIM_BDTRInitStruct.DeadTime = 0;
-  TIM_BDTRInitStruct.BreakState = LL_TIM_BREAK_DISABLE;
-  TIM_BDTRInitStruct.BreakPolarity = LL_TIM_BREAK_POLARITY_HIGH;
-  TIM_BDTRInitStruct.AutomaticOutput = LL_TIM_AUTOMATICOUTPUT_DISABLE;
-  LL_TIM_BDTR_Init(TIM1, &TIM_BDTRInitStruct);
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
@@ -1167,7 +1172,6 @@ static void MX_TIM2_Init(void)
   /* USER CODE END TIM2_Init 0 */
 
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
-  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
 
   /* Peripheral clock enable */
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
@@ -1179,23 +1183,15 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
-  TIM_InitStruct.Prescaler = 2399;
+  TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 50;
+  TIM_InitStruct.Autoreload = 239;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM2, &TIM_InitStruct);
-  LL_TIM_EnableARRPreload(TIM2);
+  LL_TIM_DisableARRPreload(TIM2);
   LL_TIM_SetClockSource(TIM2, LL_TIM_CLOCKSOURCE_INTERNAL);
-  LL_TIM_OC_EnablePreload(TIM2, LL_TIM_CHANNEL_CH1);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM1;
-  TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.CompareValue = 48;
-  TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_LOW;
-  LL_TIM_OC_Init(TIM2, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
-  LL_TIM_OC_DisableFast(TIM2, LL_TIM_CHANNEL_CH1);
   LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_UPDATE);
-  LL_TIM_EnableMasterSlaveMode(TIM2);
+  LL_TIM_DisableMasterSlaveMode(TIM2);
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
@@ -1233,38 +1229,34 @@ static void MX_TIM3_Init(void)
   /* USER CODE END TIM3_Init 1 */
   TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = min_pulse;
+  TIM_InitStruct.Autoreload = 100;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM3, &TIM_InitStruct);
-  LL_TIM_EnableARRPreload(TIM3);
-  LL_TIM_SetClockSource(TIM3, LL_TIM_CLOCKSOURCE_INTERNAL);
-  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH2);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_PWM2;
+  LL_TIM_DisableARRPreload(TIM3);
+  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_TOGGLE;
   TIM_OC_InitStruct.OCState = LL_TIM_OCSTATE_DISABLE;
   TIM_OC_InitStruct.OCNState = LL_TIM_OCSTATE_DISABLE;
-  TIM_OC_InitStruct.CompareValue = 1;
+  TIM_OC_InitStruct.CompareValue = 0;
   TIM_OC_InitStruct.OCPolarity = LL_TIM_OCPOLARITY_HIGH;
   LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH2, &TIM_OC_InitStruct);
-  LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH2);
-  LL_TIM_OC_EnablePreload(TIM3, LL_TIM_CHANNEL_CH4);
-  LL_TIM_OC_Init(TIM3, LL_TIM_CHANNEL_CH4, &TIM_OC_InitStruct);
-  LL_TIM_OC_EnableFast(TIM3, LL_TIM_CHANNEL_CH4);
-  LL_TIM_SetOnePulseMode(TIM3, LL_TIM_ONEPULSEMODE_SINGLE);
+  LL_TIM_OC_DisableFast(TIM3, LL_TIM_CHANNEL_CH2);
   LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR1);
-  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
+  LL_TIM_SetClockSource(TIM3, LL_TIM_CLOCKSOURCE_EXT_MODE1);
   LL_TIM_DisableIT_TRIG(TIM3);
   LL_TIM_DisableDMAReq_TRIG(TIM3);
   LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_RESET);
   LL_TIM_DisableMasterSlaveMode(TIM3);
   /* USER CODE BEGIN TIM3_Init 2 */
 
-	LL_TIM_DisableIT_UPDATE(TIM3);
-	LL_TIM_GenerateEvent_UPDATE(TIM3);
-	LL_TIM_ClearFlag_UPDATE(TIM3);
-	LL_TIM_EnableIT_UPDATE(TIM3); // */
+//	LL_TIM_DisableIT_UPDATE(TIM3);
+//	LL_TIM_GenerateEvent_UPDATE(TIM3);
+//	LL_TIM_ClearFlag_UPDATE(TIM3);
+//	LL_TIM_EnableIT_UPDATE(TIM3); // */
 
-	MOTOR_X_AllowPulse();
-	MOTOR_Z_AllowPulse();
+//	MOTOR_X_AllowPulse();
+//	MOTOR_Z_AllowPulse();
+	
+	
 //	LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 
 /*
@@ -1281,18 +1273,11 @@ static void MX_TIM3_Init(void)
   /* USER CODE END TIM3_Init 2 */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
   /**TIM3 GPIO Configuration
-  PB1   ------> TIM3_CH4
   PB5   ------> TIM3_CH2
   */
-  GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  LL_GPIO_Init(MOTOR_X_STEP_GPIO_Port, &GPIO_InitStruct);
-
   GPIO_InitStruct.Pin = MOTOR_Z_STEP_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   LL_GPIO_Init(MOTOR_Z_STEP_GPIO_Port, &GPIO_InitStruct);
 
@@ -1427,7 +1412,7 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 1 */
 
   /* USER CODE END USART1_Init 1 */
-  USART_InitStruct.BaudRate = 921600; //115200;
+  USART_InitStruct.BaudRate = 921600;
   USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
   USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
   USART_InitStruct.Parity = LL_USART_PARITY_NONE;
@@ -1588,10 +1573,10 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin);
+  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_X_STEP_Pin|MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOB, MOTOR_Z_ENABLE_Pin|MOTOR_Z_DIR_Pin);
+  LL_GPIO_ResetOutputPin(GPIOA, MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin);
 
   /**/
   GPIO_InitStruct.Pin = LED_Pin;
@@ -1616,6 +1601,14 @@ static void MX_GPIO_Init(void)
                           |LL_GPIO_PIN_14|LL_GPIO_PIN_15|LL_GPIO_PIN_9;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = MOTOR_X_STEP_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_DOWN;
+  LL_GPIO_Init(MOTOR_X_STEP_GPIO_Port, &GPIO_InitStruct);
 
   /**/
   GPIO_InitStruct.Pin = MOTOR_X_ENABLE_Pin|MOTOR_X_DIR_Pin;
@@ -1657,19 +1650,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-/*
-
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*timIC)
-{
-	if (timIC->Channel == HAL_TIM_ACTIVE_CHANNEL_3) {
-
-	}
-
-//	if(ready!=SET)return;
-//HAL_TIM_ReadCapturedValue(timIC,TIM_CHANNEL_3);
-}
-*/
-
 #ifndef _USEENCODER
 void spindle_emulator(void){
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
@@ -1685,9 +1665,9 @@ void spindle_emulator(void){
   NVIC_EnableIRQ(TIM4_IRQn);
 
 	
-  TIM_InitStruct.Prescaler = 2399;
+  TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 50;
+  TIM_InitStruct.Autoreload = 999;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM4, &TIM_InitStruct);
   LL_TIM_EnableARRPreload(TIM4);
@@ -1705,37 +1685,17 @@ void spindle_emulator(void){
 }
 #endif
 
-volatile int codeg = 0;
+volatile  int codeg = 0;
+volatile uint64_t eh = 0;
 void Error_Handler2(int code)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
 	codeg = code;
 	/* User can add his own implementation to report the HAL error return state */
 	TIM1->CR1 = TIM2->CR1 = TIM3->CR1 = TIM4->CR1 = 0;
 	while (1) {
 	}
-  /* USER CODE END Error_Handler_ Debug */
 }
-
 /* USER CODE END 4 */
-
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
-void Error_Handler1(int code)
-{
-  /* USER CODE BEGIN Error_Handler_Debug */
-//	codeg = code;
-	/* User can add his own implementation to report the HAL error return state */
-	TIM1->CR1 = TIM2->CR1 = TIM3->CR1 = TIM4->CR1 = 0;
-	while (1) {
-	}
-  /* USER CODE END Error_Handler_ Debug */
-}
-
-/* USER CODE END 4 */
-
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -1744,10 +1704,11 @@ void Error_Handler1(int code)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-	/* User can add his own implementation to report the HAL error return state */
-	TIM1->CR1 = TIM2->CR1 = TIM3->CR1 = TIM4->CR1 = 0;
-	while (1) {
-	}
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 

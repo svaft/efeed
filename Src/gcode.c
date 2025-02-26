@@ -1,6 +1,12 @@
 #include "gcode.h"
 
 
+
+
+
+
+ubuf_t ut[uartbuf_size];
+
 fixedpt command;
 G_pipeline_t init_gp={0,0,0,0,0};
 
@@ -75,26 +81,26 @@ void load_next_task(state_t* s){
 
 
 void G90init_callback_precalculate(state_t* s){
-	s->G90G91 = G90mode;
+	s->flags.G90G91 = G90mode;
 	s->current_task_ref->unlocked = true;
 }
 void G90(state_t* s){
-	s->G90G91 = G90mode;
+	s->flags.G90G91 = G90mode;
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 void G91init_callback_precalculate(state_t* s){
-	s->G90G91 = G91mode;
+	s->flags.G90G91 = G91mode;
 	s->current_task_ref->unlocked = true;
 }
 void G91(state_t* s){
-	s->G90G91 = G91mode;
+	s->flags.G90G91 = G91mode;
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
 
 
 void G94init_callback_precalculate(state_t* s){
-	s->G94G95 = G94code;
+	s->flags.G94G95 = G94code;
 	s->current_task_ref->unlocked = true;
 }
 
@@ -123,12 +129,12 @@ void switch_to_async(state_t* s){
 }
 
 void G94(state_t* s){
-	if(s->G94G95 == G94code){ //если мы уже в асинхронном режиме переконфигурацию таймеров не проводим
+	if(s->flags.G94G95 == G94code){ //если мы уже в асинхронном режиме переконфигурацию таймеров не проводим
 		s->task_lock = false;
 		return;
 	}
 	
-	s->G94G95 = G94code;
+	s->flags.G94G95 = G94code;
 	if(s->G94G00tmp == true){
 		s->G94G00tmp = false;
 	} else{
@@ -177,17 +183,17 @@ void switch_to_sync(state_t* s){
 }
 void G95(state_t* s){
 //	MOTOR_X_Enable();
-	if(s->G94G95 == G95code){ //если мы уже в синхронном режиме переконфигурацию таймеров не проводим
+	if(s->flags.G94G95 == G95code){ //если мы уже в синхронном режиме переконфигурацию таймеров не проводим
 		s->task_lock = false;
 		return;
 	}
-	s->G94G95 = G95code;
+	s->flags.G94G95 = G95code;
 	switch_to_sync(s);
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
 void G95init_callback_precalculate(state_t* s){
-	s->G94G95 = G95code;
+	s->flags.G94G95 = G95code;
 	s->current_task_ref->unlocked = true;
 }
 
@@ -294,7 +300,7 @@ void do_fsm_move2(state_t* s){
 		s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
 		if(sb->skip ==0) s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
 	}
-	if(sb->skip == 0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
+	if(sb->skip == 0 && substep_cb.count >0){ // if substep have no skip steps in it, calculate next delay and start substep timer to generate substep pulse
 		int32_t delay = sb->delay*s->prescaler * (s->syncbase->ARR+1) >> subdelay_precision; // todo delay recalculate move to tim2 or tim4 wherer arr is changing?
 		delay >>=4;
 		if(delay>65500)
@@ -397,6 +403,7 @@ void do_fsm_move_end2(state_t* s){
 		LL_TIM_DisableCounter(s->syncbase); // pause async timer
 	} else {
 		LL_TIM_DisableCounter(s->syncbase); // pause async timer
+		s->syncbase->SR = 0;
 	}
 	LL_TIM_DisableIT_UPDATE(s->syncbase);
 
@@ -445,13 +452,13 @@ void command_parser(char *line){
 						G04parse(line+char_counter);
 						break;
 					case 90*steps_per_unit_Z_2210: //G90  absolute distance mode
-						state_precalc.G90G91 = G90mode;
+						state_precalc.flags.G90G91 = G90mode;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G90;
 						g_task->precalculate_init_callback_ref = G90init_callback_precalculate;
 						break;
 					case 91*steps_per_unit_Z_2210: //G91  incremental distance mode
-						state_precalc.G90G91 = G91mode;
+						state_precalc.flags.G90G91 = G91mode;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G91;
 						g_task->precalculate_init_callback_ref = G91init_callback_precalculate;

@@ -97,9 +97,9 @@ G96, G97 Spindle Control Mode, G97 (RPM Mode)
 // ***** Stepper Motor *****
 
 __IO uint32_t rised = 0;
-#define RX_BUFFER_SIZE   64
+#define RX_BUFFER_SIZE   32
 uint8_t aRXBufferA[RX_BUFFER_SIZE];
-uint8_t aRXBuffer[RX_BUFFER_SIZE];
+//uint8_t aRXBuffer[RX_BUFFER_SIZE];
 __IO uint8_t	uwNbReceivedChars;
 __IO uint8_t	uNbReceivedCharsForUser;
 //__IO uint32_t	uwBufferReadyIndication;
@@ -227,6 +227,11 @@ void trim_substep_short(){
 			cb_reset(&substep_cb);
 	}
 }
+
+
+
+
+
 /*
 void trim_substep(){
 	uint32_t skip = 50;
@@ -303,6 +308,16 @@ void trim_substep(){
 	init_gp.X = fixedpt_fromint2210(local_X);
 }
 */
+
+
+//	cb_init_ref(&uart_cb, 10, sizeof(ubuf_t), &ut);
+__STATIC_INLINE 
+ubuf_t * add_empty_uart(){
+	cb_push_back_empty(&uart_cb);
+	return uart_cb.top;
+}
+
+
 /**
   * @brief  Function called from USART IRQ Handler when RXNE flag is set
   *         Function is in charge of reading character received on USART RX line.
@@ -316,16 +331,21 @@ void USART_CharReception_Callback(void)
 	uint8_t symbol = LL_USART_ReceiveData8(USART1);
 	if(symbol == '\n'){
     /* Set Buffer swap indication */
-		ubUART3ReceptionComplete = 1;
-		if(uwNbReceivedChars == 1)
-			Error_Handler2(2);
-		uNbReceivedCharsForUser = uwNbReceivedChars;
-		memset(&aRXBuffer,0,uwNbReceivedChars);
-		if(aRXBuffer[uwNbReceivedChars-1] == '\r')
-			memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars-1);
-		else
-			memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars);
-		memset(&aRXBufferA,0,uwNbReceivedChars);
+//		ubUART3ReceptionComplete = 1;
+		ubuf_t *u_buf = add_empty_uart();
+		memset(u_buf,0,32);
+		memcpy(u_buf,&aRXBufferA,uwNbReceivedChars);
+
+
+//		if(uwNbReceivedChars == 1)
+//			Error_Handler2(2);
+//		uNbReceivedCharsForUser = uwNbReceivedChars;
+//		memset(&aRXBuffer,0,uwNbReceivedChars);
+//		if(aRXBuffer[uwNbReceivedChars-1] == '\r')
+//			memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars-1);
+//		else
+//			memcpy(&aRXBuffer,&aRXBufferA,uwNbReceivedChars);
+//		memset(&aRXBufferA,0,uwNbReceivedChars);
     uwNbReceivedChars = 0;
 	} else {
 		if(symbol != 0)
@@ -335,6 +355,10 @@ void USART_CharReception_Callback(void)
 		}
 	}
 }
+
+
+
+
 int aa;
 substep_t *tmp_headg;
 uint8_t ss[100];
@@ -362,7 +386,10 @@ int main(void)
 //	strcat(str1, "test");
 //	info[11] = ';';
 //	aa = sizeof(G_task_t);
-
+//	ui16toa2(&state_hw.flags, (uint8_t *)&state_hw.uart_header[3],1);
+	
+	
+	
 	#define LOOP_FROM 1
 //#define LOOP_COUNT 2
 //	#define LOOP_COUNT 4 //509//289 //158
@@ -377,10 +404,11 @@ int main(void)
 const char * ga1[] = { 
 	#ifdef _USEENCODER
 	"G91",
-	"G95",
+	"G94",
+	"G94",
 //	"G33 Z-10 K4.5 M3",
-	"G0 X0. Z0.",
-	"G0 Z10",
+//	"G0 X0. Z0.",
+	"G1 Z10 F600",
 	"G94",
 	"G1 Z-600 F600", //F900",
 	"G0 Z200",
@@ -443,7 +471,8 @@ const char * ga1[] = {
 	G95(&state_hw);
 	switch_to_sync(&state_hw); //  set sync mode as default
 
-  state_hw.uart_header[0] = state_hw.uart_header[1] =state_hw.uart_header[2] =state_hw.uart_header[3] = '!';
+  state_hw.uart_header[0] = HEADER_0;
+	state_hw.uart_header[1] =state_hw.uart_header[2] =state_hw.uart_header[3] = HEADER_1;
 	state_hw.uart_end[0] = '#';
 	state_hw.uart_end[1] = '#';
 	state_hw.uart_end[2] = '\r';
@@ -451,11 +480,13 @@ const char * ga1[] = {
 	char info[14];
 //	memcpy(info,"1.80;",5);
 //	state_hw.global_Z_pos = (2<<23) - 1;
-
+	LL_DBGMCU_APB1_GRP1_FreezePeriph(LL_DBGMCU_APB1_GRP1_IWDG_STOP);
 //ui64toa(state_hw.global_Z_pos,&info[0]);
 
 //	state_hw.function = do_fsm_menu_lps;
-	
+	cb_init_ref(&uart_cb, uartbuf_size, sizeof(ubuf_t), &ut);
+
+
 	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
 //	cb_init_ref(&task_precalc_cb, task_precalc_size, sizeof(G_task_t), &gt_precalc);
 //	cb_init_ref(&gp_cb, gp_size, sizeof(G_pipeline_t),&gp);
@@ -597,7 +628,7 @@ const char * ga1[] = {
 	
 //	state_hw.uart_header 
 	uint32_t bn = Build_No;
-	sendDefaultResponseDMA('R',&bn);
+	sendDefaultResponseDMA(RESET_code,&bn);
 	LL_mDelay(1);
 
 //	sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
@@ -682,26 +713,28 @@ const char * ga1[] = {
 			trim_substep_short();
 //			EOM(); //					sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
 		}
-		if(ubUART3ReceptionComplete == 1){
-			uint8_t cmd = aRXBuffer[0];
-			cmd1 = aRXBuffer[0];
-			cmd2 = aRXBuffer[1];
+		if(uart_cb.count > 0){
+			
+		  ubuf_t *next_uartcmd = cb_get_front_ref(&uart_cb);
+			uint8_t cmd = ((uint8_t * )next_uartcmd)[0]; //aRXBuffer[0];
+			cmd1 =((uint8_t * )next_uartcmd)[1]; // aRXBuffer[0];
+			cmd2 = ((uint8_t * )next_uartcmd)[2]; //aRXBuffer[1];
 			ubUART3ReceptionComplete = 0;
 			if(cmd == '!'){
-				switch(aRXBuffer[1]){
+				switch(cmd1){
 					case '=':
-						switch(aRXBuffer[2]){
+						switch(cmd2){
 							case 'X':
-							  state_hw.global_X_pos = ahextoui32(&aRXBuffer[3]);
+							  state_hw.global_X_pos = ahextoui32(&((uint8_t * )next_uartcmd)[3]);
 							break;
 							case 'Y':
-							  state_hw.global_Z_pos = ahextoui32(&aRXBuffer[3]);
+							  state_hw.global_Z_pos = ahextoui32(&((uint8_t * )next_uartcmd)[3]);
 							break;
 						}
 						break;
 					case '1':
 //						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
-							if(state_hw.G90G91 == G90mode){
+							if(state_hw.flags.G90G91 == G90mode){
 								scheduleG00G01move(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
 							} else {
 								scheduleG00G01move(	fixedptu_fromint2210(record_X) - init_gp.X, fixedptu_fromint2210(record_Z) - init_gp.Z, 0, G00code);
@@ -800,8 +833,8 @@ const char * ga1[] = {
 					}
 					
 					case 'v':{ // vector of carriage move, 1st argument is direction, 24 values by 15 gegree number packet to single byte, second argument is 1 byte relative speed
-						uint8_t direction = aRXBuffer[2] - '0' > 9 ? aRXBuffer[2] - 'A' + 10 : aRXBuffer[2] - '0';
-						uint8_t speed = aRXBuffer[3] - '0';
+						uint8_t direction = *next_uartcmd[2] - '0' > 9 ? *next_uartcmd[2] - 'A' + 10 : *next_uartcmd[2] - '0';
+						uint8_t speed = *next_uartcmd[3] - '0';
 						if(speed>0)
 							state_hw.vector = 1;
 						break;
@@ -917,7 +950,7 @@ const char * ga1[] = {
 						if(ff < 100) // limit min FOTF by 0.1mm/rev
 							ff = 100;
 						record_task.F = state_hw.Q824set = feed_on_the_fly_factor / ff;
-						sendDefaultResponseDMA('f',&state_hw.Q824set);
+						sendDefaultResponseDMA(FEED_code,&state_hw.Q824set);
 //						record_task.F = state_hw.Q824set;
 /*record_task.F = = 1474560.0f / state_hw.Q824set;
 					  ff -=0.1f;
@@ -932,7 +965,7 @@ const char * ga1[] = {
 						if(ff > 3000) // limit max FOTF by 3mm/rev
 							ff = 3000;
 						record_task.F = state_hw.Q824set = feed_on_the_fly_factor / ff;
-						sendDefaultResponseDMA('f',&state_hw.Q824set);
+						sendDefaultResponseDMA(FEED_code,&state_hw.Q824set);
 /*						float ff = 1474560.0 / state_hw.Q824set;
 					  ff +=0.1f;
 						if(ff > 3)
@@ -943,25 +976,28 @@ const char * ga1[] = {
 
 					
 					case 'I': // set ID
-						state_hw.ODID = 1;
+//						state_hw.ODID = 1;
+						state_hw.flags.ODID = IDmode;
 						state_hw.retract = -100;
 						break;
 					case 'O': // set OD
-						state_hw.ODID = 0;
+//						state_hw.ODID = 0;
+						state_hw.flags.ODID = ODmode;
 						state_hw.retract = 100;
 						break;
 				}
 			} else {
 //				int charsCount = uNbReceivedCharsForUser - CRC_BASE64_STRLEN;
-				uNbReceivedCharsForUser = 0;
+//				uNbReceivedCharsForUser = 0;
 
 //				if(charsCount>0) {
-//					if(is_crc_ok(aRXBuffer,charsCount)){
+//					if(is_crc_ok(*next_uartcmd,charsCount)){
 //						sendResponse((uint32_t)aTxCRC_OK_OK_Continue, 5);
-//						*(aRXBuffer+charsCount) = 0;
-	//					uint8_t cmd = *(char *)aRXBuffer;
-				command_parser((char *)aRXBuffer);
+//						*(*next_uartcmd+charsCount) = 0;
+	//					uint8_t cmd = *(char *)*next_uartcmd;
+				command_parser(*next_uartcmd);
 			}
+			cb_pop_front_ref(&uart_cb);
 		}
 
 //		process_joystick();
@@ -1078,7 +1114,7 @@ static void MX_IWDG_Init(void)
   /* USER CODE END IWDG_Init 1 */
   LL_IWDG_Enable(IWDG);
   LL_IWDG_EnableWriteAccess(IWDG);
-  LL_IWDG_SetPrescaler(IWDG, LL_IWDG_PRESCALER_32);
+  LL_IWDG_SetPrescaler(IWDG, LL_IWDG_PRESCALER_256);
   LL_IWDG_SetReloadCounter(IWDG, 4095);
   while (LL_IWDG_IsReady(IWDG) != 1)
   {

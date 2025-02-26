@@ -1,5 +1,7 @@
 #include "nuts_bolts.h"
 
+circular_buffer uart_cb;
+
 circular_buffer gp_cb;
 circular_buffer task_cb;
 //circular_buffer task_precalc_cb;
@@ -532,7 +534,11 @@ void ui10toa(uint32_t n, uint8_t s[]){
 	while(i>=0)
 		s[i--] = '0';
  }
-
+/**
+  * @brief ui16toa2 
+  * @param  
+  * @retval 
+  */
  void ui16toa(void* ptr , uint8_t s[], int len){ //generte number with base 16
   int i = len*2-1;
 	unsigned char *byte = ptr;
@@ -544,19 +550,30 @@ void ui10toa(uint32_t n, uint8_t s[]){
 	} while(i>0);
 }
 
- void ui16toa2(void* ptr , uint8_t s[], int len){ //generte number with base 16
-  int i = len-1;
-	unsigned char *byte = ptr;
-	do{
-		uint8_t rem = *byte % 16;
-		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
-		rem = *byte++ / 16;
-		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
-	} while(i>0);
-}
+
+/**
+  * @brief ui16toa2 
+  * @param  
+  * @retval 
+  */
+// __STATIC_INLINE void ui16toa2(void* ptr , uint8_t s[], int len){ //generte number with base 16
+//  int i = len-1;
+//	unsigned char *byte = ptr;
+//	do{
+//		uint8_t rem = *byte % 16;
+//		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+//		rem = *byte++ / 16;
+//		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+//	} while(i>0);
+//}
 
 
 
+/**
+  * @brief ui16toa2 
+  * @param  
+  * @retval 
+  */
 void ui64toa(uint32_t n, uint8_t s[]){ //generte number with base 64
      int i = CRC_BASE64_STRLEN - 1;
      do {
@@ -566,10 +583,13 @@ void ui64toa(uint32_t n, uint8_t s[]){ //generte number with base 64
 		 while(i>=0)
 			 s[i--] = '0';
  }
+  
  
- 
- 
-
+/**
+  * @brief atoui64 
+  * @param  
+  * @retval 
+  */
 uint32_t atoui64(uint8_t* str) 
 { 
 	int res = 0; // Initialize result 
@@ -582,11 +602,18 @@ uint32_t atoui64(uint8_t* str)
 } 
 
 
-
+/**
+  * @brief sendDefaultResponseXZ 
+  * @param  
+  * @retval 
+  */
 void sendDefaultResponseXZ(){
 	if(LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_4) > 0)
 		return;
-	state_hw.uart_header[3] = '!';
+
+	ui16toaHalf(&state_hw.flags, (uint8_t *)&state_hw.uart_header[3]);
+//	state_hw.ODID == 0 ? state_hw.uart_header[3] = 'O' : state_hw.uart_header[3] = 'I';
+//	state_hw.uart_header[3] = '!';
 	int16_t z = state_hw.global_Z_pos;
 	int16_t x = state_hw.global_X_pos;
 
@@ -595,10 +622,15 @@ void sendDefaultResponseXZ(){
 	sendResponse((uint32_t)&state_hw,SYNC_BYTES);
 }
 
+/**
+  * @brief EOM 
+  * @param  
+  * @retval 
+  */
 void EOM(){
 	if(LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_4) > 0)
 		return;
-	state_hw.uart_header[3] = 'E';
+	state_hw.uart_header[3] = EOM_code;
 	int16_t z = state_hw.global_Z_pos;
 	int16_t x = state_hw.global_X_pos;
 

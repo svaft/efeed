@@ -166,7 +166,7 @@ typedef struct G_task{
 	int32_t 	x1, z1; // delta
 //	uint32_t len;
 	float len_f;
-	uint32_t steps_to_end;
+	int32_t steps_to_end;
 	fixedptu F; //Q1616, feed value. For mm/min lowest value is 35.16 mm/min
 	callback_func_t callback_ref; //callback ref to iterate line or arc
 	callback_func_t init_callback_ref;
@@ -196,6 +196,7 @@ typedef struct substep_job{
 	uint8_t substep_pulse_off;
 } substep_job_t;
 
+typedef char ubuf_t[32];
 
 #define SYNC_BYTES 16 // first 16 bytes to get from state_s struct and send out by USART1 
 typedef struct state_s
@@ -231,18 +232,18 @@ typedef struct state_s
 	
 	volatile bool jog_pulse; // флаг для отключения логики, не нужной для пульса в ручном режиме
 //	G_task_t current_task;
-	G_task_t *current_task_ref;
+	volatile G_task_t *current_task_ref;
 	G_task_t *last_loaded_task_ref;
 //	G_task_t *precalculating_task_ref;
 	bool task_lock;
 //	bool precalculate_end; // moved to task structure
 	stateFlags_t flags;
 	int8_t gcode;
-	int8_t G90G91; // 0 - absolute distance mode, 1 - incremental distance mode
-	int8_t G94G95; // 0 - unit per min, 1 - unit per rev
+//	int8_t G90G91; // 0 - absolute distance mode, 1 - incremental distance mode
+//	int8_t G94G95; // 0 - unit per min, 1 - unit per rev
 	int8_t G94G00tmp; // 0 - unit per min, 1 - unit per rev
 	uint8_t G98G99; // retract mode: 98 - retract to initial position, 99 - retract to value R
-	uint8_t ODID; // Outer Diameter(0) or Inner Diameter(1) turning. used to detect retract direction(backward for OD or forward for ID)
+//	uint8_t ODID; // Outer Diameter(0) or Inner Diameter(1) turning. used to detect retract direction(backward for OD or forward for ID)
 	uint8_t vector; // vector mode flag
 	int retract;
 //	uint32_t substep_mask;
@@ -333,6 +334,15 @@ void USART_CharReception_Callback(void);
 #endif
 
 /* USER CODE BEGIN Private defines */
+
+
+#define HEADER_0 '!'
+#define HEADER_1 '!'
+#define EOM_code 'e'
+#define RESET_code 'r'
+#define FEED_code 'f'
+
+
 // extract GPIO pin nuber by passing LL_GPIO_PIN_x value to it. 
 // Use this value for compute bit-banding address of pin at compiling time by preprocessor
 #if 	MOTOR_X_DIR_Pin == 	LL_GPIO_PIN_0	
@@ -650,6 +660,9 @@ r*3,14/2/(Пп()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
 #define feed_direction_right        1 // from left to right
 
 
+#define ODmode 0
+#define IDmode 1
+
 #define G90mode 0
 #define G91mode 1
 
@@ -662,6 +675,7 @@ r*3,14/2/(Пп()*КОРЕНЬ((r*r+r*z_to_x_factor2210*r*z_to_x_factor2210)/8))
 
 #define G00code 0
 #define G01code 1
+
 #define G33code 33
 
 

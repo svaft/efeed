@@ -234,7 +234,8 @@ void TIM2_IRQHandler(void)
   /* USER CODE BEGIN TIM2_IRQn 0 */
 // prescaler=((((speed=72000000)/((period=20000)/(1/hz=1)))+0,5)-1)
 	TIM2->SR = 0;
-	state_hw.function(&state_hw);
+	if(state_hw.function)
+		state_hw.function(&state_hw);
 
 //	TIM2->EGR |= TIM_EGR_UG;
   /* USER CODE END TIM2_IRQn 0 */

@@ -12,6 +12,24 @@ uint32_t ahextoui32(uint8_t* str);
 
 
 void ui16toa(void* ptr , uint8_t s[], int len);
+__STATIC_INLINE void ui16toa2(void* ptr , uint8_t s[], int len){
+	  int i = len-1;
+	unsigned char *byte = ptr;
+	do{
+		uint8_t rem = *byte % 16;
+		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+		rem = *byte++ / 16;
+		s[i--] =  rem>9 ? (rem-10)+'A' : rem+'0';
+	} while(i>0);
+}
+
+__STATIC_INLINE void ui16toaHalf(void* ptr , uint8_t s[]){
+	unsigned char *byte = ptr;
+	uint8_t rem = *byte % 16;
+	s[0] =  rem>9 ? (rem-10)+'A' : rem+'0';
+}
+
+
 void ui10toa(uint32_t n, uint8_t s[]);
 void ui64toa(uint32_t n, uint8_t s[]);
 void sendResponse(uint32_t SrcAddress, uint32_t NbData);
@@ -62,6 +80,8 @@ extern circular_buffer task_precalc_cb;
 extern circular_buffer substep_job_cb;
 extern circular_buffer sma_cb;
 extern circular_buffer sma_substep_cb;
+
+extern circular_buffer uart_cb;
 
 void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref);
 

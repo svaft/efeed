@@ -1,6 +1,12 @@
 #include "gcode.h"
 
 
+
+
+
+
+ubuf_t ut[uartbuf_size];
+
 fixedpt command;
 G_pipeline_t init_gp={0,0,0,0,0};
 
@@ -64,19 +70,19 @@ void load_next_task(state_t* s){
 
 
 void G90init_callback_precalculate(state_t* s){
-	s->G90G91 = G90mode;
+	s->flags.G90G91 = G90mode;
 	s->current_task_ref->unlocked = true;
 }
 void G90(state_t* s){
-	s->G90G91 = G90mode;
+	s->flags.G90G91 = G90mode;
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 void G91init_callback_precalculate(state_t* s){
-	s->G90G91 = G91mode;
+	s->flags.G90G91 = G91mode;
 	s->current_task_ref->unlocked = true;
 }
 void G91(state_t* s){
-	s->G90G91 = G91mode;
+	s->flags.G90G91 = G91mode;
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
@@ -86,7 +92,7 @@ void G91(state_t* s){
 * @retval void.
   */
 void G94init_callback_precalculate(state_t* s){
-	s->G94G95 = G94code;
+	s->flags.G94G95 = G94code;
 	s->current_task_ref->unlocked = true;
 }
 
@@ -122,12 +128,12 @@ void switch_to_async(state_t* s){
 }
 
 void G94(state_t* s){
-	if(s->G94G95 == G94code){ //если мы уже в асинхронном режиме переконфигурацию таймеров не проводим
+	if(s->flags.G94G95 == G94code){ //если мы уже в асинхронном режиме переконфигурацию таймеров не проводим
 		s->task_lock = false;
 		return;
 	}
 	
-	s->G94G95 = G94code;
+	s->flags.G94G95 = G94code;
 	if(s->G94G00tmp == true){
 		s->G94G00tmp = false;
 	} else{
@@ -201,17 +207,17 @@ void switch_to_sync(state_t* s){
 }
 void G95(state_t* s){
 //	MOTOR_X_Enable();
-	if(s->G94G95 == G95code){ //если мы уже в синхронном режиме переконфигурацию таймеров не проводим
+	if(s->flags.G94G95 == G95code){ //если мы уже в синхронном режиме переконфигурацию таймеров не проводим
 		s->task_lock = false;
 		return;
 	}
-	s->G94G95 = G95code;
+	s->flags.G94G95 = G95code;
 	switch_to_sync(s);
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
 void G95init_callback_precalculate(state_t* s){
-	s->G94G95 = G95code;
+	s->flags.G94G95 = G95code;
 	s->current_task_ref->unlocked = true;
 }
 

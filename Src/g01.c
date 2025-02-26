@@ -11,7 +11,7 @@ extern uint8_t ramp_posX;
 * @retval void.
   */
 void G00init_callback(state_t* s){
-	if(s->G94G95 == G95code && s->G94G00tmp == false){
+	if(s->flags.G94G95 == G95code && s->G94G00tmp == false){
 		s->G94G00tmp = true;
 		switch_to_async(s);
 	}
@@ -157,7 +157,7 @@ void G33parse(char *line){
 	state_t *s = &state_precalc;
 	G_pipeline_t gref = {0};
 //	s->init = true;
-	if(s->G90G91 == G90mode){
+	if(s->flags.G90G91 == G90mode){
 		G_parse(line, &init_gp);
 		scheduleG00G01move3(init_gp.X, init_gp.Z, init_gp.K,0, 33);
 	} else {
@@ -180,7 +180,7 @@ void G01parse(char *line, bool G00G01){ //~60-70us
 	G_pipeline_t gref = {0};
 //	gref.X = gref.Xr = gref.Z = gref.F = 0;
 //	s->init = true;
-	if(s->G90G91 == G90mode){
+	if(s->flags.G90G91 == G90mode){
 		G_parse(line, &init_gp);
 		scheduleG00G01move3(init_gp.X, init_gp.Z, init_gp.F, init_gp.Xr,  G00G01);
 	} else {
@@ -204,7 +204,7 @@ void scheduleG00G01move3(int X, int Z, int F, int Xr, uint8_t G00G01G33){
 	int z0 = init_gp.Z, x0 = init_gp.X;
 	state_t *s = &state_precalc;
 	int dx,dz, xdir,zdir;
-	if(s->G90G91 == G91mode){ // incremental mode
+	if(s->flags.G90G91 == G91mode){ // incremental mode
 		init_gp.Z += Z;
 		init_gp.X += X;
 		if(Z >= 0){ // go from left to right

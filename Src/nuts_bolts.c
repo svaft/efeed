@@ -586,7 +586,13 @@ uint32_t atoui64(uint8_t* str)
 void sendDefaultResponseXZ(){
 	if(LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_4) > 0)
 		return;
-	state_hw.uart_header[3] = '!';
+//	state_hw.uart_header[3] = '!';
+	
+		ui16toaHalf(&state_hw.flags, (uint8_t *)&state_hw.uart_header[3]);
+//	state_hw.ODID == 0 ? state_hw.uart_header[3] = 'O' : state_hw.uart_header[3] = 'I';
+//	state_hw.uart_header[3] = '!';
+	
+	
 	int16_t z = state_hw.global_Z_pos;
 	int16_t x = state_hw.global_X_pos;
 

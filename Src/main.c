@@ -725,6 +725,7 @@ const char * ga1[] = {
 //						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
 							if(state_hw.G90G91 == G90mode){
 								scheduleG00G01move3(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0,0, G00code);
+							if(state_hw.flags.G90G91 == G90mode){
 							} else {
 								scheduleG00G01move3(	fixedptu_fromint2210(record_X) - init_gp.X, fixedptu_fromint2210(record_Z) - init_gp.Z, 0, 0, G00code);
 							}

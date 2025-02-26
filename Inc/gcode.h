@@ -12,10 +12,11 @@
 #include "g03.h"
 #include "g04.h"
 
+#define uartbuf_size 40
 #define task_precalc_size 20
 #define task_size 70
 #define gp_size 10
-#define substep_size 4000
+#define substep_size 1000
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
 #define substep_job_size task_size*2
 
@@ -46,6 +47,7 @@ void G95(state_t* s);
 void G33parse(char *line);
 void G00parse(char *line);
 void G98G99parse(char *line, uint8_t G98G99);
+
 
 extern G_task_t gt_precalc[];
 extern G_task_t gt[];
@@ -82,6 +84,7 @@ void do_fsm_move_end3(state_t* );
 extern const uint16_t rampup2[];
 extern uint32_t steps_to_end_shadow; // костыль
 extern substep_t substep_delay[];
+extern ubuf_t ut[];
 substep_t* cb_push_back_empty_ref(void);
 
 

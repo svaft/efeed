@@ -236,6 +236,9 @@ void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
 	TIM2->SR = 0;
+	if(state_hw.function)
+		state_hw.function(&state_hw);
+//	TIM2->EGR |= TIM_EGR_UG;
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
   /* USER CODE END TIM2_IRQn 1 */

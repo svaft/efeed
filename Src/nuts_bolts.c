@@ -566,6 +566,7 @@ void ui64toa(uint32_t n, uint8_t s[]){ //generte number with base 64
 		 while(i>=0)
 			 s[i--] = '0';
  }
+  
  
  
  
@@ -593,6 +594,10 @@ void sendDefaultResponseXZ(){
 //	state_hw.uart_header[3] = '!';
 	
 	
+
+	ui16toaHalf(&state_hw.flags, (uint8_t *)&state_hw.uart_header[3]);
+//	state_hw.ODID == 0 ? state_hw.uart_header[3] = 'O' : state_hw.uart_header[3] = 'I';
+//	state_hw.uart_header[3] = '!';
 	int16_t z = state_hw.global_Z_pos;
 	int16_t x = state_hw.global_X_pos;
 
@@ -601,10 +606,15 @@ void sendDefaultResponseXZ(){
 	sendResponse((uint32_t)&state_hw,SYNC_BYTES);
 }
 
+/**
+  * @brief EOM 
+  * @param  
+  * @retval 
+  */
 void EOM(){
 	if(LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_4) > 0)
 		return;
-	state_hw.uart_header[3] = 'E';
+	state_hw.uart_header[3] = EOM_code;
 	int16_t z = state_hw.global_Z_pos;
 	int16_t x = state_hw.global_X_pos;
 

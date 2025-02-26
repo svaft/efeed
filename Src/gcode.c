@@ -384,6 +384,7 @@ void do_fsm_move_end2(state_t* s){
 		LL_TIM_DisableCounter(s->syncbase); // pause async timer
 	} else {
 		LL_TIM_DisableCounter(s->syncbase); // pause async timer
+		s->syncbase->SR = 0;
 	}
 	LL_TIM_DisableIT_UPDATE(s->syncbase);
 	LL_TIM_DisableUpdateEvent(s->syncbase);
@@ -431,13 +432,13 @@ void command_parser(char *line){
 						G04parse(line+char_counter);
 						break;
 					case 90*steps_per_unit_Z_2210: //G90  absolute distance mode
-						state_precalc.G90G91 = G90mode;
+						state_precalc.flags.G90G91 = G90mode;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G90;
 						g_task->precalculate_init_callback_ref = G90init_callback_precalculate;
 						break;
 					case 91*steps_per_unit_Z_2210: //G91  incremental distance mode
-						state_precalc.G90G91 = G91mode;
+						state_precalc.flags.G90G91 = G91mode;
 						g_task = add_empty_task();
 						g_task->init_callback_ref = G91;
 						g_task->precalculate_init_callback_ref = G91init_callback_precalculate;

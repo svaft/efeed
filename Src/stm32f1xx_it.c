@@ -192,18 +192,20 @@ void TIM1_UP_IRQHandler(void)
   /* USER CODE BEGIN TIM1_UP_IRQn 0 */
 	// enable corresponding channel for sub-step:
 	TIM1->SR = 0;
-	if(!xPulse){
-		LL_GPIO_SetOutputPin(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin);
-		xPulse = true;
-		TIM1->ARR = 1; // clear ARR to call interrapt on next async timep tick
-		return;
-	} else {
-		xPulse = false;
-		LL_GPIO_ResetOutputPin(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin);
-	}
-	if(state_hw.current_task_ref->callback_refX){
-		state_hw.current_task_ref->callback_refX(&state_hw);
-		TIM1->ARR-=2;
+	if(state_hw.current_task_ref->steps_to_endX > 0){
+		if(!xPulse){
+			LL_GPIO_SetOutputPin(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin);
+			xPulse = true;
+			TIM1->ARR = 1; // clear ARR to call interrapt on next async timep tick
+			return;
+		} else {
+			xPulse = false;
+			LL_GPIO_ResetOutputPin(MOTOR_X_STEP_GPIO_Port,MOTOR_X_STEP_Pin);
+		}
+		if(state_hw.current_task_ref->callback_refX){
+			state_hw.current_task_ref->callback_refX(&state_hw);
+			TIM1->ARR-=2;
+		}
 	}
 	if(state_hw.current_task_ref->steps_to_endX == 0  && state_hw.current_task_ref->steps_to_endZ == 0){
 			state_hw.current_task_ref = 0;
@@ -252,22 +254,25 @@ void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
 	TIM3->SR = 0;
-	if(!zPulse){
-//		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
-		zPulse = true;
-		TIM3->ARR = 1; // clear ARR to call interrapt on next async timep tick
-		TIM3->CNT = 0;
-//		TIM3->SR = 0;
-		return;
-	} else {
-		zPulse = false;
-//		LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
-	}
-//	TIM3->CNT = 0;
+	
+	if(state_hw.current_task_ref->steps_to_endZ > 0){
+		if(!zPulse){
+	//		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+			zPulse = true;
+			TIM3->ARR = 1; // clear ARR to call interrapt on next async timep tick
+			TIM3->CNT = 0;
+	//		TIM3->SR = 0;
+			return;
+		} else {
+			zPulse = false;
+	//		LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+		}
+	//	TIM3->CNT = 0;
 
-	if(state_hw.current_task_ref->callback_refZ){
-		state_hw.current_task_ref->callback_refZ(&state_hw);
-		TIM3->ARR-=2; // remove one tick we used for pulse generation 
+		if(state_hw.current_task_ref->callback_refZ){
+			state_hw.current_task_ref->callback_refZ(&state_hw);
+			TIM3->ARR-=2; // remove one tick we used for pulse generation 
+		}
 	}
 	if(state_hw.current_task_ref->steps_to_endZ == 0 && state_hw.current_task_ref->steps_to_endX == 0){
 		

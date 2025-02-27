@@ -47,11 +47,6 @@ __STATIC_INLINE bool is_crc_ok(uint8_t *bfr, uint8_t len){
 
 }
 
-__STATIC_INLINE void ui16toaHalf(void* ptr , uint8_t s[]){
-	unsigned char *byte = ptr;
-	uint8_t rem = *byte % 16;
-	s[0] =  rem>9 ? (rem-10)+'A' : rem+'0';
-}
 
 uint64_t SquareRoot64(uint64_t a_nInput);
 uint32_t SquareRoot(uint32_t a_nInput);
@@ -199,6 +194,21 @@ __STATIC_INLINE void cb_push_back_empty(circular_buffer *cb){
     cb->count++;
     cb->count2++;
 }
+
+__STATIC_INLINE void cb_push_back_unclean(circular_buffer *cb){
+    if(cb->count == cb->capacity){
+        Error_Handler();
+            // handle error
+    }
+//    memset(cb->head, 0, cb->sz);
+		cb->top = cb->head;
+    cb->head = (uint8_t *)cb->head + cb->sz;
+    if(cb->head == cb->buffer_end)
+        cb->head = cb->buffer;
+    cb->count++;
+    cb->count2++;
+}
+
 
 __STATIC_INLINE void cb_push_back_item(circular_buffer *cb, void *item){
     if(cb->count == cb->capacity){

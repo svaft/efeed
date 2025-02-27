@@ -76,11 +76,13 @@ void G00G01init_callback3(state_t* s){
 		TIM1->ARR = fixedpt_toint(s->current_task_ref->Fx) - 1;
 		TIM1->SR = 0;
 		LL_TIM_EnableIT_UPDATE(TIM1);
+		LL_TIM_EnableCounter(TIM1);
 	}
 	if(s->current_task_ref->Fz>0){
 		TIM3->ARR = fixedpt_toint(s->current_task_ref->Fz) - 1;
 		TIM3->SR = 0;
 		LL_TIM_EnableIT_UPDATE(TIM3);
+		LL_TIM_EnableCounter(TIM3);
 	}
 }
 
@@ -248,15 +250,26 @@ void scheduleG00G01move3(int X, int Z, int F, int Xr, uint8_t G00G01G33){
 
 
 //		G94G95; // 0 - unit per min, 1 - unit per rev
-	if( (s->G94G95 == G95code && G00G01G33 == G01code ) || G00G01G33 == G33code){ 	// unit(mm) per rev
+	if( (s->flags.G94G95 == G95code && G00G01G33 == G01code ) || G00G01G33 == G33code){ 	// unit(mm) per rev
 		gt_new_task->Fz = str_f2210mm_rev_to_delay1616(F); //todo inch support
 		gt_new_task->Fx = 0;
 
 		gt_new_task->multistart_thread = grefM;
 	} else { 											// unit(mm) per min
+		
 		if(G00G01G33 == G00code){
-			gt_new_task->F = 10<<16;
-		} else {
+			F = 600*1024;// 600mm/min
+			// Z: 10mm/min =0737280000, x mm/min = 7372800000/x
+			// X: 10мм/мин =1179648000
+			gt_new_task->Fz = 7549747200000 / F;
+			gt_new_task->Fx =  12079595520000 / F;
+
+//			uint32_t Fint = F / 1024; 
+//			gt_new_task->Fx = 737280000 /Fint; // precalculated for 600mm/min
+//			gt_new_task->Fz = 12288000; // precalculated for 600mm/min
+//			gt_new_task->F = 10<<16;
+		}// else 
+		{
 			
 //			uint32_t tttc = 0;
 //			
@@ -291,8 +304,8 @@ void scheduleG00G01move3(int X, int Z, int F, int Xr, uint8_t G00G01G33){
 			const float pathLenConst = (float)(64.*1024.* 60.0 * 1024.0*timerFreq / (z_steps_unit / z_screw_pitch)); // 7.549.747.200.000
 			float pathLen = gt_new_task->len_f * pathLenConst / (float)F;
 
-			gt_new_task->Fz = pathLen / dz;
-			gt_new_task->Fx = pathLen / dx;
+			gt_new_task->Fz = dz > 0 ? pathLen / dz : 0;
+			gt_new_task->Fx = dx > 0 ? pathLen / dx : 0;
 		}
 	}
 

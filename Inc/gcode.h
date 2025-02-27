@@ -20,7 +20,7 @@
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
 #define substep_job_size task_size*2
 
-//#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
+#define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 
 
 typedef struct substep{

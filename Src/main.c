@@ -211,8 +211,11 @@ int dbg_ss_cnt = 0;
 void trim_substep_short(){
 	// 1. check if there is any active task is running:
 	if(state_hw.current_task_ref) {
-		if(state_hw.current_task_ref->steps_to_end > 10){
-			state_hw.current_task_ref->steps_to_end = 10;
+		if(state_hw.current_task_ref->steps_to_endZ > 10){
+			state_hw.current_task_ref->steps_to_endZ = 10;
+		}
+		if(state_hw.current_task_ref->steps_to_endX > 10){
+			state_hw.current_task_ref->steps_to_endX = 10;
 		}
 		// reset task cb:
 		cb_reset(&task_cb);
@@ -332,9 +335,15 @@ void USART_CharReception_Callback(void)
 	if(symbol == '\n'){
     /* Set Buffer swap indication */
 //		ubUART3ReceptionComplete = 1;
-		ubuf_t *u_buf = add_empty_uart();
-		memset(u_buf,0,32);
-		memcpy(u_buf,&aRXBufferA,uwNbReceivedChars);
+		aRXBufferA[uwNbReceivedChars] = 0;
+		cb_push_back_unclean(&uart_cb);
+		memcpy(uart_cb.top,&aRXBufferA,uwNbReceivedChars+1);
+//		cb_push_back_item(&uart_cb, &aRXBufferA);
+		
+//		ubuf_t *u_buf = add_empty_uart();
+//		memcpy(u_buf,&aRXBufferA,uwNbReceivedChars);
+//		memset(u_buf,0,32);
+//		((uint8_t *) u_buf)[uwNbReceivedChars] = 0;
 
 
 //		if(uwNbReceivedChars == 1)
@@ -396,7 +405,7 @@ int main(void)
 //!!!! 	_USEENCODER define  moved to gcode.h
 	
 	#ifdef _USEENCODER
-	int preload = 4;//LOOP_COUNT;
+	int preload = 2;//LOOP_COUNT;
 	#else
 	int preload = 4;//LOOP_COUNT;
 	#endif	
@@ -755,10 +764,8 @@ const char * ga1[] = {
 						break;
 					case '1':
 //						if( abs(state_hw.global_X_pos - record_X) > abs(state_hw.retract) || abs(state_hw.global_Z_pos - record_Z) > abs(state_hw.retract) ){
-							if(state_hw.G90G91 == G90mode){
-								scheduleG00G01move3(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0,0, G00code);
 							if(state_hw.flags.G90G91 == G90mode){
-								scheduleG00G01move(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0, G00code);
+								scheduleG00G01move3(	fixedpt_fromint2210(state_hw.initial_task_X_pos), fixedpt_fromint2210(state_hw.initial_task_Z_pos), 0,0, G00code);
 							} else {
 								scheduleG00G01move3(	fixedptu_fromint2210(record_X) - init_gp.X, fixedptu_fromint2210(record_Z) - init_gp.Z, 0, 0, G00code);
 							}
@@ -772,6 +779,9 @@ const char * ga1[] = {
 						// break current task, set new task length as steps_to_end-dz and save this task as new record to repeat in cycle
 //						__disable_irq();
 						memcpy(&record_task, state_hw.last_loaded_task_ref, task_cb.sz);
+					  
+						record_task.callback_refZ = dz_callback;
+						record_task.callback_refX = dx_callback;
 //						if(dbg_ssh)
 							trim_substep_short();
 //						else 
@@ -780,8 +790,8 @@ const char * ga1[] = {
 						//wait until active task is finished to update init_gp position with actual global_Z(X)_pos:
 						while(state_hw.current_task_ref != 0){
 						}
- 
-						record_task.unlocked = false; // lock task to recalculate it again
+
+							
 						record_X = state_hw.initial_task_X_pos;
 						record_Z = state_hw.initial_task_Z_pos;
 
@@ -792,6 +802,8 @@ const char * ga1[] = {
 						int back_dx = record_X - local_X;
 						record_task.dz = abs(back_dz);
 						record_task.dx = abs(back_dx);
+						record_task.steps_to_endX = record_task.dx;
+						record_task.steps_to_endZ = record_task.dz;
 //						record_task.F = state_hw.Q824set; // get from hw if it feed was changed on the fly
 
 					// move back:
@@ -825,7 +837,7 @@ const char * ga1[] = {
 
 							scheduleG00G01move3(fixedpt_fromint2210(state_hw.retract), 0, 0, 0,G00code);
 							scheduleG00G01move3(fixedpt_fromint2210(back_dx), fixedpt_fromint2210(back_dz), 0,0, G00code);
-							scheduleG00G01move3(-state_hw.retract*1024, 0, 0,0, G00code);
+							scheduleG00G01move3(-fixedpt_fromint2210(state_hw.retract), 0, 0,0, G00code);
 						}
 						break;
 					case 'R': // infinite loop to reset by WD
@@ -1009,7 +1021,7 @@ const char * ga1[] = {
 						state_hw.retract = 100;
 						break;
 				}
-			} else {
+			}  else {
 //				int charsCount = uNbReceivedCharsForUser - CRC_BASE64_STRLEN;
 //				uNbReceivedCharsForUser = 0;
 

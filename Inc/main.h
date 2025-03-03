@@ -161,13 +161,30 @@ typedef struct G_pipeline{ //todo remove this struct? what it used for?
 //	uint8_t code; // wtf?
 } G_pipeline_t;
 
+
+
+
+
+
+
+typedef struct {
+	uint8_t z_direction: 1;
+	uint8_t x_direction: 1;
+	uint8_t multistart_thread: 2;
+	uint8_t stepper: 1; // use this variable if this code use stepper motor
+	uint8_t unlocked: 1; // task unlocked(already processed by precalc)
+	uint8_t skiprampdownX: 1;
+	uint8_t skiprampdownZ: 1;
+} taskFlags_t;
+
+
 typedef struct G_task{
 	int32_t dx, dz;
-	int32_t 	x1, z1; // delta
-//	uint32_t len;
-	float len_f; //2210
-	uint32_t steps_to_end;
-	fixedptu F; //Q1616, feed value. For mm/min lowest value is 35.16 mm/min
+//	int32_t 	x1, z1; // delta
+
+//	float len_f; //2210
+//	uint32_t steps_to_end;
+//	fixedptu F; //Q1616, feed value. For mm/min lowest value is 35.16 mm/min
 
 	uint32_t steps_to_endX;// steps to end on x
 	uint32_t steps_to_endZ; // steps to end on z
@@ -179,23 +196,18 @@ typedef struct G_task{
 	callback_func_t callback_refX; //callback ref to iterate line or arc
 	callback_func_t callback_refZ; //callback ref to iterate line or arc
 
-
 	callback_func_t init_callback_ref;
 
 	callback_func_t precalculate_init_callback_ref;
 	callback_func_t precalculate_callback_ref;
 
-	uint8_t z_direction, x_direction;
+	taskFlags_t flags;
 	uint16_t delay; //encoder ticks to wait after tacho pulse to start sync move. used for threading multi screw threads or for dofferend infeed strategy
 	uint8_t multistart_thread;
-	bool stepper; // use this variable if this code use stepper motor
-	bool unlocked; // task unlocked(already processed by precalc)
-	bool skiprampdownX;
-	bool skiprampdownZ;
 
 // arc
 //	int rr, inc_dec;
-	uint32_t a,b;
+//	uint32_t a,b;
 //	int64_t err, aa, bb;
 } G_task_t;
 
@@ -271,6 +283,7 @@ typedef struct state_s
   state_func_t functionX;
   state_func_t functionZ;
 
+	uint16_t *rampTab;
 //  callback_func_t callback;
 //	uint32_t async_z;
 //	uint8_t z_period;

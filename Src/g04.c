@@ -6,7 +6,7 @@ void G04parse(char *line){
 	G_pipeline_t gref;
 	G_parse(line, &gref);
 	G_task_t *gt_new_task = add_empty_task();
-	gt_new_task->steps_to_end = (gref.P * 1000) >> 10;
+	gt_new_task->steps_to_endZ = (gref.P * 1000) >> 10;
 //	gt_new_task->callback_ref = dwell_callback;
 	gt_new_task->init_callback_ref = G04init_callback;
 }
@@ -25,8 +25,8 @@ void do_fsm_dwell(state_t *s){
 
 void dwell_callback(state_t* s){
 // callback from TIM3
-	s->current_task_ref->steps_to_end--;
-	if(s->current_task_ref->steps_to_end == 0){
+	s->current_task_ref->steps_to_endZ--;
+	if(s->current_task_ref->steps_to_endZ == 0){
 		//restore connection here?
 			LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
 	}

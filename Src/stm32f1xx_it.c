@@ -62,7 +62,8 @@
 /* USER CODE BEGIN PV */
 extern __IO uint8_t ubLIMITleftZ;
 extern __IO uint8_t initSync;
-bool xPulse = false, zPulse = false;
+__IO bool xPulse = false;
+__IO bool zPulse = false;
 uint8_t xzsync = 0;
 #define syncTicks 100
 __IO uint32_t ttt = 0;
@@ -248,7 +249,7 @@ void TIM2_IRQHandler(void)
 }
 
 /**
-  * @brief Z axis step generation, hw pulses by hw OC2 reg (output compare) 
+  * @brief This function handles TIM3 global interrupt.
   */
 void TIM3_IRQHandler(void)
 {
@@ -257,7 +258,7 @@ void TIM3_IRQHandler(void)
 	
 	if(state_hw.current_task_ref->steps_to_endZ > 0){
 		if(!zPulse){
-	//		LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+			LL_GPIO_SetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 			zPulse = true;
 			TIM3->ARR = 1; // clear ARR to call interrapt on next async timep tick
 			TIM3->CNT = 0;
@@ -265,7 +266,7 @@ void TIM3_IRQHandler(void)
 			return;
 		} else {
 			zPulse = false;
-	//		LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
+			LL_GPIO_ResetOutputPin(MOTOR_Z_STEP_GPIO_Port,MOTOR_Z_STEP_Pin);
 		}
 	//	TIM3->CNT = 0;
 
@@ -302,14 +303,15 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 	TIM4->SR = 0; // clear SR at the beginning of the interrupt to avoid false call it twice, http://www.keil.com/support/docs/3928.htm 
-	return;
+//	return;
 	
-	state_hw.function(&state_hw);
+	if(state_hw.function)
+		state_hw.function(&state_hw);
 
 
-	state_hw.prescaler = TIM2->CNT;
-	TIM2->CNT = 0;
-	state_hw.rpm = 2400000 / state_hw.prescaler;
+//	state_hw.prescaler = TIM2->CNT;
+//	TIM2->CNT = 0;
+//	state_hw.rpm = 2400000 / state_hw.prescaler;
 
 	
 	

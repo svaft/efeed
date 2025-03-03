@@ -86,6 +86,13 @@ extern circular_buffer uart_cb;
 
 void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref);
 
+__STATIC_INLINE void delay3us(void){
+	for(int a = 0;a<35;a++){
+		__NOP();
+	}
+}
+
+
 __STATIC_INLINE void cb_init(circular_buffer *cb, size_t capacity, size_t sz){
     cb->buffer = malloc(capacity * sz);
     if(cb->buffer == NULL){

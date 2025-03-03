@@ -1,12 +1,6 @@
 #include "gcode.h"
 
 
-
-
-
-
-ubuf_t ut[uartbuf_size];
-
 fixedpt command;
 G_pipeline_t init_gp={0,0,0,0,0};
 
@@ -20,12 +14,12 @@ substep_job_t substep_job[substep_job_size];
 //профиль ускорения при 300000pps/ps расчитан в файле rapmup.xls
 uint8_t ramp_posX = 0;
 uint8_t ramp_posZ = 0;
-uint32_t steps2end_equator = 0;
+//uint32_t steps2end_equator = 0;
 
-substep_t* cb_push_back_empty_ref(void){
-	cb_push_back_empty(&substep_cb);
-	return substep_cb.top;
-}
+//substep_t* cb_push_back_empty_ref(void){
+//	cb_push_back_empty(&substep_cb);
+//	return substep_cb.top;
+//}
 
 uint32_t current_step = 0;
 int break1 = 0;
@@ -50,7 +44,7 @@ void jog_pulse(int delay){
 void load_next_task(state_t* s){
 	if(s->task_lock == false && task_cb.count > 0) {
 		G_task_t *next_task = cb_get_front_ref(&task_cb);
-		if(next_task && next_task->unlocked == true) {
+		if(next_task && next_task->flags.unlocked == true) {
 			s->last_loaded_task_ref  = next_task;
 			current_step++;
 
@@ -60,7 +54,7 @@ void load_next_task(state_t* s){
 			if(s->current_task_ref->init_callback_ref){
 				s->current_task_ref->init_callback_ref(s); // task specific init
 			}
-			if(s->current_task_ref->stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
+			if(s->current_task_ref->flags.stepper && LL_TIM_IsEnabledCounter(s->syncbase) == false) {
 				do_fsm_move_start3(s);
 			}
 		} else{ // no next task
@@ -71,7 +65,7 @@ void load_next_task(state_t* s){
 
 void G90init_callback_precalculate(state_t* s){
 	s->flags.G90G91 = G90mode;
-	s->current_task_ref->unlocked = true;
+	s->current_task_ref->flags.unlocked = true;
 }
 void G90(state_t* s){
 	s->flags.G90G91 = G90mode;
@@ -79,7 +73,7 @@ void G90(state_t* s){
 }
 void G91init_callback_precalculate(state_t* s){
 	s->flags.G90G91 = G91mode;
-	s->current_task_ref->unlocked = true;
+	s->current_task_ref->flags.unlocked = true;
 }
 void G91(state_t* s){
 	s->flags.G90G91 = G91mode;
@@ -93,7 +87,7 @@ void G91(state_t* s){
   */
 void G94init_callback_precalculate(state_t* s){
 	s->flags.G94G95 = G94code;
-	s->current_task_ref->unlocked = true;
+	s->current_task_ref->flags.unlocked = true;
 }
 
 
@@ -102,6 +96,7 @@ void G94init_callback_precalculate(state_t* s){
 * @retval void.
   */
 void switch_to_async(state_t* s){
+		s->rampTab = &rampup2;
 // unattach sync master TIM4 from slave	
   LL_TIM_DisableMasterSlaveMode(TIM4);
 //  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_RESET);
@@ -128,6 +123,7 @@ void switch_to_async(state_t* s){
 }
 
 void G94(state_t* s){
+	s->rampTab = &rampup2;
 	if(s->flags.G94G95 == G94code){ //если мы уже в асинхронном режиме переконфигурацию таймеров не проводим
 		s->task_lock = false;
 		return;
@@ -149,6 +145,7 @@ bool msm;
 * @retval void.
   */
 void switch_to_sync(state_t* s){
+	s->rampTab = &rampupSync;
 	LL_TIM_DisableCounter(TIM4); // stop sync timer
 	LL_TIM_DisableCounter(TIM2); // stop async timer
 
@@ -164,49 +161,10 @@ void switch_to_sync(state_t* s){
 	LL_TIM_DisableCounter(TIM1); 
 	LL_TIM_DisableCounter(TIM3); 
 	return;
-	
-	
-
-
-
-
-	// отключаем TIM3 как ведомый таймер от мастера
-	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR0);
-//  LL_TIM_DisableMasterSlaveMode(TIM3);
-//	LL_TIM_CC_DisableChannel(TIM3,LL_TIM_CHANNEL_CH3); // отключаем канал(ы?) для исключения генерации лишнего пульса при LL_TIM_GenerateEvent_UPDATE
-	// отключаем мастер-таймер TIM2 от генерации сигналов ведомому 
-  LL_TIM_DisableMasterSlaveMode(TIM2);
-  LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_RESET);
-
-//	LL_mDelay(2);
-	// reconfigure async timer:
-	LL_TIM_DisableCounter(TIM2); // pause async timer
-
-//	TIM2->PSC = 0; // reset prescaler and set tim2 to max speed to use it as delay measure
-//	TIM2->ARR = 0xFFFF;
-	// to set prescaler register we need to generate update event, so disable IT first to prevent call of IT routine:
-	LL_TIM_DisableIT_UPDATE(TIM2); 
-	// and then generate UPDATE event:
-	LL_TIM_GenerateEvent_UPDATE(TIM2); 
-
-//	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
-	LL_TIM_DisableCounter(TIM4); // pause sync timer
-//	LL_TIM_DisableUpdateEvent(TIM4);
-  LL_TIM_EnableMasterSlaveMode(TIM4);
-  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
-
-	// connect sync timer:
-	s->syncbase = TIM4; 									// sync with main spindle encoder
-
-	LL_TIM_SetTriggerInput(TIM3, LL_TIM_TS_ITR3); 				//trigger by snyc timer TIM4(spindle sync mode)
-	LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_TRIGGER);
-
-//	MOTOR_X_Enable();
-//	LL_GPIO_ResetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 }
 void G95(state_t* s){
-//	MOTOR_X_Enable();
+	s->rampTab = &rampupSync;
+	//	MOTOR_X_Enable();
 	if(s->flags.G94G95 == G95code){ //если мы уже в синхронном режиме переконфигурацию таймеров не проводим
 		s->task_lock = false;
 		return;
@@ -218,7 +176,7 @@ void G95(state_t* s){
 
 void G95init_callback_precalculate(state_t* s){
 	s->flags.G94G95 = G95code;
-	s->current_task_ref->unlocked = true;
+	s->current_task_ref->flags.unlocked = true;
 }
 
 
@@ -257,7 +215,7 @@ void do_fsm_move_start3(state_t* s){
 	}
 
 	LL_TIM_DisableARRPreload(s->syncbase);
-	if(s->syncbase->ARR < rampup2[0] ){
+	if(s->syncbase->ARR < s->rampTab[0] ){
 //		s->syncbase->ARR = rampup2[ramp_pos++];
 	} else{
 		s->syncbase->ARR = s->syncbase->ARR;
@@ -298,7 +256,7 @@ void do_fsm_move_start2(state_t* s){
 //	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
 	ramp_posX = 0;
 	ramp_posZ = 0;
-	steps2end_equator = s->current_task_ref->steps_to_end>>1;
+//	steps2end_equator = s->current_task_ref->steps_to_endZ>>1;
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
 
@@ -329,7 +287,7 @@ void do_fsm_move_start2(state_t* s){
 	}
 
 	LL_TIM_DisableARRPreload(s->syncbase);
-	if(s->syncbase->ARR < rampup2[0] ){
+	if(s->syncbase->ARR < s->rampTab[0] ){
 //		s->syncbase->ARR = rampup2[ramp_pos++];
 	} else{
 		s->syncbase->ARR = s->syncbase->ARR;
@@ -346,8 +304,8 @@ void do_fsm_move_start2(state_t* s){
 #else 
 // initial load ARR
 	LL_TIM_DisableARRPreload(s->syncbase);
-	if(s->syncbase->ARR < rampup2[0] ){
-		s->syncbase->ARR = rampup2[ramp_posZ++];
+	if(s->syncbase->ARR < s->rampTab[0] ){
+		s->syncbase->ARR = s->rampTab[ramp_posZ++];
 	} else{
 		s->syncbase->ARR = s->syncbase->ARR;
 	}
@@ -415,6 +373,8 @@ G_task_t* get_last_task( void ){
 
 void command_parser(char *line){
 	uint8_t char_counter = 0;  
+	if(task_cb.count == task_cb.capacity)
+		return;
 	char letter;
 	G_task_t *g_task;
 //	char *end;
@@ -470,10 +430,10 @@ void command_parser(char *line){
 						G01parse(line+char_counter, G01code);
 						return;	
 					case 2*steps_per_unit_Z_2210: //G2 CW ARC
-						G03parse(line+char_counter,CCW); //
+//						G03parse(line+char_counter,CCW); //
 						break;
 					case 3*steps_per_unit_Z_2210: //G3 CCW ARC
-						G03parse(line+char_counter, CW); //!! G2 and G3 codes inverted for classic lathe where 
+//						G03parse(line+char_counter, CW); //!! G2 and G3 codes inverted for classic lathe where 
 							//cutting tool under Z axis
 						return;	
 					case 33*steps_per_unit_Z_2210: //G33
@@ -500,7 +460,7 @@ void command_parser(char *line){
 						G01parse(line+char_counter - 1,G01code);
 						return;	
 					case 3*steps_per_unit_Z_2210: //G3
-						G03parse(line+char_counter - 1,0);
+//						G03parse(line+char_counter - 1,0);
 						return;	
 					case 33*steps_per_unit_Z_2210: //G33
 						G33parse(line+char_counter - 1);
@@ -729,62 +689,62 @@ const uint16_t rampup2[] = {
 146,
 };
 
-//const uint8_t rampup[] = {
-//	75,
-//	65,
-//	50,
-//	33,
-//	28,
-//	24,
-//	20,
-//	18,
-//	16,
-//	15,
-//	14,
-//	13,
-//	13,
-//	12,
-//	11,
-//	11,
-//	11,
-//	10,
-//	10,
-//	10,
-//	9,
-//	9,
-//	9,
-//	9,
-//	8,
-//	8,
-//	8,
-//	8,
-//	8,
-//	8,
-//	7,
-//	7,
-//	7,
-//	7,
-//	7,
-//	7,
-//	7,
-//	7,
-//	7,
-//	6,
-//	6,
-//	6,
-//	6,
-//	6,
-//	5,
-//	5,
-//	5,
-//	5,
-//	4,
-//	4,
-//	4,
-//	3,
-//	2,
-//	1,
-//};
+const uint16_t rampupSync[] = {
+	75,
+	65,
+	50,
+	33,
+	28,
+	24,
+	20,
+	18,
+	16,
+	15,
+	14,
+	13,
+	13,
+	12,
+	11,
+	11,
+	11,
+	10,
+	10,
+	10,
+	9,
+	9,
+	9,
+	9,
+	8,
+	8,
+	8,
+	8,
+	8,
+	8,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	7,
+	6,
+	6,
+	6,
+	6,
+	6,
+	5,
+	5,
+	5,
+	5,
+	4,
+	4,
+	4,
+	3,
+	2,
+	1,
+};
 
 
 ///**

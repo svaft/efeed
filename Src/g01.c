@@ -26,6 +26,9 @@ void G01init_callback(state_t* s){
 	if(s->G94G00tmp == true){
 		s->G94G00tmp = false;
 		switch_to_sync(s);
+		
+		s->sync = true;// todo
+		s->delay = 0;
 	}
 	s->gcode = 01;
 	G00G01init_callback3(s);
@@ -62,8 +65,8 @@ void G00G01init_callback3(state_t* s){
 	s->initial_task_X_pos = s->global_X_pos; // save current position to return here if we decide to repeat last move
 	s->initial_task_Z_pos = s->global_Z_pos;
 
-	XDIR = s->current_task_ref->x_direction;
-	ZDIR = s->current_task_ref->z_direction;
+	XDIR = s->current_task_ref->flags.x_direction;
+	ZDIR = s->current_task_ref->flags.z_direction;
 	TIM1->PSC = 0; //fixedpt_toint(s->current_task_ref->Fx) - 1;
 	TIM3->PSC = 0; //fixedpt_toint(s->current_task_ref->Fz) - 1;
 	s->x1616set = s->current_task_ref->Fx;
@@ -87,11 +90,6 @@ void G00G01init_callback3(state_t* s){
 }
 
 
-
-
-
-
-
 /**
 * @brief  dz_callback by TIM3
 * @retval void.
@@ -100,13 +98,13 @@ void dz_callback(state_t* s){
 	fixedptu set_with_fract = fixedpt_add(s->z1616set, s->x1616fract_part); // calculate new step delay with fract from previous step
 	TIM3->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
 	s->z1616fract_part = fixedpt_fracpart( set_with_fract );
-	s->current_task_ref->z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
+	s->current_task_ref->flags.z_direction == zdir_forward ? s->global_Z_pos++ : s->global_Z_pos--;
 
-	if(s->current_task_ref->skiprampdownZ!=true && ramp_posZ >= s->current_task_ref->steps_to_endZ){
-		TIM3->ARR = rampup2[--ramp_posZ];
+	if(s->current_task_ref->flags.skiprampdownZ!=true && ramp_posZ >= s->current_task_ref->steps_to_endZ){
+		TIM3->ARR = s->rampTab[--ramp_posZ];
 	} else {
-		if(TIM3->ARR < rampup2[ramp_posZ]){
-			TIM3->ARR = rampup2[ramp_posZ++];
+		if(TIM3->ARR < s->rampTab[ramp_posZ]){
+			TIM3->ARR = s->rampTab[ramp_posZ++];
 		} else{
 			s->z1616fract_part = fixedpt_fracpart( set_with_fract ); 	
 		}
@@ -128,13 +126,13 @@ void dx_callback(state_t* s){
 	fixedptu set_with_fract = fixedpt_add(s->x1616set, s->x1616fract_part); // calculate new step delay with fract from previous step
 	TIM1->ARR = fixedpt_toint(set_with_fract) - 1;							// load step delay to ARR register
 	s->x1616fract_part = fixedpt_fracpart( set_with_fract ); 	
-	s->current_task_ref->x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
+	s->current_task_ref->flags.x_direction == xdir_backward ? s->global_X_pos++ : s->global_X_pos--;
 
-	if(s->current_task_ref->skiprampdownX!=true && ramp_posX >= s->current_task_ref->steps_to_endX){
-		TIM1->ARR = rampup2[--ramp_posX];
+	if(s->current_task_ref->flags.skiprampdownX!=true && ramp_posX >= s->current_task_ref->steps_to_endX){
+		TIM1->ARR = s->rampTab[--ramp_posX];
 	} else {
-		if(TIM1->ARR < rampup2[ramp_posX]){
-			TIM1->ARR = rampup2[ramp_posX++];
+		if(TIM1->ARR < s->rampTab[ramp_posX]){
+			TIM1->ARR = s->rampTab[ramp_posX++];
 		} else{
 			s->x1616fract_part = fixedpt_fracpart( set_with_fract ); 	
 		}
@@ -298,18 +296,18 @@ void scheduleG00G01move3(int X, int Z, int F, int Xr, uint8_t G00G01G33){
 			// вычисляем длину линии как корень квадратный от суммы квадратов катетов. на этом шаге вычисляем сумму квадратов катетов:
 			int64_t dxscaled = dx * 16 / 10;
 			uint64_t il = (int64_t)dz*dz+(int64_t)dxscaled*dxscaled;//(int64_t)(Xr-x0r)*(Xr-x0r)+(int64_t)dz*dz;
-			gt_new_task->len_f = sqrtf(il); // получили длину отрезка в условных единицах
+			float len_f = sqrtf(il); // получили длину отрезка в условных единицах
 			
 			const float timerFreq =(float)(72000000/(TIM2->ARR+1)); //300.000 ticks per second for PSC=239
 			const float pathLenConst = (float)(64.*1024.* 60.0 * 1024.0*timerFreq / (z_steps_unit / z_screw_pitch)); // 7.549.747.200.000
-			float pathLen = gt_new_task->len_f * pathLenConst / (float)F;
+			float pathLen = len_f * pathLenConst / (float)F;
 
 			gt_new_task->Fz = dz > 0 ? pathLen / dz : 0;
 			gt_new_task->Fx = dx > 0 ? pathLen / dx : 0;
 		}
 	}
 
-	gt_new_task->stepper = true;
+	gt_new_task->flags.stepper = true;
 	gt_new_task->callback_refZ = dz_callback;
 	gt_new_task->callback_refX = dx_callback;
 	gt_new_task->steps_to_endX = gt_new_task->dx =  fixedpt_toint2210(dx);
@@ -318,17 +316,17 @@ void scheduleG00G01move3(int X, int Z, int F, int Xr, uint8_t G00G01G33){
 	// no need to precalculate, so skip callbacks and unlock task
 //	gt_new_task->precalculate_init_callback_ref = G01init_callback_precalculate3;
 //	gt_new_task->precalculate_callback_ref 			= dxdz_callback_precalculate3;
-	gt_new_task->unlocked = true; 
+	gt_new_task->flags.unlocked = true; 
 
-	gt_new_task->x_direction = xdir;
-	gt_new_task->z_direction = zdir;
+	gt_new_task->flags.x_direction = xdir;
+	gt_new_task->flags.z_direction = zdir;
 
-	if(prev_task->stepper == true) {
-		if(prev_task->z_direction == zdir){
-			prev_task->skiprampdownZ = true;
+	if(prev_task->flags.stepper == true) {
+		if(prev_task->flags.z_direction == zdir){
+			prev_task->flags.skiprampdownZ = true;
 		}
-		if(prev_task->x_direction == xdir){
-			prev_task->skiprampdownX = true;
+		if(prev_task->flags.x_direction == xdir){
+			prev_task->flags.skiprampdownX = true;
 		}
 	}
 

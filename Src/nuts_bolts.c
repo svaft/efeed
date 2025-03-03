@@ -1,12 +1,10 @@
 #include "nuts_bolts.h"
 
-circular_buffer uart_cb;
-
 circular_buffer gp_cb;
 circular_buffer task_cb;
 //circular_buffer task_precalc_cb;
-circular_buffer substep_cb;
-circular_buffer substep_job_cb;
+//circular_buffer substep_cb;
+//circular_buffer substep_job_cb;
 
 
 void cb_init_ref(circular_buffer *cb, size_t capacity, size_t sz,void *ref){

@@ -12,11 +12,10 @@
 #include "g03.h"
 #include "g04.h"
 
-#define uartbuf_size 40
-#define task_precalc_size 20
-#define task_size 70
+#define task_precalc_size 5
+#define task_size 30
 #define gp_size 10
-#define substep_size 1000
+#define substep_size 10
 #define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
 #define substep_job_size task_size*2
 
@@ -28,11 +27,11 @@ typedef struct substep{
 	uint8_t skip;
 } substep_t;
 
-typedef struct substep_sma_ref{
-	uint16_t delay;
-	uint16_t count;
-	substep_t *ref;
-} substep_sma_ref_t;
+//typedef struct substep_sma_ref{
+//	uint16_t delay;
+//	uint16_t count;
+//	substep_t *ref;
+//} substep_sma_ref_t;
 
 
 void command_parser(char *line);
@@ -54,7 +53,7 @@ extern G_task_t gt[];
 extern G_pipeline_t gp[];
 extern G_pipeline_t init_gp;
 extern substep_job_t substep_job[];
-extern substep_sma_ref_t smaNumbers[];
+//extern substep_sma_ref_t smaNumbers[];
 extern substep_t* smaSubstepRefs[];
 
 void jog_pulse(int delay);
@@ -82,6 +81,7 @@ void do_fsm_move_end3(state_t* );
 
 
 extern const uint16_t rampup2[];
+extern const uint16_t rampupSync[];
 extern uint32_t steps_to_end_shadow; // костыль
 extern substep_t substep_delay[];
 extern ubuf_t ut[];

@@ -78,7 +78,7 @@ state_t state_precalc;
 
 
 
-#define jogbuf_size 5
+#define jogbuf_size 150
 circular_buffer jogx_cb;
 char jogQueue[jogbuf_size];
 

@@ -96,7 +96,7 @@ void G94init_callback_precalculate(state_t* s){
 * @retval void.
   */
 void switch_to_async(state_t* s){
-		s->rampTab = &rampup2;
+		s->rampTab = (uint16_t *)&rampup2;
 // unattach sync master TIM4 from slave	
   LL_TIM_DisableMasterSlaveMode(TIM4);
 //  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_RESET);
@@ -123,7 +123,7 @@ void switch_to_async(state_t* s){
 }
 
 void G94(state_t* s){
-	s->rampTab = &rampup2;
+	s->rampTab = (uint16_t *)&rampup2;
 	if(s->flags.G94G95 == G94code){ //если мы уже в асинхронном режиме переконфигурацию таймеров не проводим
 		s->task_lock = false;
 		return;
@@ -145,7 +145,7 @@ bool msm;
 * @retval void.
   */
 void switch_to_sync(state_t* s){
-	s->rampTab = &rampupSync;
+	s->rampTab = (uint16_t *)&rampupSync;
 	LL_TIM_DisableCounter(TIM4); // stop sync timer
 	LL_TIM_DisableCounter(TIM2); // stop async timer
 
@@ -163,7 +163,7 @@ void switch_to_sync(state_t* s){
 	return;
 }
 void G95(state_t* s){
-	s->rampTab = &rampupSync;
+	s->rampTab = (uint16_t *)&rampupSync;
 	//	MOTOR_X_Enable();
 	if(s->flags.G94G95 == G95code){ //если мы уже в синхронном режиме переконфигурацию таймеров не проводим
 		s->task_lock = false;

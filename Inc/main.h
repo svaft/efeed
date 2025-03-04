@@ -295,7 +295,7 @@ typedef struct state_s
 //	_Bool main_feed_direction;
 	TIM_TypeDef *syncbase;
   // other stateful data
-
+	taskFlags_t prevTaskFlags;
 	//	bresenham
 	int err;
 } state_t;

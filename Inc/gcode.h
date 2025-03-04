@@ -13,11 +13,11 @@
 #include "g04.h"
 
 #define task_precalc_size 5
-#define task_size 30
+#define task_size 22
 #define gp_size 10
-#define substep_size 10
-#define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
-#define substep_job_size task_size*2
+//#define substep_size 10
+//#define subdelay_precision 8 // 7 - 5,58us, 8 - 6,41us, 
+//#define substep_job_size 1
 
 #define _USEENCODER // uncomment tihs define to use HW rotary encoder on spindle	
 
@@ -84,7 +84,7 @@ extern const uint16_t rampup2[];
 extern const uint16_t rampupSync[];
 extern uint32_t steps_to_end_shadow; // костыль
 extern substep_t substep_delay[];
-extern ubuf_t ut[];
+
 substep_t* cb_push_back_empty_ref(void);
 
 

@@ -78,9 +78,9 @@ state_t state_precalc;
 
 
 
-#define jogbuf_size 150
-circular_buffer jogx_cb;
-char jogQueue[jogbuf_size];
+#define jogQueue_size 50
+circular_buffer jogQueue_cb;
+char jogQueue[jogQueue_size];
 
 
 
@@ -112,9 +112,9 @@ G96, G97 Spindle Control Mode, G97 (RPM Mode)
 
 
 
-#define uartbuf_size 500
+#define uartBuffer_size 400
 circular_buffer uart_cb;
-ubuf_t ut[uartbuf_size];
+ubuf_t uartBuffer[uartBuffer_size];
 
 
 __IO uint32_t rised = 0;
@@ -129,13 +129,6 @@ __IO uint8_t ubUART3ReceptionComplete = 0;
 
 __IO uint8_t ubLIMITleftZ = 0;
 
-/* Buffer used for transmission */
-const uint8_t aTxtest[] = "A12345678901234567890BCD\r\n";//crc ok, add to queue ok, continue
-const uint8_t aTxFW2[] = "1.71;123456;\r\n";//crc ok, add to queue ok, continue
-const uint8_t aTxCRC_OK_OK_Continue[] = "ooc\r\n";//crc ok, add to queue ok, continue
-const uint8_t aTxCRC_OK_Ok_Wait[] = "oow\r\n";//crc ok, add to queue ok, wait
-const uint8_t aTxCRC_OK_Fail_Wait[] = "ofw\r\n";//crc ok, add to queue ok, wait
-const uint8_t aTxCRC_Fail[] = "f__\r\n";//crc fail
 
 uint8_t ubNbDataToTransmit = 5; //sizeof(aTxBuffer);
 __IO uint8_t ubTransmissionComplete = 0;
@@ -217,12 +210,12 @@ void USART_CharReception_Callback(void)
   /* Read Received character. RXNE flag is cleared by reading of DR register */
 	uint8_t symbol = LL_USART_ReceiveData8(USART1);
 	if(symbol == '\n'){
-		if(uart_cb.count<uart_cb.capacity) {
+		if(uart_cb.count<uart_cb.capacity-2) {
 			aRXBufferA[uwNbReceivedChars] = 0;
 			if(uwNbReceivedChars == 2 && (aRXBufferA[1] == 'w' || aRXBufferA[1] == 's') ){
-				if(jogx_cb.capacity > jogx_cb.count) {
-					cb_push_back_unclean(&jogx_cb);
-					char *cp = jogx_cb.top;
+				if(jogQueue_cb.capacity-2 > jogQueue_cb.count) {
+					cb_push_back_unclean(&jogQueue_cb);
+					char *cp = jogQueue_cb.top;
 					*cp = aRXBufferA[1];
 				}
 			} else {
@@ -276,6 +269,10 @@ const char * ga1[] = {
 	"G94",
 //	"G33 Z-10 K4.5 M3",
 	"G0 X0. Z0.",
+	"G0 X0. Z0.1",
+	"G0 X0. Z0.1",
+	"G0 X0. Z0.1",
+	"G0 X0. Z0.1",
 	"G1 X10 Z100 F100",
 	"G94",
 	"G1 Z-600 F600", //F900",
@@ -351,8 +348,8 @@ const char * ga1[] = {
 
 
 
-	cb_init_ref(&jogx_cb, jogbuf_size, sizeof(char), &jogQueue);
-	cb_init_ref(&uart_cb, uartbuf_size, sizeof(char), &ut);
+	cb_init_ref(&jogQueue_cb, jogQueue_size, sizeof(char), &jogQueue);
+	cb_init_ref(&uart_cb, uartBuffer_size, sizeof(char), &uartBuffer);
 
 
 	cb_init_ref(&task_cb, task_size, sizeof(G_task_t), &gt);
@@ -369,7 +366,10 @@ const char * ga1[] = {
   pBufferReadyForReception = aRXBufferA;
   uwNbReceivedChars = 0;
   ubUART3ReceptionComplete = 0;
-	
+
+
+
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -496,8 +496,8 @@ const char * ga1[] = {
 //			EOM(); //					sendDefaultResponseDMA('Z',&state_hw.global_Z_pos);
 		}
 //process commands received by uart that should be executed in parallel with G-commands(jog x)
-		if(jogx_cb.count > 0){
-		  char *next_jogcmd = cb_get_front_ref(&jogx_cb);
+		if(jogQueue_cb.count > 0){
+		  char *next_jogcmd = cb_get_front_ref(&jogQueue_cb);
 //			char cmd  = ((char * )next_jogcmd);
 			switch(*next_jogcmd){
 #define jogwindow 5				
@@ -618,11 +618,11 @@ bug when jogs too fast multiple pulses is appear in middle. need some flag for i
 						break;
 					}
 			}
-			cb_pop_front_ref(&jogx_cb);
+			cb_pop_front_ref(&jogQueue_cb);
 		}
 
 		// process uart buffer(except jog x):
-		if( (uart_cb.count > 0 && task_cb.count < task_cb.capacity) ){
+		if( (uart_cb.count > 0 && task_cb.count < task_cb.capacity-2) ){
 		  ubuf_t *next_uartcmd = cb_get_front_ref(&uart_cb);
 //			uint8_t cmd;
 //			cmd  = ((uint8_t * )next_uartcmd)[0];

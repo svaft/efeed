@@ -211,7 +211,9 @@ void TIM1_UP_IRQHandler(void)
 	if(state_hw.current_task_ref->steps_to_endX == 0  && state_hw.current_task_ref->steps_to_endZ == 0){
 			state_hw.current_task_ref = 0;
 			state_hw.task_lock = false; // unlock task processor to load next task
-			do_fsm_move_end2(&state_hw);
+			if(task_cb.count == 0){
+				do_fsm_move_end2(&state_hw);
+			}
 		} else {
 		}
   /* USER CODE END TIM1_UP_IRQn 0 */
@@ -276,14 +278,14 @@ void TIM3_IRQHandler(void)
 		}
 	}
 	if(state_hw.current_task_ref->steps_to_endZ == 0 && state_hw.current_task_ref->steps_to_endX == 0){
-		
+			state_hw.prevTaskFlags = state_hw.current_task_ref->flags;
 //		if(!LL_TIM_IsEnabledCounter(TIM1)){ // check for tim1 is enabled, if its true - substep is active, so load next task on end of substep
 			state_hw.current_task_ref = 0;
 			state_hw.task_lock = false; // unlock task processor to load next task
-//			if(task_cb.count == 0){
+			if(task_cb.count == 0){
 				do_fsm_move_end2(&state_hw);
 	//			return;
-//			}
+			}
 	//		load_next_task(&state_hw);
 		} else {
 		}

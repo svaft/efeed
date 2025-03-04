@@ -67,8 +67,8 @@ void G00G01init_callback3(state_t* s){
 
 	XDIR = s->current_task_ref->flags.x_direction;
 	ZDIR = s->current_task_ref->flags.z_direction;
-	TIM1->PSC = 0; //fixedpt_toint(s->current_task_ref->Fx) - 1;
-	TIM3->PSC = 0; //fixedpt_toint(s->current_task_ref->Fz) - 1;
+//	TIM1->PSC = 0; //fixedpt_toint(s->current_task_ref->Fx) - 1;
+//	TIM3->PSC = 0; //fixedpt_toint(s->current_task_ref->Fz) - 1;
 	s->x1616set = s->current_task_ref->Fx;
 	s->x1616fract_part = fixedpt_fracpart(s->x1616set);
 	s->z1616set = s->current_task_ref->Fz;
@@ -78,14 +78,18 @@ void G00G01init_callback3(state_t* s){
 	if(s->current_task_ref->Fx>0){
 		TIM1->ARR = fixedpt_toint(s->current_task_ref->Fx) - 1;
 		TIM1->SR = 0;
+//		TIM1->CNT = 0;
 		LL_TIM_EnableIT_UPDATE(TIM1);
 		LL_TIM_EnableCounter(TIM1);
 	}
 	if(s->current_task_ref->Fz>0){
-		TIM3->ARR = fixedpt_toint(s->current_task_ref->Fz) - 1;
-		TIM3->SR = 0;
-		LL_TIM_EnableIT_UPDATE(TIM3);
-		LL_TIM_EnableCounter(TIM3);
+		if(ramp_posZ == 0){
+			TIM3->ARR = fixedpt_toint(s->current_task_ref->Fz) - 1;
+			TIM3->SR = 0;
+	//		TIM3->CNT = 0;
+		}
+			LL_TIM_EnableIT_UPDATE(TIM3);
+			LL_TIM_EnableCounter(TIM3);
 	}
 }
 
@@ -105,8 +109,6 @@ void dz_callback(state_t* s){
 	} else {
 		if(TIM3->ARR < s->rampTab[ramp_posZ]){
 			TIM3->ARR = s->rampTab[ramp_posZ++];
-		} else{
-			s->z1616fract_part = fixedpt_fracpart( set_with_fract ); 	
 		}
 	}
 
@@ -132,8 +134,6 @@ void dx_callback(state_t* s){
 	} else {
 		if(TIM1->ARR < s->rampTab[ramp_posX]){
 			TIM1->ARR = s->rampTab[ramp_posX++];
-		} else{
-			s->x1616fract_part = fixedpt_fracpart( set_with_fract ); 	
 		}
 	}
 
@@ -223,10 +223,27 @@ void scheduleG00G01move3(int X, int Z, int F, int Xr, uint8_t G00G01G33){
 	}
 	if(dz == 0 && dx == 0)
 		return;
-	G_task_t *prev_task = get_last_task();
-	G_task_t *gt_new_task = 0;
-	gt_new_task = add_empty_task();
+	
 
+	G_task_t *prev_task = get_last_task();
+	
+	if(prev_task->flags.stepper == true) {
+		if(prev_task->flags.z_direction == zdir){
+			prev_task->flags.skiprampdownZ = true;
+		}
+		if(prev_task->flags.x_direction == xdir){
+			prev_task->flags.skiprampdownX = true;
+		}
+	}
+
+	G_task_t *gt_new_task = 0;
+	if(task_cb.count == 2){
+		volatile int q = 1; 
+	}
+	gt_new_task = add_empty_task();
+	if(task_cb.count == 3){
+		volatile int q = 1; 
+	}
 //		G94G95; // 0 - unit per min, 1 - unit per rev
 	if( (s->flags.G94G95 == G95code && G00G01G33 == G01code ) || G00G01G33 == G33code){ 	// unit(mm) per rev
 		gt_new_task->Fz = str_f2210mm_rev_to_delay1616(F); //todo inch support
@@ -236,7 +253,7 @@ void scheduleG00G01move3(int X, int Z, int F, int Xr, uint8_t G00G01G33){
 	} else { 											// unit(mm) per min
 		
 		if(G00G01G33 == G00code) {
-			F = 600*1024;// 600mm/min
+			F = 800*1024;// 600mm/min
 			// Z: 10mm/min =0737280000, x mm/min = 7372800000/x
 			// X: 10мм/мин =1179648000
 			gt_new_task->Fz = 7549747200000 / F;
@@ -273,14 +290,6 @@ void scheduleG00G01move3(int X, int Z, int F, int Xr, uint8_t G00G01G33){
 	gt_new_task->flags.x_direction = xdir;
 	gt_new_task->flags.z_direction = zdir;
 
-	if(prev_task->flags.stepper == true) {
-		if(prev_task->flags.z_direction == zdir){
-			prev_task->flags.skiprampdownZ = true;
-		}
-		if(prev_task->flags.x_direction == xdir){
-			prev_task->flags.skiprampdownX = true;
-		}
-	}
 
 	switch(G00G01G33){
 		case G00code:

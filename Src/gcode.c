@@ -3,23 +3,12 @@
 
 fixedpt command;
 G_pipeline_t init_gp={0,0,0,0,0};
-
-//G_task_t gt_precalc[task_precalc_size];
 G_task_t gt[task_size];
-//G_pipeline_t gp[gp_size];
-substep_t substep_delay[substep_size]; // todo check how its work with small substep buffer size 
-substep_job_t substep_job[substep_job_size];
-
 
 //профиль ускорения при 300000pps/ps расчитан в файле rapmup.xls
 uint8_t ramp_posX = 0;
 uint8_t ramp_posZ = 0;
-//uint32_t steps2end_equator = 0;
 
-//substep_t* cb_push_back_empty_ref(void){
-//	cb_push_back_empty(&substep_cb);
-//	return substep_cb.top;
-//}
 
 uint32_t current_step = 0;
 int break1 = 0;
@@ -138,8 +127,6 @@ void G94(state_t* s){
 	s->task_lock = false; // all processing is done here so unlock task to next
 }
 
-bool msm;
-
 /**
 * @brief  Set timer4(spindle encoder) as master and timer3 as slave, sync mode
 * @retval void.
@@ -185,8 +172,10 @@ void G95init_callback_precalculate(state_t* s){
 
 
 void do_fsm_move_start3(state_t* s){
-	ramp_posX = 0;
-	ramp_posZ = 0;
+	if(s->current_task_ref->flags.skiprampdownZ == 0)
+		ramp_posZ = 0;
+	if(s->current_task_ref->flags.skiprampdownX == 0)
+		ramp_posX = 0;
 
 	//	#define _USEENCODER
 #ifdef _USEENCODER // wait tacho only when HW encoder is used, in software emu mode this is not necessary, we start immediately
@@ -254,8 +243,10 @@ void do_fsm_move_start2(state_t* s){
 	// disclamer: why not to generate	update event by setting in EGR UG bit? with hardware logic analyzer all works fine,
 	// but in simulator this first pulse not generater propertly by UG
 //	LL_GPIO_SetOutputPin(MOTOR_X_ENABLE_GPIO_Port,MOTOR_X_ENABLE_Pin);
-	ramp_posX = 0;
-	ramp_posZ = 0;
+	if(s->current_task_ref->flags.skiprampdownZ == 0)
+		ramp_posZ = 0;
+	if(s->current_task_ref->flags.skiprampdownX == 0)
+		ramp_posX = 0;
 //	steps2end_equator = s->current_task_ref->steps_to_endZ>>1;
 	LL_TIM_ClearFlag_UPDATE(TIM3);
 	LL_TIM_EnableIT_UPDATE(TIM3);
@@ -334,8 +325,11 @@ int32_t move_cnt = 0;
 void do_fsm_move_end2(state_t* s){
 //	debug();
 //  LL_TIM_SetSlaveMode(TIM3, LL_TIM_SLAVEMODE_DISABLED);
-	ramp_posZ = 0; // reset ramp map 
-	ramp_posX = 0; // reset ramp map 
+//	if(s->current_task_ref->flags.skiprampdownZ == 0)
+		ramp_posZ = 0;
+//	if(s->current_task_ref->flags.skiprampdownX == 0)
+		ramp_posX = 0;
+
 //	cb_reset(&substep_cb);
 	init_gp.Z = fixedpt_fromint2210(s->global_Z_pos);
 	init_gp.X = fixedpt_fromint2210(s->global_X_pos);
@@ -373,7 +367,7 @@ G_task_t* get_last_task( void ){
 
 void command_parser(char *line){
 	uint8_t char_counter = 0;  
-	if(task_cb.count == task_cb.capacity)
+	if(task_cb.count == task_cb.capacity-2)
 		return;
 	char letter;
 	G_task_t *g_task;
@@ -580,114 +574,140 @@ void G98G99parse(char *line, uint8_t G98G99){
 
 
 const uint16_t rampup2[] = {
-1437,
-1231,
-1026,
-870,
-761,
-682,
-622,
-576,
-538,
-507,
-480,
-458,
-438,
-420,
-405,
-391,
-378,
-367,
-356,
-347,
-338,
-330,
-322,
-315,
-308,
-302,
-296,
-290,
-285,
-280,
-275,
-271,
-266,
-262,
-258,
-255,
-251,
-248,
-244,
-241,
-238,
-235,
-232,
-230,
-227,
-224,
-222,
-219,
-217,
+610,//560
+475,
+397,
+334,
+289,
+257,
+234,
 215,
-213,
-211,
-209,
-207,
-205,
-203,
 201,
-199,
-197,
-196,
-194,
-193,
-191,
-189,
 188,
-186,
-185,
-184,
-182,
-181,
-180,
 178,
-177,
-176,
-175,
-174,
-172,
-171,
 170,
-169,
-168,
-167,
-166,
-165,
-164,
-163,
 162,
-161,
-160,
-159,
-158,
-158,
-157,
-156,
 155,
-154,
-153,
-153,
-152,
-151,
 150,
-149,
-149,
-148,
-147,
-147,
-146,
+144,
+140,
+135,
+131,
+128,
+124,
+121,
+120,
 };
+
+//const uint16_t rampup20[] = {
+//1437,
+//1231,
+//1026,
+//870,
+//761,
+//682,
+//622,
+//576,
+//538,
+//507,
+//480,
+//458,
+//438,
+//420,
+//405,
+//391,
+//378,
+//367,
+//356,
+//347,
+//338,
+//330,
+//322,
+//315,
+//308,
+//302,
+//296,
+//290,
+//285,
+//280,
+//275,
+//271,
+//266,
+//262,
+//258,
+//255,
+//251,
+//248,
+//244,
+//241,
+//238,
+//235,
+//232,
+//230,
+//227,
+//224,
+//222,
+//219,
+//217,
+//215,
+//213,
+//211,
+//209,
+//207,
+//205,
+//203,
+//201,
+//199,
+//197,
+//196,
+//194,
+//193,
+//191,
+//189,
+//188,
+//186,
+//185,
+//184,
+//182,
+//181,
+//180,
+//178,
+//177,
+//176,
+//175,
+//174,
+//172,
+//171,
+//170,
+//169,
+//168,
+//167,
+//166,
+//165,
+//164,
+//163,
+//162,
+//161,
+//160,
+//159,
+//158,
+//158,
+//157,
+//156,
+//155,
+//154,
+//153,
+//153,
+//152,
+//151,
+//150,
+//149,
+//149,
+//148,
+//147,
+//147,
+//146,
+//};
 
 const uint16_t rampupSync[] = {
 	75,

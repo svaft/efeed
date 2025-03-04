@@ -203,9 +203,9 @@ void do_fsm_move_start3(state_t* s){
 //wait spindle to rotate specific angle if needed:
 		if(s->delay > 0) {
 			s->syncbase->CNT = 0;
-			LL_TIM_DisableARRPreload(s->syncbase);
-			s->syncbase->ARR = s->delay;
-			LL_TIM_EnableARRPreload(s->syncbase);
+//			LL_TIM_DisableARRPreload(s->syncbase);
+//			s->syncbase->ARR = s->delay;
+//			LL_TIM_EnableARRPreload(s->syncbase);
 			s->syncbase->SR = 0;
 			LL_TIM_EnableUpdateEvent(s->syncbase);
 			while(!LL_TIM_IsActiveFlag_UPDATE(s->syncbase));
@@ -214,13 +214,13 @@ void do_fsm_move_start3(state_t* s){
 		}
 	}
 
-	LL_TIM_DisableARRPreload(s->syncbase);
-	if(s->syncbase->ARR < s->rampTab[0] ){
+//	LL_TIM_DisableARRPreload(s->syncbase);
+//	if(s->syncbase->ARR < s->rampTab[0] ){
 //		s->syncbase->ARR = rampup2[ramp_pos++];
-	} else{
-		s->syncbase->ARR = s->syncbase->ARR;
-	}
-	LL_TIM_EnableARRPreload(s->syncbase);
+//	} else{
+	//	s->syncbase->ARR = s->syncbase->ARR;
+//	}
+//	LL_TIM_EnableARRPreload(s->syncbase);
 
 	LL_TIM_EnableUpdateEvent(s->syncbase);
 	s->syncbase->CNT = 0;
@@ -437,10 +437,10 @@ void command_parser(char *line){
 							//cutting tool under Z axis
 						return;	
 					case 33*steps_per_unit_Z_2210: //G33
-						G33parse(line+char_counter - 1);
+						G01parse(line+char_counter - 1, G33code);
 						return;	
 					case 76*steps_per_unit_Z_2210: //G76 threading cycle
-						G33parse(line+char_counter - 1);
+						G01parse(line+char_counter - 1, G33code);
 						return;	
 					case 98*steps_per_unit_Z_2210: //G98 threading cycle
 						G98G99parse(line+char_counter - 1, G98code);
@@ -463,7 +463,7 @@ void command_parser(char *line){
 //						G03parse(line+char_counter - 1,0);
 						return;	
 					case 33*steps_per_unit_Z_2210: //G33
-						G33parse(line+char_counter - 1);
+						G01parse(line+char_counter - 1,G33code);
 						return;	
 				}
 				break;

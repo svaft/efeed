@@ -592,8 +592,8 @@ void USART_CharReception_Callback(void);
 
 //#define rev_to_delay (uint32_t)(encoder_resolution/(z_steps_unit/z_screw_pitch)*(FIXEDPT_FMASK+1)) //(encoder_resolution/(z_steps_unit/z_screw_pitch))<<24
 // используется для деления 16.16 чисел, где x1616 = a1616*65536/b1616 , где а1616 = rev_to_delay_f = rev_to_delay * 65536
-//#define rev_to_delay_f 96636764160.0f // 1474560.0f //301989888.0f 
-#define rev_to_delay_f 48318382080.0f
+#define rev_to_delay_f 96636764160.0f // 1474560.0f //301989888.0f 
+//#define rev_to_delay_f 48318382080.0f
 
 // 1474560 = 65536*encoder_resolution*z_screw_pitch/z_steps_unit = 3600*0,00625*65536 and * 1000 to get integer math
 #define feed_on_the_fly_factor (uint32_t)(encoder_resolution*z_screw_pitch/z_steps_unit*65536*1000) // 1474560000

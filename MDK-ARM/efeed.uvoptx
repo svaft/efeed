@@ -157,9 +157,25 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
+          <LineNumber>1152</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134226468</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>../Src/main.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\efeed\../Src/main.c\1152</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
           <LineNumber>243</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134227948</Address>
+          <Address>134227904</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -169,22 +185,6 @@
           <Filename>../Src/stm32f1xx_it.c</Filename>
           <ExecCommand></ExecCommand>
           <Expression>\\efeed\../Src/stm32f1xx_it.c\243</Expression>
-        </Bp>
-        <Bp>
-          <Number>1</Number>
-          <Type>0</Type>
-          <LineNumber>252</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134235958</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\g01.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\efeed\../Src/g01.c\252</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>

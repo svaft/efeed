@@ -305,8 +305,8 @@ void TIM4_IRQHandler(void)
 	TIM4->SR = 0; // clear SR at the beginning of the interrupt to avoid false call it twice, http://www.keil.com/support/docs/3928.htm 
 //	return;
 	
-	if(state_hw.function)
-		state_hw.function(&state_hw);
+//	if(state_hw.function)
+//		state_hw.function(&state_hw);
 
 
 //	state_hw.prescaler = TIM2->CNT;
